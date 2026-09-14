@@ -1,0 +1,42 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FlowTask.Desktop.App"
+             xmlns:local="using:FlowTask.Desktop"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <!--
+          Editorial 视觉语言必须置于 FluentTheme 之后：Avalonia 样式按声明顺序层叠，
+          先声明会被 Fluent 默认控件模板覆盖。
+        -->
+        <StyleInclude Source="avares://FlowTask.Desktop/Styles/EditorialStyles.axaml" />
+    </Application.Styles>
+
+    <!--
+      设计令牌单一真源 (Article 6)。
+
+      为什么直接内联 ThemeDictionaries 而不用 MergedDictionaries + ResourceInclude：
+      运行时切换强调色需要写入 Application.Current.Resources.ThemeDictionaries[variant]。
+      若令牌嵌在 MergedDictionaries 内的子字典里，顶层 ThemeDictionaries 为空集合，
+      写入路径静默失效 —— 表现为换色/换材质点击后毫无变化。
+      令牌必须挂在顶层资源的 ThemeDictionaries 上，运行时覆写才能命中。
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceInclude x:Key="Dark" Source="avares://FlowTask.Desktop/Styles/Tokens.Dark.axaml" />
+                <ResourceInclude x:Key="Light" Source="avares://FlowTask.Desktop/Styles/Tokens.Light.axaml" />
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- 与主题无关的尺度令牌：无需按变体切换，走常规合并即可 -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://FlowTask.Desktop/Styles/Tokens.Shared.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

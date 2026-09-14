@@ -1,0 +1,72 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlowTask.Desktop.ViewModels"
+        xmlns:conv="using:FlowTask.Desktop.Converters"
+        x:Class="FlowTask.Desktop.Views.QuickCaptureWindow"
+        x:DataType="vm:QuickCaptureViewModel"
+        Title="FlowTask 随手记"
+        Width="620" Height="150"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        CanResize="False"
+        Topmost="True"
+        ShowInTaskbar="False"
+        TransparencyLevelHint="AcrylicBlur, Blur"
+        Background="Transparent">
+
+    <!-- 外边距为投影留白，无此留白 BoxShadow 会被窗口边界裁掉 -->
+    <Panel Margin="14">
+        <Border CornerRadius="{DynamicResource FloatingCapsuleCornerRadius}"
+                Background="{DynamicResource FloatingSurfaceBrush}"
+                BorderBrush="{DynamicResource HairlineStrongBrush}"
+                BorderThickness="1"
+                BoxShadow="0 16 40 0 #45000000, 0 2 8 0 #25000000"
+                ClipToBounds="True">
+
+            <Grid RowDefinitions="*,Auto" Margin="24,20,24,14">
+
+                <!-- 贯穿式主输入：无内框，靠字号建立焦点 (DESIGN-0001 §3) -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0"
+                               Text="✦"
+                               FontSize="18"
+                               Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,14,0" />
+
+                    <TextBox Grid.Column="1"
+                             x:Name="InputBox"
+                             Classes="EditorialInput"
+                             Text="{Binding InputText, Mode=TwoWay}"
+                             Watermark="闪现的灵感、待办、会议纪要…"
+                             VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- 底部：优先级分段选择 + 快捷键指引 -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P1"
+                                     IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
+                        <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P2"
+                                     IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Medium, Mode=TwoWay}" />
+                        <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P3"
+                                     IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Low, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                                Spacing="8" VerticalAlignment="Center">
+                        <Border Classes="KeyCap">
+                            <TextBlock Text="↵" />
+                        </Border>
+                        <TextBlock Text="保存" Classes="CaptionText" VerticalAlignment="Center" />
+
+                        <Border Classes="KeyCap" Margin="6,0,0,0">
+                            <TextBlock Text="Esc" />
+                        </Border>
+                        <TextBlock Text="关闭" Classes="CaptionText" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Panel>
+</Window>

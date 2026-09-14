@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      与主题无关的设计尺度令牌 (SPEC-0003 / DESIGN-0002 §1)。
+      色彩令牌按主题分置于 Tokens.Dark.axaml 与 Tokens.Light.axaml。
+    -->
+
+    <!-- ============ 圆角尺度 ============ -->
+    <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
+    <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>
+    <CornerRadius x:Key="WindowCornerRadius">14</CornerRadius>
+    <CornerRadius x:Key="FloatingCapsuleCornerRadius">14</CornerRadius>
+    <CornerRadius x:Key="PillCornerRadius">999</CornerRadius>
+
+    <!-- ============ 排版尺度 (Editorial Typography Scale) ============
+         DESIGN-0002 §1 "Typography as Interface"：以字号跨度而非分割线建立层级。 -->
+    <x:Double x:Key="FontSizeMicro">10.5</x:Double>
+    <x:Double x:Key="FontSizeCaption">11.5</x:Double>
+    <x:Double x:Key="FontSizeBody">13.5</x:Double>
+    <x:Double x:Key="FontSizeTaskTitle">19</x:Double>
+    <x:Double x:Key="FontSizeSectionTitle">22</x:Double>
+    <x:Double x:Key="FontSizeHeroTitle">44</x:Double>
+
+    <!-- 微标字距：小字号需要额外字距才能保持可读性与精致感 -->
+    <x:Double x:Key="MicroLabelLetterSpacing">1.6</x:Double>
+    <x:Double x:Key="HeroTitleLetterSpacing">-1</x:Double>
+
+    <!-- ============ 呼吸感间距 (Spacious Rhythm) ============
+         DESIGN-0002 §1 要求条目垂直留白 18-24px。 -->
+    <Thickness x:Key="TaskRowPadding">4,20,4,20</Thickness>
+    <Thickness x:Key="ContentAreaMargin">56,28,56,0</Thickness>
+    <Thickness x:Key="SidebarPadding">24,28,20,24</Thickness>
+
+</ResourceDictionary>

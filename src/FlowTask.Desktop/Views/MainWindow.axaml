@@ -1,0 +1,604 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlowTask.Desktop.ViewModels"
+        xmlns:models="using:FlowTask.Core.Models"
+        xmlns:conv="using:FlowTask.Desktop.Converters"
+        xmlns:appearance="using:FlowTask.Desktop.Appearance"
+        x:Class="FlowTask.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="FlowTask"
+        Width="1180" Height="780"
+        MinWidth="940" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome">
+
+    <Grid>
+        <Grid ColumnDefinitions="272,*">
+
+            <!-- ==================== 左侧极简导航 (DESIGN-0002 §2.2) ====================
+                 无右侧分割线：Editorial 风格以底色差异而非描边划分区域。 -->
+            <!-- 侧边栏使用极弱叠加色而非不透明底：透明材质档位下不透明面板会
+                 遮盖平台合成的模糊效果，使材质切换在视觉上毫无差别 -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource HairlineBrush}"
+                    Padding="{DynamicResource SidebarPadding}">
+                <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- 品牌区 -->
+                    <StackPanel Grid.Row="0" Margin="14,28,0,40" Spacing="6">
+                        <TextBlock Text="FLOWTASK"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   LetterSpacing="3"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock Text="心流待办工作台"
+                                   Classes="CaptionText" />
+                    </StackPanel>
+
+                    <!-- 视图导航 -->
+                    <StackPanel Grid.Row="1" Spacing="2">
+                        <TextBlock Text="VIEWS" Classes="MicroLabel" Margin="14,0,0,12" />
+
+                        <RadioButton Classes="NavPill"
+                                     GroupName="ViewNav"
+                                     IsChecked="{Binding IsActiveFilterSelected, Mode=TwoWay}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="全部任务" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Classes="CountBadge">
+                                    <TextBlock Text="{Binding ActiveCount}" />
+                                </Border>
+                            </Grid>
+                        </RadioButton>
+
+                        <RadioButton Classes="NavPill"
+                                     GroupName="ViewNav"
+                                     IsChecked="{Binding IsTodayFilterSelected, Mode=TwoWay}">
+                            <TextBlock Text="今日聚焦" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                        </RadioButton>
+
+                        <RadioButton Classes="NavPill"
+                                     GroupName="ViewNav"
+                                     IsChecked="{Binding IsCompletedFilterSelected, Mode=TwoWay}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="已完成归档" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Classes="CountBadge">
+                                    <TextBlock Text="{Binding CompletedCount}" />
+                                </Border>
+                            </Grid>
+                        </RadioButton>
+
+                        <!-- ========== PROJECTS 区块 (SPEC-0005 / DESIGN-0004 §5.1) ==========
+                             整块随 HasProjects 显隐：零项目时不显示空列表、不显示占位，
+                             使从不使用项目的用户获得与改动前完全一致的侧边栏（§3.3）。
+                             新建入口另置于底部，不在此区块内，故零项目时此处彻底消失。 -->
+                        <StackPanel Spacing="2" Margin="0,28,0,0" IsVisible="{Binding HasProjects}">
+                            <TextBlock Text="PROJECTS" Classes="MicroLabel" Margin="14,0,0,12" />
+
+                            <ItemsControl ItemsSource="{Binding Projects}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ProjectItemViewModel">
+                                        <Border Classes="ProjectRow"
+                                                Classes.Selected="{Binding IsSelected}"
+                                                DoubleTapped="OnProjectRowDoubleTapped"
+                                                Tapped="OnProjectRowTapped">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+
+                                                <Ellipse Grid.Column="0"
+                                                         Classes="ProjectDot"
+                                                         Margin="0,0,10,0"
+                                                         Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+
+                                                <!-- 常态：项目名，双击进入重命名 -->
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Name}"
+                                                           FontSize="14"
+                                                           FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding !IsRenaming}" />
+
+                                                <!-- 编辑态：原地重命名输入框 -->
+                                                <TextBox Grid.Column="1"
+                                                         Classes="FieldInput"
+                                                         Text="{Binding RenameBuffer, Mode=TwoWay}"
+                                                         IsVisible="{Binding IsRenaming}"
+                                                         VerticalAlignment="Center">
+                                                    <TextBox.KeyBindings>
+                                                        <KeyBinding Gesture="Enter"
+                                                                    Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRenameProjectCommand}"
+                                                                    CommandParameter="{Binding}" />
+                                                        <KeyBinding Gesture="Escape"
+                                                                    Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CancelRenameProjectCommand}"
+                                                                    CommandParameter="{Binding}" />
+                                                    </TextBox.KeyBindings>
+                                                </TextBox>
+
+                                                <!-- 计数：重命名时让位给输入框 -->
+                                                <Border Grid.Column="2" Classes="CountBadge"
+                                                        IsVisible="{Binding !IsRenaming}">
+                                                    <TextBlock Text="{Binding TaskCount}" />
+                                                </Border>
+
+                                                <Button Grid.Column="3"
+                                                        Classes="ProjectAction"
+                                                        Margin="4,0,0,0"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ChangeProjectColorCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding !IsRenaming}"
+                                                        ToolTip.Tip="更换颜色">
+                                                    <TextBlock Text="◐" FontSize="12"
+                                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+
+                                                <Button Grid.Column="4"
+                                                        Classes="ProjectAction"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RequestDeleteProjectCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding !IsRenaming}"
+                                                        ToolTip.Tip="删除项目（任务会保留）">
+                                                    <TextBlock Text="🗑" FontSize="11"
+                                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 新建项目入口：渐进披露 —— 默认仅一个「＋」，点击才展开输入 -->
+                        <Button Classes="ProjectAddTrigger"
+                                Margin="0,10,0,0"
+                                Command="{Binding ToggleCreateProjectCommand}"
+                                IsVisible="{Binding !IsCreatingProject}">
+                            <TextBlock Text="＋ 新建项目" FontSize="13"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                        </Button>
+
+                        <TextBox Classes="FieldInput"
+                                 x:Name="NewProjectInput"
+                                 Margin="14,10,4,0"
+                                 Watermark="项目名称"
+                                 Text="{Binding NewProjectName, Mode=TwoWay}"
+                                 IsVisible="{Binding IsCreatingProject}">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding CreateProjectCommand}" />
+                                <KeyBinding Gesture="Escape" Command="{Binding ToggleCreateProjectCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                    </StackPanel>
+
+                    <!-- 底部随手记唤起钮 (DESIGN-0002 §2.2) -->
+                    <Button Grid.Row="2"
+                            Classes="CaptureTrigger"
+                            Command="{Binding OpenQuickCaptureCommand}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                <TextBlock Text="随手记" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="捕获闪现的灵感" Classes="CaptionText" />
+                            </StackPanel>
+                            <Border Grid.Column="1" Classes="KeyCap">
+                                <TextBlock Text="⌥ Space" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ==================== 右侧 Hero 级内容区 ==================== -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="{DynamicResource ContentAreaMargin}">
+
+                <!-- 顶部：Hero 标题 + 右上角交互区 -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,24,0,36">
+
+                    <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentCategorySubtitle}"
+                                   Classes="MicroLabel"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   IsVisible="{Binding !IsSettingsOpen}" />
+                        <TextBlock Text="{Binding CurrentCategoryTitle}"
+                                   Classes="HeroTitle"
+                                   IsVisible="{Binding !IsSettingsOpen}" />
+
+                        <TextBlock Text="APPEARANCE"
+                                   Classes="MicroLabel"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   IsVisible="{Binding IsSettingsOpen}" />
+                        <TextBlock Text="外观偏好"
+                                   Classes="HeroTitle"
+                                   IsVisible="{Binding IsSettingsOpen}" />
+                    </StackPanel>
+
+                    <!-- 右上角一对药丸按钮 (SPEC-0003 §2) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button x:Name="ThemeToggleButton"
+                                Classes="IconCircle"
+                                ToolTip.Tip="切换昼夜主题">
+                            <TextBlock FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <!-- 深色时显示太阳（提示可切亮），浅色时显示月亮 -->
+                                    <Binding Path="IsDarkTheme" Converter="{x:Static conv:ThemeIconConverter.Instance}" />
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Button>
+
+                        <Button Classes="IconCircle"
+                                Command="{Binding ToggleSettingsCommand}"
+                                ToolTip.Tip="外观设置">
+                            <TextBlock Text="⚙" FontSize="17"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ==================== 主体：任务流 / 外观设置 ==================== -->
+                <Grid Grid.Row="1">
+
+                    <!-- ========== 视图 A: Editorial 任务流 ========== -->
+                    <!-- Row 0 添加栏 / Row 1 删除确认条（按需出现）/ Row 2 任务流 -->
+                    <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding !IsSettingsOpen}">
+
+                        <!-- 贯穿式添加栏 (DESIGN-0002 §2.3)：无边框，仅底部发丝线 -->
+                        <Border Grid.Row="0"
+                                BorderBrush="{DynamicResource HairlineStrongBrush}"
+                                BorderThickness="0,0,0,1"
+                                Padding="4,0,4,16"
+                                Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="＋"
+                                           FontSize="24"
+                                           FontWeight="Light"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,18,0" />
+
+                                <TextBox Grid.Column="1"
+                                         x:Name="NewTaskInput"
+                                         Classes="EditorialInput"
+                                         Text="{Binding NewTaskTitle, Mode=TwoWay}"
+                                         Watermark="记录下一件重要的事…"
+                                         VerticalAlignment="Center">
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+
+                                <!-- 优先级分段直选，替代原下拉框 -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                    <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P1"
+                                                 IsChecked="{Binding NewTaskPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
+                                    <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P2"
+                                                 IsChecked="{Binding NewTaskPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Medium, Mode=TwoWay}" />
+                                    <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P3"
+                                                 IsChecked="{Binding NewTaskPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Low, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 删除项目确认条：删除不可逆，须先告知影响范围 (DESIGN-0004 §2.2)。
+                             明确写出「任务会保留」—— 这是本产品与常见实现的关键差异，
+                             不说清用户会因担心丢数据而不敢用删除功能。 -->
+                        <Border Grid.Row="1"
+                                Classes="DangerConfirm"
+                                IsVisible="{Binding ProjectPendingDeletion, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
+                                    <TextBlock Classes="CaptionText"
+                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='其下 {0} 条任务不会被删除，将退回「未归属」。此操作不可撤销。'}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="1" Margin="12,0,8,0"
+                                        Command="{Binding CancelDeleteProjectCommand}"
+                                        Content="取消" />
+                                <Button Grid.Column="2"
+                                        Command="{Binding ConfirmDeleteProjectCommand}"
+                                        Content="确认删除" />
+                            </Grid>
+                        </Border>
+
+                        <!-- 空状态 -->
+                        <StackPanel Grid.Row="2"
+                                    Spacing="10"
+                                    Margin="4,72,0,0"
+                                    VerticalAlignment="Top"
+                                    IsVisible="{Binding IsTaskStreamEmpty}">
+                            <TextBlock Text="NOTHING HERE" Classes="MicroLabel" />
+                            <TextBlock Text="这片空白等待被填满"
+                                       Classes="SectionTitle"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                            <TextBlock Text="在上方输入框写下第一件事，按回车即可。"
+                                       Classes="BodyText"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                        </StackPanel>
+
+                        <!-- 呼吸感条目流：无卡片描边，靠留白与发丝线建立节奏 -->
+                        <ScrollViewer Grid.Row="2"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="0,0,12,32"
+                                      IsVisible="{Binding !IsTaskStreamEmpty}">
+                            <ItemsControl ItemsSource="{Binding Tasks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:TaskRowViewModel">
+                                        <StackPanel>
+                                        <Border Classes="TaskRow"
+                                                BorderBrush="{DynamicResource HairlineBrush}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="{DynamicResource TaskRowPadding}">
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+
+                                                <CheckBox Grid.Column="0"
+                                                          Classes="RingCheck"
+                                                          IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,18,0"
+                                                          Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
+                                                          CommandParameter="{Binding Task}" />
+
+                                                <!-- 项目色条：零文本、零额外行高地承载归属信息 (DESIGN-0004 §5.2)。
+                                                     无项目时整体不渲染，行布局与改动前一致 -->
+                                                <Border Grid.Column="1"
+                                                        Classes="ProjectStripe"
+                                                        IsVisible="{Binding HasProject}"
+                                                        Background="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                        ToolTip.Tip="{Binding ProjectName}" />
+
+                                                <!-- 优先级微标签 P1/P2/P3 (SPEC-0003 §2) -->
+                                                <Border Grid.Column="2"
+                                                        Classes="PriorityTag"
+                                                        Classes.P1="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=High}"
+                                                        Classes.P2="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=Medium}"
+                                                        Classes.P3="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=Low}"
+                                                        Margin="0,0,16,0"
+                                                        ToolTip.Tip="{Binding Task.Priority, Converter={x:Static conv:PriorityTagConverter.DisplayName}}">
+                                                    <TextBlock Text="{Binding Task.Priority, Converter={x:Static conv:PriorityTagConverter.Tag}}" />
+                                                </Border>
+
+                                                <!-- 大字号标题：Editorial 气势的主要载体。
+                                                     点击展开编辑态 —— 以 Button 承载而非
+                                                     在 Border 上挂 PointerPressed：后者会与
+                                                     勾选框、删除按钮的点击热区相互竞争。
+                                                     Button 天然处理 Handled，热区边界清晰。 -->
+                                                <Button Grid.Column="3"
+                                                        Classes="TitleTrigger"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleEditCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Left"
+                                                        ToolTip.Tip="点击展开编辑">
+                                                    <TextBlock Classes="TaskTitle"
+                                                               Classes.Completed="{Binding Task.IsCompleted}"
+                                                               Text="{Binding Task.Title}"
+                                                               VerticalAlignment="Center" />
+                                                </Button>
+
+                                                <!-- 标签：弱化呈现，无标签时不占位 -->
+                                                <ItemsControl Grid.Column="4"
+                                                              Margin="12,0,0,0"
+                                                              VerticalAlignment="Center"
+                                                              IsVisible="{Binding HasTags}"
+                                                              ItemsSource="{Binding Task.Tags, Converter={x:Static conv:TagsToListConverter.Instance}}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Classes="TagChip">
+                                                                <TextBlock Text="{Binding}" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <!-- 到期日：逾期以高危色强调，无到期日时不显示 -->
+                                                <TextBlock Grid.Column="5"
+                                                           Classes="DueBadge"
+                                                           Classes.Overdue="{Binding Task.DueDate, Converter={x:Static conv:DueDateOverdueConverter.Instance}}"
+                                                           Classes.DueToday="{Binding Task.DueDate, Converter={x:Static conv:DueDateTodayConverter.Instance}}"
+                                                           Text="{Binding Task.DueDate, Converter={x:Static conv:DueDateTextConverter.Instance}}"
+                                                           IsVisible="{Binding HasDueDate}"
+                                                           Margin="14,0,0,0" />
+
+                                                <TextBlock Grid.Column="6"
+                                                           Classes="CaptionText"
+                                                           Text="{Binding Task.CreatedAt, StringFormat='{}{0:MM/dd}'}"
+                                                           VerticalAlignment="Center"
+                                                           Margin="16,0,4,0" />
+
+                                                <Button Grid.Column="7"
+                                                        Classes="IconCircle Compact RowAction"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DeleteTaskCommand}"
+                                                        CommandParameter="{Binding Task}"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip.Tip="删除">
+                                                    <TextBlock Text="✕" FontSize="12"
+                                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- ========== 行内编辑态 (DESIGN-0004 §4.2 / §5.3) ==========
+                                             就地展开而非模态框：模态会遮挡任务流、打断视线连续性。
+                                             即时保存无「取消」：本地写入微秒级，
+                                             显式保存按钮反而引入「未保存状态」这一额外状态机 (§4.3)。 -->
+                                        <Border Classes="EditPanel" IsVisible="{Binding IsEditing}">
+                                            <StackPanel Spacing="16">
+
+                                                <StackPanel>
+                                                    <TextBlock Text="标题" Classes="FieldLabel" />
+                                                    <TextBox Classes="FieldInput"
+                                                             Text="{Binding EditTitle, Mode=TwoWay}"
+                                                             Watermark="任务标题" />
+                                                </StackPanel>
+
+                                                <Grid ColumnDefinitions="*,16,*">
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="标签（逗号分隔）" Classes="FieldLabel" />
+                                                        <TextBox Classes="FieldInput"
+                                                                 Text="{Binding EditTags, Mode=TwoWay}"
+                                                                 Watermark="如：线上,紧急" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="到期日（yyyy-MM-dd）" Classes="FieldLabel" />
+                                                        <TextBox Classes="FieldInput"
+                                                                 Text="{Binding EditDueDate, Mode=TwoWay}"
+                                                                 Watermark="留空表示未安排" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <StackPanel>
+                                                    <TextBlock Text="优先级" Classes="FieldLabel" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="2">
+                                                        <RadioButton Classes="SegmentChoice" Content="P1"
+                                                                     GroupName="{Binding GroupName}"
+                                                                     IsChecked="{Binding EditPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
+                                                        <RadioButton Classes="SegmentChoice" Content="P2"
+                                                                     GroupName="{Binding GroupName}"
+                                                                     IsChecked="{Binding EditPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Medium, Mode=TwoWay}" />
+                                                        <RadioButton Classes="SegmentChoice" Content="P3"
+                                                                     GroupName="{Binding GroupName}"
+                                                                     IsChecked="{Binding EditPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Low, Mode=TwoWay}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <StackPanel>
+                                                    <TextBlock Text="所属项目" Classes="FieldLabel" />
+                                                    <ComboBox ItemsSource="{Binding $parent[Window].((vm:MainViewModel)DataContext).ProjectChoices}"
+                                                              SelectedItem="{Binding EditProject, Mode=TwoWay}"
+                                                              MinWidth="220"
+                                                              HorizontalAlignment="Left">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate DataType="vm:ProjectChoice">
+                                                                <TextBlock Text="{Binding DisplayName}" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).SaveEditCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="完成编辑" />
+                                                    <TextBlock Text="修改即时保存，关闭面板不会丢失"
+                                                               Classes="CaptionText"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- ========== 视图 B: 外观设置 (SPEC-0003 §2) ========== -->
+                    <ScrollViewer IsVisible="{Binding IsSettingsOpen}"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,0,12,32">
+                        <StackPanel Spacing="20" MaxWidth="820" HorizontalAlignment="Left">
+
+                            <!-- 窗口材质：数据驱动，选项来自 AppearanceCoordinator 权威定义 -->
+                            <Border Classes="SettingsCard">
+                                <StackPanel Spacing="18">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="窗口材质" Classes="SectionTitle" />
+                                        <TextBlock Text="选择桌面原生视觉质感，即时生效。"
+                                                   Classes="CaptionText" />
+                                    </StackPanel>
+                                    <!--
+                                      用 ListBox 而非 Button 阵列：选中态是列表控件的原生语义，
+                                      交由 SelectedItem 双向绑定即可，无需为"哪一项当前生效"
+                                      另造一套跨作用域比较逻辑。
+                                    -->
+                                    <ListBox Classes="ChoiceGrid"
+                                             ItemsSource="{Binding MaterialPresets}"
+                                             SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="4" />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="appearance:MaterialOption">
+                                                <StackPanel Spacing="5">
+                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Description}" Classes="CaptionText"
+                                                               HorizontalAlignment="Center" TextAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 强调色 -->
+                            <Border Classes="SettingsCard">
+                                <StackPanel Spacing="18">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="强调色" Classes="SectionTitle" />
+                                        <TextBlock Text="点缀色会实时应用于按钮、选中态与交互高光。"
+                                                   Classes="CaptionText" />
+                                    </StackPanel>
+                                    <ListBox Classes="ChoiceGrid"
+                                             ItemsSource="{Binding AccentPresets}"
+                                             SelectedItem="{Binding SelectedAccent, Mode=TwoWay}">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="4" />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="appearance:AppearanceOption">
+                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                                                    <!-- 色样取预设色值，与令牌同源 -->
+                                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center"
+                                                             Fill="{Binding Swatch}" />
+                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 关于 -->
+                            <Border Classes="SettingsCard">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="FlowTask Desktop" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="aisdwf · .NET 8 &amp; Avalonia 11" Classes="CaptionText" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Classes="PrimaryAction"
+                                            Command="{Binding ToggleSettingsCommand}"
+                                            Content="返回清单" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- 水波纹转场层 (SPEC-0003 §2)：位于最顶层，扩散时覆盖全窗 -->
+        <Canvas x:Name="RevealCanvas" IsHitTestVisible="False" IsVisible="False" ClipToBounds="True">
+            <Ellipse x:Name="RevealCircle" Width="0" Height="0" Opacity="0" RenderTransform="scale(0)" />
+        </Canvas>
+    </Grid>
+</Window>

@@ -1,0 +1,68 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      深色主题色彩令牌：沉稳深炭灰，非刺眼纯黑 (DESIGN-0002 §1)。
+
+      本文件由 App.axaml 挂载到 Application.Resources.ThemeDictionaries["Dark"]。
+      AccentColor 是运行时唯一可变令牌，AppearanceCoordinator 直接覆写它，
+      下游所有强调派生笔刷通过 DynamicResource 链式引用，换色自动级联 (Article 10)。
+    -->
+
+    <!-- 强调色种子：运行时可变 -->
+    <Color x:Key="AccentColor">#4CA0FF</Color>
+
+    <!-- 窗体与表面层级 (DESIGN-0002 §1: #202022 / #28282C) -->
+    <Color x:Key="WindowSurfaceColor">#202022</Color>
+    <SolidColorBrush x:Key="WindowSurfaceBrush" Color="#202022" />
+    <SolidColorBrush x:Key="SidebarSurfaceBrush" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="CardSurfaceBrush" Color="#28282C" />
+    <SolidColorBrush x:Key="CardSurfaceHoverBrush" Color="#303036" />
+
+    <!-- 边框：Editorial 风格刻意极弱，仅用于必要的分区暗示 -->
+    <SolidColorBrush x:Key="HairlineBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="HairlineStrongBrush" Color="#24FFFFFF" />
+
+    <!-- 文本层级 (DESIGN-0002 §1: #F4F4F6 近纯白 / #8A8A93 中灰) -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F4F4F6" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B4B4BD" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8A8A93" />
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#5E5E66" />
+
+    <!-- 强调派生：全部指向 AccentColor，换色自动级联 -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#4CA0FF" />
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#4CA0FF" Opacity="0.18" />
+    <SolidColorBrush x:Key="AccentGlowBrush" Color="#4CA0FF" Opacity="0.34" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#0B0B0D" />
+
+    <!-- 优先级色板 (DESIGN-0001 §2.1) -->
+    <SolidColorBrush x:Key="PriorityHighBrush" Color="#FF6B6B" />
+    <SolidColorBrush x:Key="PriorityHighSurfaceBrush" Color="#3B1C1C" />
+    <SolidColorBrush x:Key="PriorityMediumBrush" Color="#F5B143" />
+    <SolidColorBrush x:Key="PriorityMediumSurfaceBrush" Color="#332514" />
+    <SolidColorBrush x:Key="PriorityLowBrush" Color="#34D399" />
+    <SolidColorBrush x:Key="PriorityLowSurfaceBrush" Color="#162C24" />
+
+    <!-- 悬浮胶囊小窗 -->
+    <SolidColorBrush x:Key="FloatingSurfaceBrush" Color="#EB26262A" />
+    <SolidColorBrush x:Key="KeyCapSurfaceBrush" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="KeyCapBorderBrush" Color="#26FFFFFF" />
+
+    <!-- ============ Fluent 主题覆写 ============
+         FluentTheme 自带的 TextBox / ComboBox 会绘制不透明底板与内建蓝描边，
+         在深炭灰背景上呈现为突兀色块，破坏 DESIGN-0002 §2.1「去除臃肿生硬边框」。 -->
+    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#F4F4F6" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#F4F4F6" />
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F4F4F6" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#8A8A93" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8A8A93" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#8A8A93" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#4CA0FF" />
+
+</ResourceDictionary>

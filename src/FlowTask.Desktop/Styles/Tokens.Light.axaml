@@ -1,0 +1,56 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      浅色主题色彩令牌：暖白纸感，对应杂志印刷底。
+      键名必须与 Tokens.Dark.axaml 完全一致，否则切换主题后部分令牌解析失败。
+    -->
+
+    <Color x:Key="AccentColor">#0067C0</Color>
+
+    <Color x:Key="WindowSurfaceColor">#F7F7F5</Color>
+    <SolidColorBrush x:Key="WindowSurfaceBrush" Color="#F7F7F5" />
+    <SolidColorBrush x:Key="SidebarSurfaceBrush" Color="#EFEFEC" />
+    <SolidColorBrush x:Key="CardSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardSurfaceHoverBrush" Color="#FAFAF8" />
+
+    <SolidColorBrush x:Key="HairlineBrush" Color="#12000000" />
+    <SolidColorBrush x:Key="HairlineStrongBrush" Color="#22000000" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#55555C" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#7A7A82" />
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#A8A8B0" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#0067C0" />
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#0067C0" Opacity="0.14" />
+    <SolidColorBrush x:Key="AccentGlowBrush" Color="#0067C0" Opacity="0.28" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="PriorityHighBrush" Color="#D93A3A" />
+    <SolidColorBrush x:Key="PriorityHighSurfaceBrush" Color="#FBE9E9" />
+    <SolidColorBrush x:Key="PriorityMediumBrush" Color="#B87514" />
+    <SolidColorBrush x:Key="PriorityMediumSurfaceBrush" Color="#FCF2E2" />
+    <SolidColorBrush x:Key="PriorityLowBrush" Color="#0E9F6E" />
+    <SolidColorBrush x:Key="PriorityLowSurfaceBrush" Color="#E6F6EF" />
+
+    <SolidColorBrush x:Key="FloatingSurfaceBrush" Color="#EBFBFBF9" />
+    <SolidColorBrush x:Key="KeyCapSurfaceBrush" Color="#0F000000" />
+    <SolidColorBrush x:Key="KeyCapBorderBrush" Color="#1A000000" />
+
+    <!-- Fluent 主题覆写，键名与深色主题保持一致 -->
+    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#7A7A82" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#7A7A82" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#7A7A82" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#0067C0" />
+
+</ResourceDictionary>

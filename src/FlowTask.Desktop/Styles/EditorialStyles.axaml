@@ -1,0 +1,631 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      Editorial 视觉语言实现层 (SPEC-0003 Phase 3)。
+
+      为什么本文件是本轮修复的核心：MainWindow.axaml 自始引用了 NavPill / QuickAction /
+      EditorialCard / EditorialInput / PrimaryAction / CaptureTrigger 等样式类，
+      但项目内从未定义过任何 <Style>。Avalonia 对未匹配的样式选择器静默跳过，
+      因此所有控件都退回 FluentTheme 默认外观 —— 设计概念完全没有落到渲染层。
+
+      设计取向遵循 DESIGN-0002 §2.1：以留白、字号跨度与明暗对比建立层级，
+      避免依赖描边和分割线。
+    -->
+
+    <Style Selector="Window">
+        <Setter Property="FontFamily" Value="Inter, Segoe UI Variable, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" />
+        <Setter Property="TransparencyBackgroundFallback" Value="{DynamicResource WindowSurfaceBrush}" />
+    </Style>
+
+    <!-- ================= 左侧导航药丸 =================
+         选中态用强调色竖条 + 弱底，而非整块填充：参考图的导航是克制的，
+         整块高饱和填充会与右侧 Hero 标题抢夺视觉重心。 -->
+    <Style Selector="RadioButton.NavPill">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="PillRoot"
+                        Background="Transparent"
+                        CornerRadius="{DynamicResource ControlCornerRadius}"
+                        Padding="14,11">
+                    <Grid ColumnDefinitions="3,*">
+                        <!-- 选中指示竖条 -->
+                        <Border x:Name="ActiveBar"
+                                Grid.Column="0"
+                                Width="3"
+                                CornerRadius="2"
+                                Background="{DynamicResource AccentBrush}"
+                                Opacity="0"
+                                Margin="0,1,0,1" />
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="13,0,0,0"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          VerticalAlignment="Center" />
+                    </Grid>
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.18" />
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.NavPill /template/ Border#ActiveBar">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.NavPill:pointerover /template/ Border#PillRoot">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+    </Style>
+    <Style Selector="RadioButton.NavPill:checked /template/ Border#PillRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="RadioButton.NavPill:checked /template/ Border#ActiveBar">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="RadioButton.NavPill:checked">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- ================= 随手记唤起卡 ================= -->
+    <Style Selector="Button.CaptureTrigger">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CaptureTrigger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentGlowBrush}" />
+    </Style>
+
+    <!-- ================= 圆形图标按钮（主题切换 / 设置 / 删除） ================= -->
+    <Style Selector="Button.IconCircle">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="RenderTransform" Value="scale(1,1)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.IconCircle:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <!-- 按压微动：SPEC-0003 §2 要求主题按钮点击有弹簧微动 -->
+    <Style Selector="Button.IconCircle:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.88,0.88)" />
+    </Style>
+
+    <!-- 小一号：任务行内的删除按钮，默认隐形，悬停行时浮现 -->
+    <Style Selector="Button.IconCircle.Compact">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="CornerRadius" Value="16" />
+    </Style>
+
+    <!-- ================= 主行动按钮 ================= -->
+    <Style Selector="Button.PrimaryAction">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Padding" Value="20,9" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="RenderTransform" Value="scale(1,1)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.PrimaryAction /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="TextBlock.Foreground" Value="{DynamicResource OnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.PrimaryAction:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="TextBlock.Foreground" Value="{DynamicResource OnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.PrimaryAction:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.96,0.96)" />
+    </Style>
+
+    <!-- ================= 预设选择网格 =================
+         外观设置中的材质/强调色选择器。以 ListBox 承载是为了复用其原生选中语义，
+         但外观需完全脱离默认列表样式，呈现为一排幽灵按钮。 -->
+    <Style Selector="ListBox.ChoiceGrid">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.ChoiceGrid ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Padding" Value="12,13" />
+        <Setter Property="Margin" Value="0,0,10,0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.18" />
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.ChoiceGrid ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentGlowBrush}" />
+    </Style>
+    <Style Selector="ListBox.ChoiceGrid ListBoxItem:selected">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- ================= 贯穿式无边框输入 =================
+         DESIGN-0002 §2.3：快速添加栏"无边框贯穿式设计"。 -->
+    <Style Selector="TextBox.EditorialInput">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTaskTitle}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="TextBox.EditorialInput /template/ TextBlock#PART_Watermark">
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- ================= 任务行 (Editorial Task Stream) =================
+         DESIGN-0002 §1 明确要求"弱化琐碎的表单分割线"，因此任务行不是卡片：
+         无边框、透明底，仅靠 20px 上下留白与发丝线分隔，悬停才浮现极弱底色。
+         这是与旧实现（满屏 1px 描边卡片）最关键的观感差异。 -->
+    <Style Selector="Border.TaskRow">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.2" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.TaskRow:pointerover">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+    </Style>
+    <!-- 行悬停时删除按钮淡入：静息状态保持极简，不堆叠操作图标 -->
+    <Style Selector="Border.TaskRow Button.RowAction">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.TaskRow:pointerover Button.RowAction">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- 任务标题：大字号是"大开大合"的主要载体 -->
+    <Style Selector="TextBlock.TaskTitle">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTaskTitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="26" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- 完成态"沉降"：DESIGN-0002 §2.3 要求勾选时优雅的透明度与删除线 -->
+    <Style Selector="TextBlock.TaskTitle.Completed">
+        <Setter Property="Opacity" Value="0.4" />
+        <Setter Property="TextDecorations" Value="Strikethrough" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- 微标签 (Micro-label)：序号、时间、分区标题共用 -->
+    <Style Selector="TextBlock.MicroLabel">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="{DynamicResource MicroLabelLetterSpacing}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+
+    <!-- Hero 大标题 -->
+    <Style Selector="TextBlock.HeroTitle">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeroTitle}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="{DynamicResource HeroTitleLetterSpacing}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="LineHeight" Value="50" />
+    </Style>
+
+    <Style Selector="TextBlock.SectionTitle">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSectionTitle}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.BodyText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="TextBlock.CaptionText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+
+    <!-- ================= 优先级微型标签 P1/P2/P3 =================
+         SPEC-0003 §2 要求"优先级采用微型标签（P1/P2/P3）与高光色彩呼应"。
+         档位色以样式类表达而非行内绑定，确保昼夜切换时经 DynamicResource 重新求值。 -->
+    <Style Selector="Border.PriorityTag">
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.PriorityTag > TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="0.6" />
+    </Style>
+
+    <Style Selector="Border.PriorityTag.P1">
+        <Setter Property="Background" Value="{DynamicResource PriorityHighSurfaceBrush}" />
+    </Style>
+    <Style Selector="Border.PriorityTag.P1 > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+    </Style>
+
+    <Style Selector="Border.PriorityTag.P2">
+        <Setter Property="Background" Value="{DynamicResource PriorityMediumSurfaceBrush}" />
+    </Style>
+    <Style Selector="Border.PriorityTag.P2 > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityMediumBrush}" />
+    </Style>
+
+    <Style Selector="Border.PriorityTag.P3">
+        <Setter Property="Background" Value="{DynamicResource PriorityLowSurfaceBrush}" />
+    </Style>
+    <Style Selector="Border.PriorityTag.P3 > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityLowBrush}" />
+    </Style>
+
+    <!-- ================= 键帽徽标 ================= -->
+    <Style Selector="Border.KeyCap">
+        <Setter Property="Background" Value="{DynamicResource KeyCapSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource KeyCapBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.KeyCap > TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
+    <!-- ================= 计数徽标 ================= -->
+    <Style Selector="Border.CountBadge">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="MinWidth" Value="26" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.CountBadge > TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ================= 设置分区卡 ================= -->
+    <Style Selector="Border.SettingsCard">
+        <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="28,24" />
+    </Style>
+
+    <!-- ================= 圆形勾选框 =================
+         方形 Fluent 默认框在大字号 Editorial 行里显得琐碎，改为描边圆环，
+         选中时填充强调色，与"呼吸感条目流"的气质一致。 -->
+    <Style Selector="CheckBox.RingCheck">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent" Padding="2">
+                    <Grid Width="22" Height="22">
+                        <Ellipse x:Name="Ring"
+                                 Width="22" Height="22"
+                                 Stroke="{DynamicResource TextTertiaryBrush}"
+                                 StrokeThickness="1.6"
+                                 Fill="Transparent" />
+                        <Ellipse x:Name="FillDot"
+                                 Width="22" Height="22"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 Opacity="0" />
+                        <Path x:Name="Tick"
+                              Width="11" Height="9"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Data="M 0,4.2 L 3.6,8 L 10.5,0.6"
+                              Stroke="{DynamicResource OnAccentBrush}"
+                              StrokeThickness="1.9"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Opacity="0" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="CheckBox.RingCheck /template/ Ellipse#FillDot">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="CheckBox.RingCheck:pointerover /template/ Ellipse#Ring">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="CheckBox.RingCheck:checked /template/ Ellipse#FillDot">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="CheckBox.RingCheck:checked /template/ Path#Tick">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="CheckBox.RingCheck:checked /template/ Ellipse#Ring">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <!-- ================= 优先级分段选择器 =================
+         替换原 ComboBox：下拉框在贯穿式添加栏里是视觉噪点，
+         三档直选更符合"按回车即自然落入列表"的流畅意图。 -->
+    <Style Selector="RadioButton.SegmentChoice">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="SegRoot"
+                        Background="Transparent"
+                        CornerRadius="{DynamicResource PillCornerRadius}"
+                        Padding="11,5">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.18" />
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.SegmentChoice:pointerover /template/ Border#SegRoot">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+    </Style>
+    <Style Selector="RadioButton.SegmentChoice:checked /template/ Border#SegRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="RadioButton.SegmentChoice:checked">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <!-- ================= 极简滚动条 ================= -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="8" />
+    </Style>
+
+    <!-- ================= 分类：项目色条 =================
+         SPEC-0005 / DESIGN-0004 §5.2：以细窄竖条承载项目归属。
+         无项目时不渲染（IsVisible 由绑定控制），行布局与改动前完全一致。 -->
+    <Style Selector="Border.ProjectStripe">
+        <Setter Property="Width" Value="3" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Margin" Value="0,2,14,2" />
+    </Style>
+
+    <!-- ================= 分类：标签 =================
+         弱化呈现：标签是辅助信息，不应与大字号标题争夺视线。 -->
+    <Style Selector="Border.TagChip">
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="5,1" />
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.TagChip > TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+
+    <!-- ================= 分类：到期日 =================
+         逾期以优先级高危色表达，复用既有令牌而非新造红色（Article 6）。 -->
+    <Style Selector="TextBlock.DueBadge">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.DueBadge.Overdue">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.DueBadge.DueToday">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ================= 项目侧边栏行 =================
+         复用 NavPill 的视觉语言，但需容纳色点、名称、计数与操作按钮。 -->
+    <Style Selector="Border.ProjectRow">
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.ProjectRow:pointerover">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="Border.ProjectRow.Selected">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+
+    <!-- 项目行的操作按钮：静默隐藏，悬停整行才浮现，避免侧边栏视觉噪音 -->
+    <Style Selector="Border.ProjectRow Button.ProjectAction">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.ProjectRow:pointerover Button.ProjectAction">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.ProjectRow Button.ProjectAction:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource CardSurfaceHoverBrush}" />
+    </Style>
+
+    <!-- 项目色点 -->
+    <Style Selector="Ellipse.ProjectDot">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="Height" Value="8" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- 标题点击触发器：完全透明的按钮外壳，仅提供点击热区，
+         视觉上必须与普通文本无异 —— 否则 Editorial 排版会被按钮边框破坏。 -->
+    <Style Selector="Button.TitleTrigger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.TitleTrigger /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.TitleTrigger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- 新建项目触发器：克制呈现，不与导航项争夺视线 -->
+    <Style Selector="Button.ProjectAddTrigger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="14,6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ProjectAddTrigger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+
+    <!-- ================= 行内编辑态 =================
+         就地展开而非模态框：模态会遮挡任务流、打断视线连续性，
+         与 Editorial 沉浸式排版基调冲突（DESIGN-0004 §4.2）。 -->
+    <Style Selector="Border.EditPanel">
+        <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="18" />
+        <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+
+    <Style Selector="TextBlock.FieldLabel">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="{DynamicResource MicroLabelLetterSpacing}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+
+    <!-- 编辑态内的紧凑输入框：区别于贯穿式 EditorialInput 的大字号无边框风格 -->
+    <Style Selector="TextBox.FieldInput">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    </Style>
+
+    <!-- 危险操作确认条：删除不可逆，需与常规操作在视觉上区分 -->
+    <Style Selector="Border.DangerConfirm">
+        <Setter Property="Background" Value="{DynamicResource PriorityHighSurfaceBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+
+</Styles>

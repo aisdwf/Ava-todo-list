@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      官方 headless xUnit 集成：提供 [AvaloniaFact] / [AvaloniaTheory]，
+      自动在正确的 UI 线程与调度器上执行用例。
+      自建 UI 线程 + Dispatcher.Invoke 的方案会与 headless 消息循环相互等待而死锁。
+    -->
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FlowTask.Core\FlowTask.Core.csproj" />
+    <ProjectReference Include="..\..\src\FlowTask.Infrastructure\FlowTask.Infrastructure.csproj" />
+    <!--
+      引用 Desktop 层以覆盖视图模型与转换器。此前测试项目只引用 Core/Infrastructure，
+      导致 UI 层的绑定类型错配、命令签名不匹配等缺陷只能靠人工启动才暴露。
+    -->
+    <ProjectReference Include="..\..\src\FlowTask.Desktop\FlowTask.Desktop.csproj" />
+  </ItemGroup>
+
+</Project>

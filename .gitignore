@@ -1,0 +1,59 @@
+# .gitignore for .NET / Avalonia / macOS / JetBrains Rider
+
+# User-specific / OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+publish/
+
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider cache & temp files
+.vs/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.userprefs
+*.ide
+*.sw?
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Avalonia temp
+GeneratedArtifacts/
+
+# AI Workflow and Internal Specs (Private)
+AI_CONSTITUTION.md
+docs/
+agent/
+agent.md
+claude.md
+
+# 设计参考素材（内部协同资产，与 docs/ 同属私有）
+# res/ 下为视觉参考图，是 DESIGN-0002 的设计来源，不随源码公开
+res/
+
+
