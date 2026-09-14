@@ -155,7 +155,7 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <remarks>
     /// 编辑提交后实体值已变，但 <c>HasTags</c> / <c>HasDueDate</c> 是计算属性、
     /// 不会自动触发变更通知。Avalonia 对此不会报错 ——
-    /// 界面只是静默地停留在旧状态（SPEC-0003 教训 1），故必须显式通知。
+    /// 界面只是静默地停留在旧状态（spec-editorial-and-ripple-theme 教训 1），故必须显式通知。
     /// </remarks>
     public void RefreshDerivedFlags()
     {

@@ -10,7 +10,7 @@ namespace FlowTask.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// DESIGN-0004 §2.1 依据实测断定「新增列无需迁移脚本」。
+/// design-domain-contract §2.1 依据实测断定「新增列无需迁移脚本」。
 /// 那次验证在独立临时项目中进行，此处将其固化为回归测试 ——
 /// 否则该结论只是一次性的口头证据，日后升级 <c>sqlite-net-pcl</c>
 /// 若行为变化，将无任何机制发现。

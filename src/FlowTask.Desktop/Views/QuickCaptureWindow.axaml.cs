@@ -6,7 +6,7 @@ using FlowTask.Desktop.ViewModels;
 namespace FlowTask.Desktop.Views;
 
 /// <summary>
-/// 随手记浮窗：Raycast 风格的极速捕捉胶囊窗 (DESIGN-0001 §3)。
+/// 随手记浮窗：Raycast 风格的极速捕捉胶囊窗 (design-visual-language §3)。
 /// </summary>
 public partial class QuickCaptureWindow : Window
 {

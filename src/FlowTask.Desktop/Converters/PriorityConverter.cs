@@ -5,7 +5,7 @@ using FlowTask.Core.Enums;
 namespace FlowTask.Desktop.Converters;
 
 /// <summary>
-/// 将 <see cref="TaskPriority"/> 投影为 Editorial 微型标签文案 (SPEC-0003 §2)。
+/// 将 <see cref="TaskPriority"/> 投影为 Editorial 微型标签文案 (spec-editorial-and-ripple-theme §2)。
 /// </summary>
 /// <remarks>
 /// 此处只产出文本。标签配色刻意不在转换器内解析为笔刷：若返回具体

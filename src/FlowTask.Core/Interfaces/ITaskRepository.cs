@@ -14,7 +14,7 @@ public interface ITaskRepository
     /// </summary>
     /// <remarks>
     /// 含逾期项是有意设计。若严格只取今天，昨天到期而未完成的任务
-    /// 会同时从「今日」和视觉焦点中消失，成为注意力盲区（DESIGN-0004 §5.4）。
+    /// 会同时从「今日」和视觉焦点中消失，成为注意力盲区（design-domain-contract §5.4）。
     /// </remarks>
     Task<List<TaskItem>> GetTodayTasksAsync();
 
@@ -34,7 +34,7 @@ public interface ITaskRepository
     /// </summary>
     /// <remarks>
     /// 标签以分隔符拼接存储，故此处为内存过滤而非索引查询。
-    /// 该代价在设计阶段已明确接受（DESIGN-0004 §2.3）。
+    /// 该代价在设计阶段已明确接受（design-domain-contract §2.3）。
     /// </remarks>
     Task<List<TaskItem>> GetTasksByTagAsync(string tag);
 
@@ -43,7 +43,7 @@ public interface ITaskRepository
     /// </summary>
     /// <remarks>
     /// 用于标签输入时的自动补全建议 —— 这是缓解「拼写不一致产生近似重复标签」
-    /// 的主要手段（DESIGN-0004 §2.3）。
+    /// 的主要手段（design-domain-contract §2.3）。
     /// </remarks>
     Task<List<string>> GetAllTagsAsync();
 

@@ -13,7 +13,7 @@ namespace FlowTask.Core.Models;
 /// 「标签如何规范化」等不变量会散落两处，日后必然漂移（Article 6）。
 /// </para>
 /// <para>
-/// <b>为未来输入语法预留</b>：DESIGN-0004 §3.2 已认可 <c>#项目 @标签</c>
+/// <b>为未来输入语法预留</b>：design-domain-contract §3.2 已认可 <c>#项目 @标签</c>
 /// 内联语法为正确方向。届时解析逻辑只需接入本工厂一处，
 /// 而不必在每个创建点重复。这是把它收敛为单一入口的主要动机。
 /// </para>
@@ -47,7 +47,7 @@ public static class TaskItemFactory
         => new()
         {
             // 经 TaskTitle 规范化：仅修剪首尾，内部字符原样保留 ——
-            // 未来输入语法依赖 '#' / '@' 等字符不被提前处理掉（DESIGN-0004 §3.2）
+            // 未来输入语法依赖 '#' / '@' 等字符不被提前处理掉（design-domain-contract §3.2）
             Title = TaskTitle.Normalize(title),
             Priority = priority,
             ProjectId = projectId,

@@ -2,14 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-      Editorial 视觉语言实现层 (SPEC-0003 Phase 3)。
+      Editorial 视觉语言实现层 (spec-editorial-and-ripple-theme Phase 3)。
 
       为什么本文件是本轮修复的核心：MainWindow.axaml 自始引用了 NavPill / QuickAction /
       EditorialCard / EditorialInput / PrimaryAction / CaptureTrigger 等样式类，
       但项目内从未定义过任何 <Style>。Avalonia 对未匹配的样式选择器静默跳过，
       因此所有控件都退回 FluentTheme 默认外观 —— 设计概念完全没有落到渲染层。
 
-      设计取向遵循 DESIGN-0002 §2.1：以留白、字号跨度与明暗对比建立层级，
+      设计取向遵循 design-visual-language §2.1：以留白、字号跨度与明暗对比建立层级，
       避免依赖描边和分割线。
     -->
 
@@ -119,7 +119,7 @@
     <Style Selector="Button.IconCircle:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
     </Style>
-    <!-- 按压微动：SPEC-0003 §2 要求主题按钮点击有弹簧微动 -->
+    <!-- 按压微动：spec-editorial-and-ripple-theme §2 要求主题按钮点击有弹簧微动 -->
     <Style Selector="Button.IconCircle:pressed">
         <Setter Property="RenderTransform" Value="scale(0.88,0.88)" />
     </Style>
@@ -209,7 +209,7 @@
     </Style>
 
     <!-- ================= 贯穿式无边框输入 =================
-         DESIGN-0002 §2.3：快速添加栏"无边框贯穿式设计"。 -->
+         design-visual-language §2.3：快速添加栏"无边框贯穿式设计"。 -->
     <Style Selector="TextBox.EditorialInput">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -227,7 +227,7 @@
     </Style>
 
     <!-- ================= 任务行 (Editorial Task Stream) =================
-         DESIGN-0002 §1 明确要求"弱化琐碎的表单分割线"，因此任务行不是卡片：
+         design-visual-language §1 明确要求"弱化琐碎的表单分割线"，因此任务行不是卡片：
          无边框、透明底，仅靠 20px 上下留白与发丝线分隔，悬停才浮现极弱底色。
          这是与旧实现（满屏 1px 描边卡片）最关键的观感差异。 -->
     <Style Selector="Border.TaskRow">
@@ -268,7 +268,7 @@
             </Transitions>
         </Setter>
     </Style>
-    <!-- 完成态"沉降"：DESIGN-0002 §2.3 要求勾选时优雅的透明度与删除线 -->
+    <!-- 完成态"沉降"：design-visual-language §2.3 要求勾选时优雅的透明度与删除线 -->
     <Style Selector="TextBlock.TaskTitle.Completed">
         <Setter Property="Opacity" Value="0.4" />
         <Setter Property="TextDecorations" Value="Strikethrough" />
@@ -310,7 +310,7 @@
     </Style>
 
     <!-- ================= 优先级微型标签 P1/P2/P3 =================
-         SPEC-0003 §2 要求"优先级采用微型标签（P1/P2/P3）与高光色彩呼应"。
+         spec-editorial-and-ripple-theme §2 要求"优先级采用微型标签（P1/P2/P3）与高光色彩呼应"。
          档位色以样式类表达而非行内绑定，确保昼夜切换时经 DynamicResource 重新求值。 -->
     <Style Selector="Border.PriorityTag">
         <Setter Property="CornerRadius" Value="4" />
@@ -482,7 +482,7 @@
     </Style>
 
     <!-- ================= 分类：项目色条 =================
-         SPEC-0005 / DESIGN-0004 §5.2：以细窄竖条承载项目归属。
+         spec-classification-ui / design-domain-contract §5.2：以细窄竖条承载项目归属。
          无项目时不渲染（IsVisible 由绑定控制），行布局与改动前完全一致。 -->
     <Style Selector="Border.ProjectStripe">
         <Setter Property="Width" Value="3" />
@@ -596,7 +596,7 @@
 
     <!-- ================= 行内编辑态 =================
          就地展开而非模态框：模态会遮挡任务流、打断视线连续性，
-         与 Editorial 沉浸式排版基调冲突（DESIGN-0004 §4.2）。 -->
+         与 Editorial 沉浸式排版基调冲突（design-domain-contract §4.2）。 -->
     <Style Selector="Border.EditPanel">
         <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
         <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />

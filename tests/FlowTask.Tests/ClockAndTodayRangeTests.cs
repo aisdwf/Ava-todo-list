@@ -69,7 +69,7 @@ public class ClockAndTodayRangeTests : IDisposable
     /// </summary>
     /// <remarks>
     /// 若只取「恰好今天」，昨天到期而未完成的任务会同时从「今日」和视觉焦点中消失，
-    /// 成为注意力盲区，与该视图定位矛盾（DESIGN-0004 §5.4）。
+    /// 成为注意力盲区，与该视图定位矛盾（design-domain-contract §5.4）。
     /// </remarks>
     [Fact]
     public async Task GetTodayTasks_IncludesOverdueTasks()
@@ -106,7 +106,7 @@ public class ClockAndTodayRangeTests : IDisposable
     /// <remarks>
     /// 依零必填原则，无到期日是任务的默认状态且完全正常。
     /// 它不该出现在「今日」（那会让该视图等同于「全部」），
-    /// 但也因此不能作为小窗的过滤条件 —— 否则大多数任务永不可见（DESIGN-0004 §4.5）。
+    /// 但也因此不能作为小窗的过滤条件 —— 否则大多数任务永不可见（design-domain-contract §4.5）。
     /// </remarks>
     [Fact]
     public async Task GetTodayTasks_ExcludesTasksWithoutDueDate()

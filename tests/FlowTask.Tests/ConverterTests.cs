@@ -9,7 +9,7 @@ namespace FlowTask.Tests;
 /// 覆盖 Editorial 视觉层依赖的绑定转换器。
 /// </summary>
 /// <remarks>
-/// 为什么需要这组测试：SPEC-0003 的优先级微标签与主题图标完全由转换器驱动，
+/// 为什么需要这组测试：spec-editorial-and-ripple-theme 的优先级微标签与主题图标完全由转换器驱动，
 /// 而绑定转换失败在 Avalonia 中只会静默产出空白，既不报编译错也不抛异常。
 /// 缺少断言时，标签消失这类回归无法被机器发现（Article 1 测试疏漏）。
 /// </remarks>

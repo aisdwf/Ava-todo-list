@@ -14,7 +14,7 @@ namespace FlowTask.Tests;
 /// <list type="number">
 ///   <item><description>
 ///   项目筛选与 VIEWS 筛选耦合 —— `TaskFilter` 枚举此前曾混入「设置页」
-///   导致视图模式与数据筛选纠缠（SPEC-0003 已修正），此处不得重犯。
+///   导致视图模式与数据筛选纠缠（spec-editorial-and-ripple-theme 已修正），此处不得重犯。
 ///   </description></item>
 ///   <item><description>
 ///   删除项目误删任务 —— 任务是核心资产，绝不能随项目消失。
@@ -60,7 +60,7 @@ public class ProjectInteractionTests : IDisposable
     /// </summary>
     /// <remarks>
     /// 从不使用项目的用户应获得与改动前完全一致的体验 ——
-    /// 不显示空列表，也不显示「新建项目」占位（DESIGN-0004 §3.3）。
+    /// 不显示空列表，也不显示「新建项目」占位（design-domain-contract §3.3）。
     /// </remarks>
     [AvaloniaFact]
     public async Task HasProjects_IsFalseWhenNoProjectExists()

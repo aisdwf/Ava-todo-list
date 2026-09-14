@@ -60,7 +60,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
 
         await _repository.SaveTaskAsync(task);
 
-        // 弱引用广播通知主窗口刷新，双方无强引用关联 (RULE-0001 §2.1)
+        // 弱引用广播通知主窗口刷新，双方无强引用关联 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Send(new TaskSavedMessage(task));
 
         ResetInput();

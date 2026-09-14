@@ -48,7 +48,7 @@ public class SqliteTaskRepository : ITaskRepository
     /// <remarks>
     /// <c>CreateTableAsync</c> 对已存在的表会自动执行 <c>ALTER TABLE ADD COLUMN</c>
     /// 补齐新增列（返回 <c>Migrated</c>），既有行保留、新列取默认值。
-    /// 故本项目新增字段无需迁移脚本。此行为已实测确认（见 DESIGN-0004 §2.1）。
+    /// 故本项目新增字段无需迁移脚本。此行为已实测确认（见 design-domain-contract §2.1）。
     /// </remarks>
     public async Task InitializeAsync()
     {
@@ -86,7 +86,7 @@ public class SqliteTaskRepository : ITaskRepository
     /// <para>
     /// <b>为什么包含逾期</b>：若严格只取今天，昨天到期而未完成的任务会静默消失 ——
     /// 既不在「今日」也不显眼于「全部」，成为注意力盲区。
-    /// 这与该视图「今天需要优先解决的关键事项」的定位直接矛盾（DESIGN-0004 §5.4）。
+    /// 这与该视图「今天需要优先解决的关键事项」的定位直接矛盾（design-domain-contract §5.4）。
     /// </para>
     /// <para>
     /// <b>修正的原始缺陷</b>：原实现为

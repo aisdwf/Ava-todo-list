@@ -27,7 +27,7 @@ namespace FlowTask.Tests;
 public class AppearanceCoordinatorTests
 {
     /// <summary>
-    /// 强调色预设必须覆盖 SPEC-0003 §2 要求的四种配色，且深浅色值各自独立。
+    /// 强调色预设必须覆盖 spec-editorial-and-ripple-theme §2 要求的四种配色，且深浅色值各自独立。
     /// </summary>
     [AvaloniaFact]
     public void AccentPresets_ProvideFourDistinctOptions()

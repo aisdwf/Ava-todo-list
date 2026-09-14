@@ -6,7 +6,7 @@ using Avalonia.Styling;
 namespace FlowTask.Desktop.Appearance;
 
 /// <summary>
-/// 外观协调器：集中承载主题变体、强调色与窗口材质的运行时切换 (SPEC-0003 Phase 4)。
+/// 外观协调器：集中承载主题变体、强调色与窗口材质的运行时切换 (spec-editorial-and-ripple-theme Phase 4)。
 /// </summary>
 /// <remarks>
 /// 为什么需要这一层：原实现把强调色写入 <c>Application.Current.Resources["AccentBrush"]</c>，

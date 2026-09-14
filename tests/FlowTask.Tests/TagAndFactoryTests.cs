@@ -8,7 +8,7 @@ namespace FlowTask.Tests;
 /// 覆盖标签规范化规则与任务创建工厂。
 /// </summary>
 /// <remarks>
-/// 标签以分隔符拼接字符串存储（DESIGN-0004 §2.3），
+/// 标签以分隔符拼接字符串存储（design-domain-contract §2.3），
 /// 该方案的正确性完全依赖读写两侧规则一致，故需针对性覆盖。
 /// </remarks>
 public class TagNormalizerTests
@@ -178,7 +178,7 @@ public class TaskItemFactoryTests
     /// </summary>
     /// <remarks>
     /// 未来的 <c>#项目</c> / <c>@标签</c> 输入语法依赖这些字符不被提前处理掉
-    /// （DESIGN-0004 §3.2 预留结构）。
+    /// （design-domain-contract §3.2 预留结构）。
     /// </remarks>
     [Fact]
     public void Create_PreservesSpecialCharactersInTitle()

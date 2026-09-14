@@ -27,7 +27,7 @@ public interface IProjectRepository
     /// <returns>受影响的任务条数。</returns>
     /// <remarks>
     /// <b>绝不删除任务。</b>任务是用户的核心资产，项目只是它的一个可选属性；
-    /// 删除属性不应销毁拥有该属性的实体（DESIGN-0004 §2.2）。
+    /// 删除属性不应销毁拥有该属性的实体（design-domain-contract §2.2）。
     /// 两步操作须在单个事务内完成，否则中途失败会留下指向不存在项目的悬空引用。
     /// </remarks>
     Task<int> DeleteAsync(string id);

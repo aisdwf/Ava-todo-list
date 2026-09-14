@@ -16,7 +16,7 @@
     <Grid>
         <Grid ColumnDefinitions="272,*">
 
-            <!-- ==================== 左侧极简导航 (DESIGN-0002 §2.2) ====================
+            <!-- ==================== 左侧极简导航 (design-visual-language §2.2) ====================
                  无右侧分割线：Editorial 风格以底色差异而非描边划分区域。 -->
             <!-- 侧边栏使用极弱叠加色而非不透明底：透明材质档位下不透明面板会
                  遮盖平台合成的模糊效果，使材质切换在视觉上毫无差别 -->
@@ -68,7 +68,7 @@
                             </Grid>
                         </RadioButton>
 
-                        <!-- ========== PROJECTS 区块 (SPEC-0005 / DESIGN-0004 §5.1) ==========
+                        <!-- ========== PROJECTS 区块 (spec-classification-ui / design-domain-contract §5.1) ==========
                              整块随 HasProjects 显隐：零项目时不显示空列表、不显示占位，
                              使从不使用项目的用户获得与改动前完全一致的侧边栏（§3.3）。
                              新建入口另置于底部，不在此区块内，故零项目时此处彻底消失。 -->
@@ -171,7 +171,7 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- 底部随手记唤起钮 (DESIGN-0002 §2.2) -->
+                    <!-- 底部随手记唤起钮 (design-visual-language §2.2) -->
                     <Button Grid.Row="2"
                             Classes="CaptureTrigger"
                             Command="{Binding OpenQuickCaptureCommand}">
@@ -213,7 +213,7 @@
                                    IsVisible="{Binding IsSettingsOpen}" />
                     </StackPanel>
 
-                    <!-- 右上角一对药丸按钮 (SPEC-0003 §2) -->
+                    <!-- 右上角一对药丸按钮 (spec-editorial-and-ripple-theme §2) -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button x:Name="ThemeToggleButton"
                                 Classes="IconCircle"
@@ -243,7 +243,7 @@
                     <!-- Row 0 添加栏 / Row 1 删除确认条（按需出现）/ Row 2 任务流 -->
                     <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding !IsSettingsOpen}">
 
-                        <!-- 贯穿式添加栏 (DESIGN-0002 §2.3)：无边框，仅底部发丝线 -->
+                        <!-- 贯穿式添加栏 (design-visual-language §2.3)：无边框，仅底部发丝线 -->
                         <Border Grid.Row="0"
                                 BorderBrush="{DynamicResource HairlineStrongBrush}"
                                 BorderThickness="0,0,0,1"
@@ -281,7 +281,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- 删除项目确认条：删除不可逆，须先告知影响范围 (DESIGN-0004 §2.2)。
+                        <!-- 删除项目确认条：删除不可逆，须先告知影响范围 (design-domain-contract §2.2)。
                              明确写出「任务会保留」—— 这是本产品与常见实现的关键差异，
                              不说清用户会因担心丢数据而不敢用删除功能。 -->
                         <Border Grid.Row="1"
@@ -343,7 +343,7 @@
                                                           Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
                                                           CommandParameter="{Binding Task}" />
 
-                                                <!-- 项目色条：零文本、零额外行高地承载归属信息 (DESIGN-0004 §5.2)。
+                                                <!-- 项目色条：零文本、零额外行高地承载归属信息 (design-domain-contract §5.2)。
                                                      无项目时整体不渲染，行布局与改动前一致 -->
                                                 <Border Grid.Column="1"
                                                         Classes="ProjectStripe"
@@ -351,7 +351,7 @@
                                                         Background="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
                                                         ToolTip.Tip="{Binding ProjectName}" />
 
-                                                <!-- 优先级微标签 P1/P2/P3 (SPEC-0003 §2) -->
+                                                <!-- 优先级微标签 P1/P2/P3 (spec-editorial-and-ripple-theme §2) -->
                                                 <Border Grid.Column="2"
                                                         Classes="PriorityTag"
                                                         Classes.P1="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=High}"
@@ -428,7 +428,7 @@
                                             </Grid>
                                         </Border>
 
-                                        <!-- ========== 行内编辑态 (DESIGN-0004 §4.2 / §5.3) ==========
+                                        <!-- ========== 行内编辑态 (design-domain-contract §4.2 / §5.3) ==========
                                              就地展开而非模态框：模态会遮挡任务流、打断视线连续性。
                                              即时保存无「取消」：本地写入微秒级，
                                              显式保存按钮反而引入「未保存状态」这一额外状态机 (§4.3)。 -->
@@ -504,7 +504,7 @@
                         </ScrollViewer>
                     </Grid>
 
-                    <!-- ========== 视图 B: 外观设置 (SPEC-0003 §2) ========== -->
+                    <!-- ========== 视图 B: 外观设置 (spec-editorial-and-ripple-theme §2) ========== -->
                     <ScrollViewer IsVisible="{Binding IsSettingsOpen}"
                                   HorizontalScrollBarVisibility="Disabled"
                                   Padding="0,0,12,32">
@@ -596,7 +596,7 @@
             </Grid>
         </Grid>
 
-        <!-- 水波纹转场层 (SPEC-0003 §2)：位于最顶层，扩散时覆盖全窗 -->
+        <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->
         <Canvas x:Name="RevealCanvas" IsHitTestVisible="False" IsVisible="False" ClipToBounds="True">
             <Ellipse x:Name="RevealCircle" Width="0" Height="0" Opacity="0" RenderTransform="scale(0)" />
         </Canvas>

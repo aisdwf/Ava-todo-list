@@ -52,7 +52,7 @@ public partial class ProjectItemViewModel : ViewModelBase
     /// 以每行自持标志而非「行与全局 SelectedProject 比对」的形式表达：
     /// 后者需要在 XAML 里做跨作用域绑定与相等转换，
     /// 而 Avalonia 对未匹配的绑定路径静默失败 —— 高亮失效不会有任何报错
-    /// （SPEC-0003 教训 1）。自持布尔量是可直接绑定、可被测试断言的形式。
+    /// （spec-editorial-and-ripple-theme 教训 1）。自持布尔量是可直接绑定、可被测试断言的形式。
     /// </remarks>
     [ObservableProperty]
     private bool _isSelected;

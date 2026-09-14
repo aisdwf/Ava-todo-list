@@ -59,7 +59,7 @@ public static class TaskTitle
     /// </summary>
     /// <remarks>
     /// <b>刻意不处理内部字符</b>：未来的 <c>#项目</c> / <c>@标签</c> 输入语法
-    /// 依赖 <c>#</c> / <c>@</c> 等字符原样保留（DESIGN-0004 §3.2 预留结构）。
+    /// 依赖 <c>#</c> / <c>@</c> 等字符原样保留（design-domain-contract §3.2 预留结构）。
     /// 若在此折叠内部空白或过滤符号，那些语法将无从解析。
     /// </remarks>
     public static string Normalize(string? rawTitle) => rawTitle?.Trim() ?? string.Empty;

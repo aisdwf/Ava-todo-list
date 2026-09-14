@@ -88,7 +88,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (SPEC-0003 §2)。
+    /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (spec-editorial-and-ripple-theme §2)。
     /// </summary>
     /// <remarks>
     /// 为什么用 <see cref="Transitions"/> 而非 <see cref="Animation"/>：
@@ -179,7 +179,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 唤起或隐藏随手记浮窗。窗口实例复用以保证亚秒级唤起 (DESIGN-0001 §3)。
+    /// 唤起或隐藏随手记浮窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
     private void ToggleQuickCaptureWindow()
     {

@@ -25,7 +25,7 @@
 
             <Grid RowDefinitions="*,Auto" Margin="24,20,24,14">
 
-                <!-- 贯穿式主输入：无内框，靠字号建立焦点 (DESIGN-0001 §3) -->
+                <!-- 贯穿式主输入：无内框，靠字号建立焦点 (design-visual-language §3) -->
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                     <TextBlock Grid.Column="0"
                                Text="✦"

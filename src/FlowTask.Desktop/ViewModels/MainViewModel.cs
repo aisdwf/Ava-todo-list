@@ -65,8 +65,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <remarks>
     /// <b>为什么不塞进 <see cref="TaskFilter"/> 枚举</b>：项目筛选与 VIEWS 筛选是两个正交维度 ——
     /// 枚举只能表达「三选一」，而项目数量动态、且「未选中任何项目」也是合法状态。
-    /// 该枚举此前曾混入「设置页」导致视图模式与数据筛选耦合，已在 SPEC-0003 修正；
-    /// 此处不得重犯同类错误（DESIGN-0004 §5.1）。
+    /// 该枚举此前曾混入「设置页」导致视图模式与数据筛选耦合，已在 spec-editorial-and-ripple-theme 修正；
+    /// 此处不得重犯同类错误（design-domain-contract §5.1）。
     /// </remarks>
     [ObservableProperty]
     private Project? _selectedProject;
@@ -162,7 +162,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <remarks>
     /// 驱动侧边栏 PROJECTS 区块的整块显隐。零项目时整块隐藏 ——
     /// 不显示空列表，也不显示「新建项目」占位，
-    /// 使从不使用项目的用户获得与改动前完全一致的体验（DESIGN-0004 §3.3）。
+    /// 使从不使用项目的用户获得与改动前完全一致的体验（design-domain-contract §3.3）。
     /// </remarks>
     public bool HasProjects => _projects.Count > 0;
 
@@ -198,7 +198,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
-        // 弱引用消息总线：随手记浮窗写入后通知主窗口刷新，双方互不持有强引用 (RULE-0001 §2.1)
+        // 弱引用消息总线：随手记浮窗写入后通知主窗口刷新，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
 
@@ -321,7 +321,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 此时赋同值属性不变更、<c>OnCurrentFilterChanged</c> 不触发，
     /// 单选高亮便永远无法恢复 —— 侧边栏会呈现「没有任何项被选中」的空档状态。
     /// <para>
-    /// 这与 SPEC-0003 修正过的缺陷同源（见 <see cref="ChangeFilter"/> 注释）：
+    /// 这与 spec-editorial-and-ripple-theme 修正过的缺陷同源（见 <see cref="ChangeFilter"/> 注释）：
     /// <b>依赖属性变更回调来同步状态，在「新值等于旧值」时必然失效。</b>
     /// 因此此处显式重建状态，不经由属性变更通知这条路径。
     /// </para>
@@ -541,7 +541,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <para>
     /// <b>为什么没有「取消」</b>：本地 SQLite 写入是微秒级的，不存在需要用户等待的提交成本。
     /// 引入显式保存按钮反而带来「未保存状态」这一额外状态机，
-    /// 以及「改了却忘记点保存」的数据丢失风险（DESIGN-0004 §5.3）。
+    /// 以及「改了却忘记点保存」的数据丢失风险（design-domain-contract §5.3）。
     /// 代价是误改无法一键还原 —— 撤销栈的成本远高于其在此场景的收益，已明确排除。
     /// </para>
     /// <para>
@@ -650,7 +650,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>新建项目输入区是否展开。</summary>
     /// <remarks>
-    /// 依渐进披露原则（DESIGN-0004 §1 原则 3），新建入口默认收起，
+    /// 依渐进披露原则（design-domain-contract §1 原则 3），新建入口默认收起，
     /// 不占用侧边栏空间，点击「＋」才展开。
     /// </remarks>
     [ObservableProperty]
@@ -834,7 +834,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <remarks>
     /// 删除项目不可逆（<see cref="Project"/> 无软删除标记），
-    /// 因此必须先告知将影响多少条任务再让用户决定（DESIGN-0004 §2.2）。
+    /// 因此必须先告知将影响多少条任务再让用户决定（design-domain-contract §2.2）。
     /// </remarks>
     [RelayCommand]
     private async Task RequestDeleteProjectAsync(ProjectItemViewModel? project)
@@ -857,7 +857,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <remarks>
     /// <b>其下任务不会被删除</b>，仅 <c>ProjectId</c> 置空退回未归属状态 ——
-    /// 任务是用户的核心资产，项目只是它的一个可选属性（DESIGN-0004 §2.2）。
+    /// 任务是用户的核心资产，项目只是它的一个可选属性（design-domain-contract §2.2）。
     /// 该语义由 <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
     /// </remarks>
     [RelayCommand]

@@ -59,7 +59,7 @@ public class TaskTitleTests
     /// </summary>
     /// <remarks>
     /// 未来的 <c>#项目</c> / <c>@标签</c> 输入语法依赖这些字符不被提前处理
-    /// （DESIGN-0004 §3.2 预留结构）。若在此折叠内部空白或过滤符号，
+    /// （design-domain-contract §3.2 预留结构）。若在此折叠内部空白或过滤符号，
     /// 那些语法将无从解析。
     /// </remarks>
     [Fact]

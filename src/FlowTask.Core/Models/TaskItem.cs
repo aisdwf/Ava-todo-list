@@ -16,7 +16,7 @@ public class TaskItem
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// 补充说明。当前无 UI 读写路径，属显式登记的待办事项（见 SPEC-0004 §6）。
+    /// 补充说明。当前无 UI 读写路径，属显式登记的待办事项（见 spec-task-contract-and-clock §6）。
     /// </summary>
     public string? Description { get; set; }
 
@@ -30,7 +30,7 @@ public class TaskItem
     /// <remarks>
     /// <para>
     /// <c>null</c> 是**默认且完全正常**的状态，不是「数据不完整」——
-    /// 零必填是本产品的最高原则，UI 不得对其做任何催促或标记（DESIGN-0004 §1、§3.3）。
+    /// 零必填是本产品的最高原则，UI 不得对其做任何催促或标记（design-domain-contract §1、§3.3）。
     /// </para>
     /// <para>
     /// 一个任务只能属于一个项目，这是「项目」一词的通用预期；
@@ -52,7 +52,7 @@ public class TaskItem
     /// <b>为什么不建标签表 + 关联表</b>：`sqlite-net-pcl` 无关系映射能力
     /// （无 OneToMany / ManyToMany / GetChildren，已实测确认），
     /// 多对多需手写关联表增删改查与 JOIN 组装，且每次读列表都要额外查询与内存拼装。
-    /// 对本地单机、千条量级的应用，该复杂度换不来相应收益（DESIGN-0004 §2.3）。
+    /// 对本地单机、千条量级的应用，该复杂度换不来相应收益（design-domain-contract §2.3）。
     /// </para>
     /// <para>
     /// 标签的定位是**轻量**：不需要重命名、颜色与排序 —— 那些是项目的职责。

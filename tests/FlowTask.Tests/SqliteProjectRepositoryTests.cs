@@ -158,7 +158,7 @@ public class SqliteProjectRepositoryTests : IDisposable
     /// </summary>
     /// <remarks>
     /// 任务是用户的核心资产，项目只是它的一个可选属性；
-    /// 删除属性不应销毁拥有该属性的实体（DESIGN-0004 §2.2）。
+    /// 删除属性不应销毁拥有该属性的实体（design-domain-contract §2.2）。
     /// </remarks>
     [Fact]
     public async Task Delete_KeepsTasksAndClearsAssignment()
