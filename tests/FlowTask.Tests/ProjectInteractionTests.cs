@@ -27,6 +27,7 @@ public class ProjectInteractionTests : IDisposable
     private readonly FakeClock _clock;
     private readonly SqliteTaskRepository _repo;
     private readonly SqliteProjectRepository _projectRepo;
+    private readonly SqliteTagRepository _tagRepo;
 
     public ProjectInteractionTests()
     {
@@ -34,6 +35,7 @@ public class ProjectInteractionTests : IDisposable
         _clock = new FakeClock(new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc));
         _repo = new SqliteTaskRepository(_clock, _dbPath);
         _projectRepo = new SqliteProjectRepository(_dbPath);
+        _tagRepo = new SqliteTagRepository(_clock, _dbPath);
     }
 
     public void Dispose()
@@ -44,7 +46,11 @@ public class ProjectInteractionTests : IDisposable
         }
     }
 
-    private MainViewModel CreateViewModel() => new(_repo, _projectRepo, _clock);
+    private MainViewModel CreateViewModel()
+    {
+        var settingsRepo = new SqliteAppSettingsRepository(_dbPath);
+        return new(_repo, _projectRepo, _tagRepo, _clock, settingsRepo);
+    }
 
     private async Task<MainViewModel> CreateInitializedAsync()
     {
@@ -156,7 +162,6 @@ public class ProjectInteractionTests : IDisposable
         await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
 
         Assert.False(vm.IsActiveFilterSelected);
-        Assert.False(vm.IsTodayFilterSelected);
         Assert.False(vm.IsCompletedFilterSelected);
         Assert.NotNull(vm.SelectedProject);
     }
@@ -262,9 +267,6 @@ public class ProjectInteractionTests : IDisposable
 
         AssertExactlyOneActive(vm); // 初始：全部任务
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Today);
-        AssertExactlyOneActive(vm);
-
         vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
         AssertExactlyOneActive(vm);
 
@@ -279,7 +281,6 @@ public class ProjectInteractionTests : IDisposable
             var activeCount = new[]
             {
                 vm.IsActiveFilterSelected,
-                vm.IsTodayFilterSelected,
                 vm.IsCompletedFilterSelected,
                 vm.SelectedProject is not null
             }.Count(flag => flag);

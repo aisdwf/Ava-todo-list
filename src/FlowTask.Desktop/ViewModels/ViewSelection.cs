@@ -8,9 +8,6 @@ public enum ViewSelectionKind
     /// <summary>全部活跃任务。</summary>
     Active,
 
-    /// <summary>今日到期任务。</summary>
-    Today,
-
     /// <summary>已完成归档。</summary>
     Completed,
 
@@ -59,9 +56,6 @@ public readonly record struct ViewSelection
 
     /// <summary>全部活跃任务视图。</summary>
     public static ViewSelection Active { get; } = new(ViewSelectionKind.Active, null);
-
-    /// <summary>今日到期任务视图。</summary>
-    public static ViewSelection Today { get; } = new(ViewSelectionKind.Today, null);
 
     /// <summary>已完成归档视图。</summary>
     public static ViewSelection Completed { get; } = new(ViewSelectionKind.Completed, null);

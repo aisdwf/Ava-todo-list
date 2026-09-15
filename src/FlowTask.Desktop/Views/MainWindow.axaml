@@ -57,13 +57,6 @@
                         </Button>
 
                         <Button Classes="NavPill"
-                                Classes.Selected="{Binding IsTodayFilterSelected}"
-                                Command="{Binding ChangeFilterCommand}"
-                                CommandParameter="{x:Static vm:TaskFilter.Today}">
-                            <TextBlock Text="今日聚焦" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
-                        </Button>
-
-                        <Button Classes="NavPill"
                                 Classes.Selected="{Binding IsCompletedFilterSelected}"
                                 Command="{Binding ChangeFilterCommand}"
                                 CommandParameter="{x:Static vm:TaskFilter.Completed}">
@@ -265,16 +258,64 @@
                                            VerticalAlignment="Center"
                                            Margin="0,0,18,0" />
 
-                                <TextBox Grid.Column="1"
-                                         x:Name="NewTaskInput"
-                                         Classes="EditorialInput"
-                                         Text="{Binding NewTaskTitle, Mode=TwoWay}"
-                                         Watermark="记录下一件重要的事…"
-                                         VerticalAlignment="Center">
-                                    <TextBox.KeyBindings>
-                                        <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
-                                    </TextBox.KeyBindings>
-                                </TextBox>
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <TextBox x:Name="NewTaskInput"
+                                             Classes="EditorialInput"
+                                             Text="{Binding NewTaskTitle, Mode=TwoWay}"
+                                             Watermark="记录下一件重要的事…"
+                                             VerticalAlignment="Center">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                    <ItemsControl ItemsSource="{Binding NewTagChoices}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:TagChoice">
+                                                <CheckBox Content="{Binding Name}"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          Margin="0,0,8,0" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- 到期日：默认仅快捷项+数字；日历按需展开，避免常驻占位 -->
+                                    <StackPanel DataContext="{Binding NewDueDateEditor}" Spacing="6" Margin="0,4,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Classes="SecondaryAction"
+                                                    Content="启用默认到期"
+                                                    Command="{Binding EnableDefaultDueCommand}" />
+                                            <Button Content="清除"
+                                                    Command="{Binding ClearDueCommand}" />
+                                            <Button Content="日历"
+                                                    Command="{Binding ToggleCalendarCommand}"
+                                                    ToolTip.Tip="展开日历"
+                                                    IsVisible="{Binding !IsCalendarExpanded}" />
+                                            <Button Content="收起日历"
+                                                    Command="{Binding ToggleCalendarCommand}"
+                                                    ToolTip.Tip="收起日历"
+                                                    IsVisible="{Binding IsCalendarExpanded}" />
+                                            <TextBox Width="140"
+                                                     Classes="FieldInput"
+                                                     Watermark="10 / 0310 / 20260310"
+                                                     Text="{Binding DigitText, Mode=TwoWay}" />
+                                            <TextBlock VerticalAlignment="Center"
+                                                       Classes="CaptionText"
+                                                       Text="{Binding SelectedDate, StringFormat='yyyy-MM-dd', TargetNullValue='未设置到期日'}" />
+                                        </StackPanel>
+                                        <Calendar SelectedDate="{Binding CalendarDate, Mode=TwoWay}"
+                                                  HorizontalAlignment="Left"
+                                                  IsVisible="{Binding IsCalendarExpanded}" />
+                                        <TextBlock Classes="CaptionText"
+                                                   Foreground="{DynamicResource DangerBrush}"
+                                                   IsVisible="{Binding HasParseError}"
+                                                   Text="{Binding ParseErrorMessage}" />
+                                    </StackPanel>
+                                </StackPanel>
 
                                 <!-- 优先级分段直选，替代原下拉框 -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
@@ -387,34 +428,54 @@
                                                                VerticalAlignment="Center" />
                                                 </Button>
 
-                                                <!-- 标签：弱化呈现，无标签时不占位 -->
-                                                <ItemsControl Grid.Column="4"
-                                                              Margin="12,0,0,0"
-                                                              VerticalAlignment="Center"
-                                                              IsVisible="{Binding HasTags}"
-                                                              ItemsSource="{Binding Task.Tags, Converter={x:Static conv:TagsToListConverter.Instance}}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal" Spacing="4" />
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border Classes="TagChip">
-                                                                <TextBlock Text="{Binding}" />
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                <!-- 标签：弱化呈现，无标签时不占位；超出上限折叠为 +N -->
+                                                <StackPanel Grid.Column="4"
+                                                            Orientation="Horizontal"
+                                                            Spacing="6"
+                                                            Margin="12,0,0,0"
+                                                            VerticalAlignment="Center"
+                                                            IsVisible="{Binding HasTags}">
+                                                    <ItemsControl ItemsSource="{Binding VisibleAssignedTags}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="models:Tag">
+                                                                <Border Classes="TagChip"
+                                                                        Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}">
+                                                                    <TextBlock Text="{Binding Name}" />
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
 
-                                                <!-- 到期日：逾期以高危色强调，无到期日时不显示 -->
-                                                <TextBlock Grid.Column="5"
-                                                           Classes="DueBadge"
-                                                           Classes.Overdue="{Binding Task.DueDate, Converter={x:Static conv:DueDateOverdueConverter.Instance}}"
-                                                           Classes.DueToday="{Binding Task.DueDate, Converter={x:Static conv:DueDateTodayConverter.Instance}}"
-                                                           Text="{Binding Task.DueDate, Converter={x:Static conv:DueDateTextConverter.Instance}}"
-                                                           IsVisible="{Binding HasDueDate}"
-                                                           Margin="14,0,0,0" />
+                                                    <TextBlock Classes="CaptionText"
+                                                               Text="{Binding HiddenTagCount, StringFormat='+{0}'}"
+                                                               IsVisible="{Binding HasHiddenTags}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+
+                                                <!-- 到期日：点击打开同一套三来源编辑器 -->
+                                                <Button Grid.Column="5"
+                                                        Classes="DueBadgeButton"
+                                                        Margin="14,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenDueDatePopupCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="设置到期日">
+                                                    <Panel>
+                                                        <TextBlock Classes="DueBadge"
+                                                                   Classes.Overdue="{Binding Task.DueDate, Converter={x:Static conv:DueDateOverdueConverter.Instance}}"
+                                                                   Classes.DueToday="{Binding Task.DueDate, Converter={x:Static conv:DueDateTodayConverter.Instance}}"
+                                                                   Text="{Binding Task.DueDate, Converter={x:Static conv:DueDateTextConverter.Instance}}"
+                                                                   IsVisible="{Binding HasDueDate}" />
+                                                        <TextBlock Classes="CaptionText"
+                                                                   Text="到期"
+                                                                   IsVisible="{Binding !HasDueDate}" />
+                                                    </Panel>
+                                                </Button>
 
                                                 <TextBlock Grid.Column="6"
                                                            Classes="CaptionText"
@@ -449,21 +510,26 @@
                                                              Watermark="任务标题" />
                                                 </StackPanel>
 
-                                                <Grid ColumnDefinitions="*,16,*">
-                                                    <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="标签（逗号分隔）" Classes="FieldLabel" />
-                                                        <TextBox Classes="FieldInput"
-                                                                 Text="{Binding EditTags, Mode=TwoWay}"
-                                                                 Watermark="如：线上,紧急" />
-                                                    </StackPanel>
-
-                                                    <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="到期日（yyyy-MM-dd）" Classes="FieldLabel" />
-                                                        <TextBox Classes="FieldInput"
-                                                                 Text="{Binding EditDueDate, Mode=TwoWay}"
-                                                                 Watermark="留空表示未安排" />
-                                                    </StackPanel>
-                                                </Grid>
+                                                <StackPanel>
+                                                    <TextBlock Text="标签" Classes="FieldLabel" />
+                                                    <TextBlock Classes="CaptionText"
+                                                               Text="到期日请点击任务行上的「到期」标记修改。"
+                                                               Margin="0,0,0,8" />
+                                                    <ItemsControl ItemsSource="{Binding EditTagChoices}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <WrapPanel Orientation="Horizontal" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="vm:TagChoice">
+                                                                <CheckBox Content="{Binding Name}"
+                                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                          Margin="0,0,8,8" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
 
                                                 <StackPanel>
                                                     <TextBlock Text="优先级" Classes="FieldLabel" />
@@ -583,6 +649,123 @@
                                 </StackPanel>
                             </Border>
 
+
+                            <!-- 默认到期偏移 -->
+                            <Border Classes="SettingsCard">
+                                <StackPanel Spacing="18">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="默认到期偏移" Classes="SectionTitle" />
+                                        <TextBlock Text="「启用默认到期」= 今天 + N 天。范围 1–30，默认 1。"
+                                                   Classes="CaptionText" />
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <NumericUpDown Grid.Column="0"
+                                                       Minimum="1"
+                                                       Maximum="30"
+                                                       Increment="1"
+                                                       Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
+                                        <Button Grid.Column="1"
+                                                Classes="PrimaryAction"
+                                                Margin="10,0,0,0"
+                                                Content="保存"
+                                                Command="{Binding SaveDefaultDueOffsetCommand}"
+                                                CommandParameter="{Binding DefaultDueOffsetDays}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 标签管理 -->
+                            <Border Classes="SettingsCard">
+                                <StackPanel Spacing="18">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="标签管理" Classes="SectionTitle" />
+                                        <TextBlock Text="任务中只能选择这里维护的标签。"
+                                                   Classes="CaptionText" />
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 Classes="FieldInput"
+                                                 Watermark="新建标签名称"
+                                                 Text="{Binding NewTagName, Mode=TwoWay}" />
+                                        <Button Grid.Column="1"
+                                                Classes="PrimaryAction"
+                                                Margin="10,0,0,0"
+                                                Command="{Binding CreateTagCommand}"
+                                                Content="添加" />
+                                    </Grid>
+
+                                    <ItemsControl ItemsSource="{Binding Tags}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:TagItemViewModel">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto"
+                                                      Margin="0,4">
+                                                    <Ellipse Grid.Column="0"
+                                                             Width="10"
+                                                             Height="10"
+                                                             VerticalAlignment="Center"
+                                                             Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding Name}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding !IsRenaming}" />
+                                                    <TextBox Grid.Column="1"
+                                                             Classes="FieldInput"
+                                                             Text="{Binding RenameBuffer, Mode=TwoWay}"
+                                                             IsVisible="{Binding IsRenaming}" />
+
+                                                    <TextBlock Grid.Column="2"
+                                                               Classes="CaptionText"
+                                                               Text="{Binding UsageCount, StringFormat='使用 {0} 次'}"
+                                                               VerticalAlignment="Center" />
+
+                                                    <Button Grid.Column="3"
+                                                            Classes="IconCircle Compact"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).BeginRenameTagCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding !IsRenaming}"
+                                                            ToolTip.Tip="重命名">
+                                                        <TextBlock Text="✎" />
+                                                    </Button>
+                                                    <Button Grid.Column="4"
+                                                            Classes="IconCircle Compact"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DeleteTagCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding !IsRenaming}"
+                                                            ToolTip.Tip="删除标签">
+                                                        <TextBlock Text="✕" />
+                                                    </Button>
+
+                                                    <Button Grid.Column="5"
+                                                            Classes="IconCircle Compact"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ChangeTagColorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding !IsRenaming}"
+                                                            ToolTip.Tip="更换颜色">
+                                                        <TextBlock Text="◐" />
+                                                    </Button>
+
+                                                    <StackPanel Grid.Column="3"
+                                                                Grid.ColumnSpan="3"
+                                                                Orientation="Horizontal"
+                                                                Spacing="6"
+                                                                IsVisible="{Binding IsRenaming}">
+                                                        <Button Classes="PrimaryAction"
+                                                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRenameTagCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="完成" />
+                                                        <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CancelRenameTagCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="取消" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
                             <!-- 关于 -->
                             <Border Classes="SettingsCard">
                                 <Grid ColumnDefinitions="*,Auto">
@@ -601,6 +784,52 @@
                     </ScrollViewer>
                 </Grid>
             </Grid>
+        </Grid>
+
+
+        <!-- 到期日编辑弹出层 -->
+        <Grid IsVisible="{Binding IsDueDatePopupOpen}" ZIndex="100">
+            <Button HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Opacity="0.45"
+                    Background="#000000"
+                    Command="{Binding CloseDueDatePopupCommand}" />
+            <Border Classes="SettingsCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MinWidth="360"
+                    Padding="24"
+                    Background="{DynamicResource SurfaceBrush}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="设置到期日" Classes="SectionTitle" />
+                    <StackPanel DataContext="{Binding EditingDueDateEditor}" Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="SecondaryAction"
+                                    Content="启用默认到期"
+                                    Command="{Binding EnableDefaultDueCommand}" />
+                            <Button Content="清除"
+                                    Command="{Binding ClearDueCommand}" />
+                        </StackPanel>
+                        <TextBox Classes="FieldInput"
+                                 Watermark="10 / 0310 / 20260310"
+                                 Text="{Binding DigitText, Mode=TwoWay}" />
+                        <Calendar SelectedDate="{Binding CalendarDate, Mode=TwoWay}"
+                                  HorizontalAlignment="Left" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="{Binding SelectedDate, StringFormat='已选：yyyy-MM-dd', TargetNullValue='未设置到期日'}" />
+                        <TextBlock Classes="CaptionText"
+                                   Foreground="{DynamicResource DangerBrush}"
+                                   IsVisible="{Binding HasParseError}"
+                                   Text="{Binding ParseErrorMessage}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="取消" Command="{Binding CloseDueDatePopupCommand}" />
+                        <Button Classes="PrimaryAction"
+                                Content="完成"
+                                Command="{Binding CommitDueDatePopupCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->

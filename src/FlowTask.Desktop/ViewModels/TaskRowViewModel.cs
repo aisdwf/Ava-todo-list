@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowTask.Core.Enums;
 using FlowTask.Core.Models;
@@ -52,6 +53,8 @@ public sealed class ProjectChoice
 /// </remarks>
 public partial class TaskRowViewModel : ViewModelBase
 {
+    private const int VisibleTagLimit = 2;
+
     /// <summary>被包装的任务实体。</summary>
     public TaskItem Task { get; }
 
@@ -63,9 +66,8 @@ public partial class TaskRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _editTitle = string.Empty;
 
-    /// <summary>编辑缓冲：标签（逗号分隔的原始文本）。</summary>
-    [ObservableProperty]
-    private string _editTags = string.Empty;
+    /// <summary>编辑缓冲：标签多选项。</summary>
+    public ObservableCollection<TagChoice> EditTagChoices { get; } = new();
 
     /// <summary>编辑缓冲：到期日文本（`yyyy-MM-dd`，空串表示未安排）。</summary>
     [ObservableProperty]
@@ -90,8 +92,21 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <summary>是否归属某个项目，驱动色条显隐。</summary>
     public bool HasProject => !string.IsNullOrEmpty(Task.ProjectId);
 
+    /// <summary>任务当前已选择的标签。</summary>
+    public IReadOnlyList<Tag> AssignedTags { get; private set; } = Array.Empty<Tag>();
+
+    /// <summary>任务行中直接展示的标签，超出部分由 <see cref="HiddenTagCount"/> 汇总。</summary>
+    public IReadOnlyList<Tag> VisibleAssignedTags =>
+        AssignedTags.Take(VisibleTagLimit).ToList();
+
+    /// <summary>未直接展示的标签数量。</summary>
+    public int HiddenTagCount => Math.Max(0, AssignedTags.Count - VisibleTagLimit);
+
+    /// <summary>是否存在被折叠的标签。</summary>
+    public bool HasHiddenTags => HiddenTagCount > 0;
+
     /// <summary>是否含标签，驱动标签区显隐。</summary>
-    public bool HasTags => !string.IsNullOrWhiteSpace(Task.Tags);
+    public bool HasTags => AssignedTags.Count > 0;
 
     /// <summary>是否设有到期日，驱动到期徽标显隐。</summary>
     public bool HasDueDate => Task.DueDate is not null;
@@ -112,9 +127,11 @@ public partial class TaskRowViewModel : ViewModelBase
     /// </summary>
     /// <param name="task">任务实体。</param>
     /// <param name="project">所属项目；<c>null</c> 表示未归属。</param>
-    public TaskRowViewModel(TaskItem task, Project? project)
+    /// <param name="assignedTags">任务当前已选择的标签。</param>
+    public TaskRowViewModel(TaskItem task, Project? project, IReadOnlyList<Tag> assignedTags)
     {
         Task = task;
+        AssignedTags = assignedTags;
         ApplyProject(project);
     }
 
@@ -132,16 +149,34 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 以实体当前值填充编辑缓冲并展开面板。
     /// </summary>
     /// <param name="projectChoices">可选项目列表，用于定位当前归属对应的候选项。</param>
-    public void BeginEdit(IEnumerable<ProjectChoice> projectChoices)
+    /// <param name="availableTags">可选标签列表。</param>
+    public void BeginEdit(IEnumerable<ProjectChoice> projectChoices, IEnumerable<Tag> availableTags)
     {
         EditTitle = Task.Title;
-        EditTags = Task.Tags ?? string.Empty;
         EditDueDate = Task.DueDate?.ToString("yyyy-MM-dd") ?? string.Empty;
         EditPriority = Task.Priority;
         EditProject = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId)
                       ?? ProjectChoice.None;
+        var selectedIds = AssignedTags.Select(tag => tag.Id).ToHashSet(StringComparer.Ordinal);
+        EditTagChoices.Clear();
+        foreach (var tag in availableTags)
+        {
+            EditTagChoices.Add(new TagChoice(tag, selectedIds.Contains(tag.Id)));
+        }
 
         IsEditing = true;
+    }
+
+    /// <summary>
+    /// 更新任务行当前已选择的标签。
+    /// </summary>
+    public void ApplyTags(IReadOnlyList<Tag> tags)
+    {
+        AssignedTags = tags;
+        OnPropertyChanged(nameof(HasTags));
+        OnPropertyChanged(nameof(VisibleAssignedTags));
+        OnPropertyChanged(nameof(HiddenTagCount));
+        OnPropertyChanged(nameof(HasHiddenTags));
     }
 
     /// <summary>

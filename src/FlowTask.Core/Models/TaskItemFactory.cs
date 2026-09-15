@@ -10,7 +10,7 @@ namespace FlowTask.Core.Models;
 /// <para>
 /// <b>为什么需要工厂</b>：主窗口与随手记小窗都会创建任务。
 /// 若各自 <c>new TaskItem { ... }</c>，则「创建时间如何赋值」
-/// 「标签如何规范化」等不变量会散落两处，日后必然漂移（Article 6）。
+/// 等不变量会散落两处，日后必然漂移（Article 6）。
 /// </para>
 /// <para>
 /// <b>为未来输入语法预留</b>：design-domain-contract §3.2 已认可 <c>#项目 @标签</c>
@@ -33,7 +33,6 @@ public static class TaskItemFactory
     /// <param name="title">标题。调用方须自行确保非空白（空白标题应在 UI 层静默忽略）。</param>
     /// <param name="priority">优先级，默认中优先级。</param>
     /// <param name="projectId">所属项目；<c>null</c> 表示未归属，这是正常默认状态。</param>
-    /// <param name="tags">标签序列，内部会经 <see cref="TagNormalizer"/> 规范化。</param>
     /// <param name="dueDate">到期日；仓储会将其归一化为日历日。</param>
     /// <param name="description">补充说明。</param>
     public static TaskItem Create(
@@ -41,7 +40,6 @@ public static class TaskItemFactory
         string title,
         TaskPriority priority = TaskPriority.Medium,
         string? projectId = null,
-        IEnumerable<string>? tags = null,
         DateTime? dueDate = null,
         string? description = null)
         => new()
@@ -51,7 +49,6 @@ public static class TaskItemFactory
             Title = TaskTitle.Normalize(title),
             Priority = priority,
             ProjectId = projectId,
-            Tags = TagNormalizer.Normalize(tags),
             DueDate = dueDate,
             Description = description,
             CreatedAt = clock.UtcNow

@@ -24,11 +24,11 @@ public enum TaskFilter
     /// <summary>全部活跃任务。</summary>
     Active,
 
-    /// <summary>今日到期任务。</summary>
-    Today,
-
     /// <summary>已完成归档。</summary>
-    Completed
+    Completed,
+
+    /// <summary>设置。</summary>
+    Settings
 }
 
 /// <summary>
@@ -38,6 +38,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 {
     private readonly ITaskRepository _repository;
     private readonly IProjectRepository _projectRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IAppSettingsRepository _settingsRepository;
     private readonly IClock _clock;
 
     [ObservableProperty]
@@ -68,7 +70,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [NotifyPropertyChangedFor(nameof(CurrentFilter))]
     [NotifyPropertyChangedFor(nameof(SelectedProject))]
     [NotifyPropertyChangedFor(nameof(IsActiveFilterSelected))]
-    [NotifyPropertyChangedFor(nameof(IsTodayFilterSelected))]
     [NotifyPropertyChangedFor(nameof(IsCompletedFilterSelected))]
     private ViewSelection _currentSelection = ViewSelection.Active;
 
@@ -94,7 +95,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     public TaskFilter CurrentFilter => CurrentSelection.Kind switch
     {
-        ViewSelectionKind.Today => TaskFilter.Today,
         ViewSelectionKind.Completed => TaskFilter.Completed,
         _ => TaskFilter.Active
     };
@@ -108,9 +108,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>VIEWS「全部任务」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
     public bool IsActiveFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Active;
-
-    /// <summary>VIEWS「今日聚焦」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
-    public bool IsTodayFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Today;
 
     /// <summary>VIEWS「已完成归档」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
     public bool IsCompletedFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Completed;
@@ -127,6 +124,24 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>新任务的优先级档位，默认中优先级。</summary>
     [ObservableProperty]
     private TaskPriority _newTaskPriority = TaskPriority.Medium;
+
+    /// <summary>默认到期偏移天数（来自设置）。</summary>
+    [ObservableProperty]
+    private int _defaultDueOffsetDays = DueDateOffset.DefaultDays;
+
+    /// <summary>创建区中的到期日编辑器。</summary>
+    public DueDateEditorViewModel NewDueDateEditor { get; private set; } = null!;
+
+    /// <summary>行编辑弹出层中的到期日编辑器。</summary>
+    public DueDateEditorViewModel EditingDueDateEditor { get; private set; } = null!;
+
+    /// <summary>是否打开到期日编辑弹出层。</summary>
+    [ObservableProperty]
+    private bool _isDueDatePopupOpen;
+
+    /// <summary>正在编辑的任务行（用于弹出层定位）；<c>null</c> 表示未在弹出编辑。</summary>
+    [ObservableProperty]
+    private TaskRowViewModel? _editingDueDateTarget;
 
     [ObservableProperty]
     private int _activeCount;
@@ -177,6 +192,19 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>可变的内部项目集合，仅本类可写。</summary>
     private readonly ObservableCollection<ProjectItemViewModel> _projects = new();
 
+    /// <summary>设置页中的标签管理列表。</summary>
+    public ReadOnlyObservableCollection<TagItemViewModel> Tags { get; }
+
+    /// <summary>可变的内部标签集合，仅本类可写。</summary>
+    private readonly ObservableCollection<TagItemViewModel> _tags = new();
+
+    /// <summary>创建区中的标签选择项。</summary>
+    public ObservableCollection<TagChoice> NewTagChoices { get; } = new();
+
+    /// <summary>新建标签的名称输入。</summary>
+    [ObservableProperty]
+    private string _newTagName = string.Empty;
+
     /// <summary>
     /// 是否存在任何项目。
     /// </summary>
@@ -207,15 +235,29 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <param name="repository">任务仓储。</param>
     /// <param name="projectRepository">项目仓储。</param>
+    /// <param name="tagRepository">标签仓储。</param>
     /// <param name="clock">时间提供者，用于显式赋值任务的创建与完成时刻（Article 9）。</param>
-    public MainViewModel(ITaskRepository repository, IProjectRepository projectRepository, IClock clock)
+    /// <param name="settingsRepository">应用设置仓储。</param>
+    public MainViewModel(
+        ITaskRepository repository,
+        IProjectRepository projectRepository,
+        ITagRepository tagRepository,
+        IClock clock,
+        IAppSettingsRepository settingsRepository)
     {
         _repository = repository;
         _projectRepository = projectRepository;
+        _tagRepository = tagRepository;
         _clock = clock;
+        _settingsRepository = settingsRepository;
+
+        // 初始化到期日编辑器（Func<int> 绑定 DefaultDueOffsetDays 属性）
+        NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
+        EditingDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
 
         Tasks = new ReadOnlyObservableCollection<TaskRowViewModel>(_tasks);
         Projects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_projects);
+        Tags = new ReadOnlyObservableCollection<TagItemViewModel>(_tags);
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
@@ -231,9 +273,35 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     public async Task InitializeAsync()
     {
+        await _settingsRepository.InitializeAsync();
+        DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
+        
         AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
+        await LoadTagsAsync();
         await LoadProjectsAsync();
         await LoadTasksAsync();
+    }
+
+    /// <summary>
+    /// 载入标签管理列表，并将使用计数绑定到设置页。
+    /// </summary>
+    private async Task LoadTagsAsync()
+    {
+        var tags = await _tagRepository.GetAllAsync();
+        var usageCounts = await _tagRepository.GetUsageCountsAsync();
+
+        _tags.Clear();
+        var selectedNewTagIds = NewTagChoices
+            .Where(choice => choice.IsSelected)
+            .Select(choice => choice.Tag.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        NewTagChoices.Clear();
+        foreach (var tag in tags)
+        {
+            usageCounts.TryGetValue(tag.Id, out var count);
+            _tags.Add(new TagItemViewModel(tag, count));
+            NewTagChoices.Add(new TagChoice(tag, selectedNewTagIds.Contains(tag.Id)));
+        }
     }
 
     /// <summary>
@@ -296,7 +364,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         (CurrentCategoryTitle, CurrentCategorySubtitle) = value.Kind switch
         {
-            ViewSelectionKind.Today => ("今日聚焦", "今天需要优先解决的关键事项"),
             ViewSelectionKind.Completed => ("已完成归档", "所有已达成的历史成果记录"),
             ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下进行中的待办"),
             _ => ("全部任务", "聚焦所有活跃进行中的待办")
@@ -360,7 +427,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         var target = filter switch
         {
-            TaskFilter.Today => ViewSelection.Today,
             TaskFilter.Completed => ViewSelection.Completed,
             _ => ViewSelection.Active
         };
@@ -385,13 +451,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
             : CurrentFilter switch
             {
-                TaskFilter.Today => await _repository.GetTodayTasksAsync(),
                 TaskFilter.Completed => await _repository.GetCompletedTasksAsync(),
                 _ => await _repository.GetAllActiveTasksAsync()
             };
 
         // 建立 Id → 项目 的查找表，避免为每行任务各查一次库（N+1 查询）
         var projectLookup = _projects.ToDictionary(p => p.Id, p => p.Project);
+        var tagLookup = await _tagRepository.GetTagsForTasksAsync(items.Select(item => item.Id));
 
         _tasks.Clear();
         foreach (var item in items)
@@ -402,7 +468,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 projectLookup.TryGetValue(item.ProjectId, out owner);
             }
 
-            _tasks.Add(new TaskRowViewModel(item, owner));
+            tagLookup.TryGetValue(item.Id, out var assignedTags);
+            _tasks.Add(new TaskRowViewModel(item, owner, assignedTags ?? new List<Tag>()));
         }
 
         await RefreshCountsAsync();
@@ -443,10 +510,21 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         var task = TaskItemFactory.Create(
             _clock,
             NewTaskTitle,
-            NewTaskPriority);
+            NewTaskPriority,
+            dueDate: NewDueDateEditor.TakeValue());
 
         await _repository.SaveTaskAsync(task);
+        await _tagRepository.ReplaceTaskTagsAsync(
+            task.Id,
+            NewTagChoices
+                .Where(choice => choice.IsSelected)
+                .Select(choice => choice.Tag.Id));
         NewTaskTitle = string.Empty;
+        NewDueDateEditor.Load(null);  // 重置编辑器
+        foreach (var choice in NewTagChoices)
+        {
+            choice.IsSelected = false;
+        }
 
         // 在"已完成"视图下新增的任务属于活跃集，留在原视图会让用户以为添加失败。
         // 显式调用 LoadTasksAsync：赋值 CurrentSelection 本身不再触发加载
@@ -459,6 +537,68 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         await LoadTasksAsync();
+    }
+
+    /// <summary>
+    /// 打开行编辑弹出层，用于修改到期日。
+    /// </summary>
+    [RelayCommand]
+    private void OpenDueDatePopup(TaskRowViewModel? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        EditingDueDateTarget = row;
+        EditingDueDateEditor.Load(row.Task.DueDate, expandCalendar: true);
+        IsDueDatePopupOpen = true;
+    }
+
+    /// <summary>
+    /// 关闭到期日编辑弹出层，不保存更改。
+    /// </summary>
+    [RelayCommand]
+    private void CloseDueDatePopup()
+    {
+        IsDueDatePopupOpen = false;
+        EditingDueDateTarget = null;
+    }
+
+    /// <summary>
+    /// 保存到期日编辑弹出层的更改。
+    /// </summary>
+    [RelayCommand]
+    private async Task CommitDueDatePopupAsync()
+    {
+        var row = EditingDueDateTarget;
+        if (row is null)
+        {
+            IsDueDatePopupOpen = false;
+            return;
+        }
+
+        row.Task.DueDate = EditingDueDateEditor.TakeValue();
+        await _repository.SaveTaskAsync(row.Task);
+        await LoadTasksAsync();
+
+        IsDueDatePopupOpen = false;
+        EditingDueDateTarget = null;
+    }
+
+    /// <summary>
+    /// 保存默认到期偏移设置。
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveDefaultDueOffsetAsync(int days)
+    {
+        if (!DueDateOffset.IsValid(days))
+        {
+            // 无效值时恢复到当前值
+            return;
+        }
+
+        await _settingsRepository.SetDefaultDueOffsetDaysAsync(days);
     }
 
     /// <summary>
@@ -526,7 +666,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             await SaveEditAsync(other);
         }
 
-        row.BeginEdit(ProjectChoices);
+        row.BeginEdit(ProjectChoices, _tags.Select(item => item.Tag));
     }
 
     /// <summary>
@@ -562,43 +702,21 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             task.Title = TaskTitle.Normalize(row.EditTitle);
         }
 
-        task.Tags = TagNormalizer.Normalize(row.EditTags);
         task.Priority = row.EditPriority;
         task.ProjectId = row.EditProject.ProjectId;
-        task.DueDate = ParseDueDate(row.EditDueDate);
+        // 到期日仅经行上弹出编辑器写入，展开编辑不再改 DueDate。
 
         await _repository.SaveTaskAsync(task);
+        await _tagRepository.ReplaceTaskTagsAsync(
+            task.Id,
+            row.EditTagChoices
+                .Where(choice => choice.IsSelected)
+                .Select(choice => choice.Tag.Id));
 
         row.EndEdit();
         await LoadTasksAsync();
     }
 
-    /// <summary>
-    /// 严格解析编辑态输入的到期日文本。
-    /// </summary>
-    /// <remarks>
-    /// 用 <c>TryParseExact</c> 而非 <c>TryParse</c>：后者会按当前区域文化
-    /// 接受「3/10」「March 10」等多种形态，同一串输入在不同机器上
-    /// 可能解析出不同日期。严格格式让行为可预测。
-    /// 无法解析时返回 <c>null</c>（视为清除到期日），而非抛异常打断保存。
-    /// </remarks>
-    private static DateTime? ParseDueDate(string? text)
-    {
-        var trimmed = text?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            return null;
-        }
-
-        return DateTime.TryParseExact(
-            trimmed,
-            "yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out var parsed)
-            ? parsed
-            : null;
-    }
 
     /// <summary>
     /// 变更任务所属项目。
@@ -922,6 +1040,119 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
+
+    // ==================== 标签管理 ====================
+
+    /// <summary>新建标签。名称为空或重复时不写入数据库。</summary>
+    [RelayCommand]
+    private async Task CreateTagAsync()
+    {
+        if (!TagName.IsValid(NewTagName))
+        {
+            return;
+        }
+
+        var normalizedName = TagName.Normalize(NewTagName);
+        if (_tags.Any(existing =>
+                string.Equals(existing.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var tag = new Tag
+        {
+            Name = normalizedName,
+            ColorHex = PickNextTagColor(),
+            SortOrder = _tags.Count,
+            CreatedAt = _clock.UtcNow
+        };
+
+        await _tagRepository.SaveAsync(tag);
+        NewTagName = string.Empty;
+        await LoadTagsAsync();
+    }
+
+    /// <summary>进入标签重命名编辑态。</summary>
+    [RelayCommand]
+    private void BeginRenameTag(TagItemViewModel? tag) => tag?.BeginRename();
+
+    /// <summary>取消标签重命名。</summary>
+    [RelayCommand]
+    private void CancelRenameTag(TagItemViewModel? tag) => tag?.CancelRename();
+
+    /// <summary>提交标签重命名，并保留所有任务关联。</summary>
+    [RelayCommand]
+    private async Task CommitRenameTagAsync(TagItemViewModel? tag)
+    {
+        if (tag is null)
+        {
+            return;
+        }
+
+        if (!TagName.IsValid(tag.RenameBuffer))
+        {
+            tag.CancelRename();
+            return;
+        }
+
+        var normalizedName = TagName.Normalize(tag.RenameBuffer);
+        if (_tags.Any(existing =>
+                existing.Id != tag.Id
+                && string.Equals(existing.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            tag.CancelRename();
+            return;
+        }
+
+        tag.Tag.Name = normalizedName;
+        await _tagRepository.SaveAsync(tag.Tag);
+        tag.SyncFromEntity();
+        tag.CancelRename();
+        await LoadTasksAsync();
+    }
+
+    /// <summary>循环切换标签色。</summary>
+    [RelayCommand]
+    private async Task ChangeTagColorAsync(TagItemViewModel? tag)
+    {
+        if (tag is null)
+        {
+            return;
+        }
+
+        var palette = AppearanceCoordinator.AccentPresets;
+        var currentIndex = palette
+            .Select((option, index) => (option, index))
+            .FirstOrDefault(pair => string.Equals(
+                pair.option.DarkHex, tag.ColorHex, StringComparison.OrdinalIgnoreCase))
+            .index;
+
+        tag.Tag.ColorHex = palette[(currentIndex + 1) % palette.Count].DarkHex;
+        await _tagRepository.SaveAsync(tag.Tag);
+        tag.SyncFromEntity();
+        await LoadTagsAsync();
+        await LoadTasksAsync();
+    }
+
+    /// <summary>删除标签，同时清理所有任务关联。</summary>
+    [RelayCommand]
+    private async Task DeleteTagAsync(TagItemViewModel? tag)
+    {
+        if (tag is null)
+        {
+            return;
+        }
+
+        await _tagRepository.DeleteAsync(tag.Id);
+        await LoadTagsAsync();
+        await LoadTasksAsync();
+    }
+
+    private string PickNextTagColor()
+    {
+        var palette = AppearanceCoordinator.AccentPresets;
+        return palette[_tags.Count % palette.Count].DarkHex;
+    }
 
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。

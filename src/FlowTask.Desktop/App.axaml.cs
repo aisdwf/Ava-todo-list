@@ -35,8 +35,10 @@ public partial class App : Application
             // 删除项目要在单事务内同时改动 Projects 与 Tasks 两张表，跨连接无法保证原子性。
             // 两者均使用默认路径，故天然一致
             IProjectRepository projectRepository = new SqliteProjectRepository();
+            ITagRepository tagRepository = new SqliteTagRepository(clock);
+            IAppSettingsRepository settingsRepository = new SqliteAppSettingsRepository();
 
-            var mainVm = new MainViewModel(repository, projectRepository, clock);
+            var mainVm = new MainViewModel(repository, projectRepository, tagRepository, clock, settingsRepository);
             var quickCaptureVm = new QuickCaptureViewModel(repository, clock);
 
             // 数据载入由 MainWindow 的 Opened 事件驱动，避免在窗口就绪前触发 UI 绑定

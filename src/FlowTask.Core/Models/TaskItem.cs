@@ -33,8 +33,7 @@ public class TaskItem
     /// 零必填是本产品的最高原则，UI 不得对其做任何催促或标记（design-domain-contract §1、§3.3）。
     /// </para>
     /// <para>
-    /// 一个任务只能属于一个项目，这是「项目」一词的通用预期；
-    /// 多维分类由 <see cref="Tags"/> 承担。
+    /// 一个任务只能属于一个项目；标签维度由 <c>TaskTags</c> 关联表独立承担。
     /// </para>
     /// <para>
     /// 项目被删除时此字段置 <c>null</c>（任务本身永不随项目删除），
@@ -43,30 +42,6 @@ public class TaskItem
     /// </remarks>
     [Indexed]
     public string? ProjectId { get; set; }
-
-    /// <summary>
-    /// 标签集合，以英文逗号分隔的规范化字符串；<c>null</c> 或空串表示无标签。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>为什么不建标签表 + 关联表</b>：`sqlite-net-pcl` 无关系映射能力
-    /// （无 OneToMany / ManyToMany / GetChildren，已实测确认），
-    /// 多对多需手写关联表增删改查与 JOIN 组装，且每次读列表都要额外查询与内存拼装。
-    /// 对本地单机、千条量级的应用，该复杂度换不来相应收益（design-domain-contract §2.3）。
-    /// </para>
-    /// <para>
-    /// 标签的定位是**轻量**：不需要重命名、颜色与排序 —— 那些是项目的职责。
-    /// 职责分工清晰，实现方案随之简化。
-    /// </para>
-    /// <para>
-    /// <b>已知代价（明确接受）</b>：无法重命名标签；按标签筛选需 <c>LIKE</c> 匹配、
-    /// 无法利用索引。若未来标签治理需求上升，再升级为独立实体表。
-    /// </para>
-    /// <para>
-    /// 读写须经 <c>TagNormalizer</c>，不要直接拼接字符串。
-    /// </para>
-    /// </remarks>
-    public string? Tags { get; set; }
 
     /// <summary>
     /// 到期日（deadline）。语义为「用户日历上的哪一天」，不含有意义的时间部分。

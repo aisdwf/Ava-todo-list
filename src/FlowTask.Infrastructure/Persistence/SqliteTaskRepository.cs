@@ -154,40 +154,6 @@ public class SqliteTaskRepository : ITaskRepository
     }
 
     /// <inheritdoc />
-    public async Task<List<TaskItem>> GetTasksByTagAsync(string tag)
-    {
-        await InitializeAsync();
-
-        // 标签为分隔符拼接字符串，无法用 SQL 精确匹配单个标签
-        // （LIKE '%bug%' 会误命中 'debug'），故取回未完成任务后在内存中精确比对
-        var candidates = await _db.Table<TaskItem>()
-                  .Where(t => !t.IsDeleted && !t.IsCompleted && t.Tags != null)
-                  .OrderByDescending(t => t.Priority)
-                  .ThenBy(t => t.DueDate)
-                  .ToListAsync();
-
-        return candidates
-            .Where(t => TagNormalizer.Contains(t.Tags, tag))
-            .ToList();
-    }
-
-    /// <inheritdoc />
-    public async Task<List<string>> GetAllTagsAsync()
-    {
-        await InitializeAsync();
-
-        var tagged = await _db.Table<TaskItem>()
-                  .Where(t => !t.IsDeleted && t.Tags != null)
-                  .ToListAsync();
-
-        return tagged
-            .SelectMany(t => TagNormalizer.Split(t.Tags))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(t => t, StringComparer.CurrentCulture)
-            .ToList();
-    }
-
-    /// <inheritdoc />
     public async Task<TaskItem?> GetByIdAsync(string id)
     {
         await InitializeAsync();
@@ -231,7 +197,6 @@ public class SqliteTaskRepository : ITaskRepository
         }
 
         item.Title = TaskTitle.Normalize(item.Title);
-        item.Tags = TagNormalizer.Normalize(item.Tags);
         item.DueDate = NormalizeDueDate(item.DueDate);
 
         var existing = await GetByIdAsync(item.Id);

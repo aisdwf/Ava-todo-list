@@ -162,23 +162,3 @@ public sealed class HexToBrushConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
-
-/// <summary>
-/// 将标签字符串拆为列表，供 <c>ItemsControl</c> 逐个渲染。
-/// </summary>
-/// <remarks>
-/// 复用 <see cref="TagNormalizer.Split"/> 而非在此另写拆分逻辑，
-/// 避免读写两侧规则漂移（Article 6）。
-/// </remarks>
-public sealed class TagsToListConverter : IValueConverter
-{
-    public static readonly TagsToListConverter Instance = new();
-
-    /// <inheritdoc />
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => TagNormalizer.Split(value as string);
-
-    /// <inheritdoc />
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotSupportedException();
-}

@@ -29,24 +29,6 @@ public interface ITaskRepository
     /// </param>
     Task<List<TaskItem>> GetTasksByProjectAsync(string? projectId);
 
-    /// <summary>
-    /// 按标签载入未完成任务（大小写不敏感）。
-    /// </summary>
-    /// <remarks>
-    /// 标签以分隔符拼接存储，故此处为内存过滤而非索引查询。
-    /// 该代价在设计阶段已明确接受（design-domain-contract §2.3）。
-    /// </remarks>
-    Task<List<TaskItem>> GetTasksByTagAsync(string tag);
-
-    /// <summary>
-    /// 提取全部在用标签，去重后按字母序返回。
-    /// </summary>
-    /// <remarks>
-    /// 用于标签输入时的自动补全建议 —— 这是缓解「拼写不一致产生近似重复标签」
-    /// 的主要手段（design-domain-contract §2.3）。
-    /// </remarks>
-    Task<List<string>> GetAllTagsAsync();
-
     Task<TaskItem?> GetByIdAsync(string id);
 
     /// <summary>

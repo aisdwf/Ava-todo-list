@@ -179,21 +179,6 @@ public class RepositoryValidationTests : IDisposable
         await Assert.ThrowsAsync<InvalidOperationException>(() => _tasks.SaveTaskAsync(task));
     }
 
-    /// <summary>
-    /// 仓储写入时统一规范化标签，即使调用方直接赋了原始字符串。
-    /// </summary>
-    [Fact]
-    public async Task SaveTask_NormalizesTagsAtRepositoryLevel()
-    {
-        var task = TaskItemFactory.Create(_clock, "任务");
-        task.Tags = " Bug , bug ,线上 ";
-
-        await _tasks.SaveTaskAsync(task);
-
-        var stored = await _tasks.GetByIdAsync(task.Id);
-        Assert.Equal("Bug,线上", stored!.Tags);
-    }
-
     [Fact]
     public async Task SaveProject_RejectsBlankName()
     {

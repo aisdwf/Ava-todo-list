@@ -22,6 +22,7 @@ public class MainViewModelTests : IDisposable
     private readonly FakeClock _clock;
     private readonly SqliteTaskRepository _repo;
     private readonly SqliteProjectRepository _projectRepo;
+    private readonly SqliteTagRepository _tagRepo;
 
     /// <summary>
     /// 每个用例使用独立数据库文件，避免相互干扰。
@@ -33,6 +34,7 @@ public class MainViewModelTests : IDisposable
         _repo = new SqliteTaskRepository(_clock, _dbPath);
         // 与任务仓储同库：删除项目的事务需跨两张表
         _projectRepo = new SqliteProjectRepository(_dbPath);
+        _tagRepo = new SqliteTagRepository(_clock, _dbPath);
     }
 
     /// <inheritdoc />
@@ -51,7 +53,11 @@ public class MainViewModelTests : IDisposable
         }
     }
 
-    private MainViewModel CreateViewModel() => new(_repo, _projectRepo, _clock);
+    private MainViewModel CreateViewModel()
+    {
+        var settingsRepo = new SqliteAppSettingsRepository(_dbPath);
+        return new(_repo, _projectRepo, _tagRepo, _clock, settingsRepo);
+    }
 
     [AvaloniaFact]
     public async Task AddTask_AppendsToStreamAndClearsInput()
@@ -188,24 +194,22 @@ public class MainViewModelTests : IDisposable
 
         Assert.True(vm.IsCompletedFilterSelected);
         Assert.False(vm.IsActiveFilterSelected);
-        Assert.False(vm.IsTodayFilterSelected);
         Assert.Equal("已完成归档", vm.CurrentCategoryTitle);
     }
 
     /// <summary>
     /// 调用形式随 spec-sidebar-selection-consolidation 变化：VIEWS 已从
     /// <c>RadioButton.IsChecked</c> 双向绑定改为 <c>Button + Command</c>，
-    /// <c>IsTodayFilterSelected</c> 相应变为只读派生属性，故经命令驱动而非直接赋值。
-    /// 断言（预期结果）与整改前逐一致。
+    /// 派生属性故经命令驱动而非直接赋值。
     /// </summary>
     [AvaloniaFact]
-    public void RadioSelection_DrivesFilterWithoutFeedbackLoop()
+    public void RadioSelection_DrivesFilter()
     {
         var vm = CreateViewModel();
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Today);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
 
-        Assert.Equal(TaskFilter.Today, vm.CurrentFilter);
+        Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);
         Assert.False(vm.IsActiveFilterSelected);
     }
 
@@ -359,18 +363,16 @@ public class MainViewModelTests : IDisposable
         var row = vm.Tasks[0];
         await vm.ToggleEditCommand.ExecuteAsync(row);
         row.EditTitle = "";
-        row.EditTags = "线上";
         row.EditPriority = TaskPriority.High;
         await vm.SaveEditCommand.ExecuteAsync(row);
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal("原标题", stored!.Title);
-        Assert.Equal("线上", stored.Tags);
         Assert.Equal(TaskPriority.High, stored.Priority);
     }
 
     [AvaloniaFact]
-    public async Task SaveEdit_NormalizesTags()
+    public async Task SaveEdit_PersistsSelectedTags()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -380,18 +382,19 @@ public class MainViewModelTests : IDisposable
 
         var row = vm.Tasks[0];
         await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditTags = " Bug , bug ,线上";
+        var tag = vm.Tags.First(tag => tag.Name == "工作");
+        row.EditTagChoices.First(choice => choice.Tag.Id == tag.Id).IsSelected = true;
         await vm.SaveEditCommand.ExecuteAsync(row);
 
-        var stored = await _repo.GetByIdAsync(row.Task.Id);
-        Assert.Equal("Bug,线上", stored!.Tags);
+        var assigned = await _tagRepo.GetTagsForTasksAsync(new[] { row.Task.Id });
+        Assert.Equal("工作", Assert.Single(assigned[row.Task.Id]).Name);
     }
 
     /// <summary>
-    /// 编辑态可写入到期日，使任务进入「今日聚焦」。
+    /// 行上弹出编辑器可写入到期日。
     /// </summary>
     [AvaloniaFact]
-    public async Task SaveEdit_ParsesDueDateStrictly()
+    public async Task CommitDueDatePopup_PersistsSelectedDate()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -400,19 +403,19 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditDueDate = "2026-03-10";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        vm.OpenDueDatePopupCommand.Execute(row);
+        vm.EditingDueDateEditor.UpdateCalendarInput(new DateTime(2026, 3, 10));
+        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal(new DateTime(2026, 3, 10), stored!.DueDate);
     }
 
     /// <summary>
-    /// 非法日期格式视为清除，而非抛异常打断保存。
+    /// 弹出编辑器清除到期日后持久化为 null。
     /// </summary>
     [AvaloniaFact]
-    public async Task SaveEdit_TreatsInvalidDueDateAsCleared()
+    public async Task CommitDueDatePopup_ClearPersistsNull()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -421,9 +424,14 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditDueDate = "不是日期";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        vm.OpenDueDatePopupCommand.Execute(row);
+        vm.EditingDueDateEditor.UpdateCalendarInput(new DateTime(2026, 3, 10));
+        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
+
+        row = vm.Tasks[0];
+        vm.OpenDueDatePopupCommand.Execute(row);
+        vm.EditingDueDateEditor.ClearDueCommand.Execute(null);
+        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Null(stored!.DueDate);
