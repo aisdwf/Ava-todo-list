@@ -40,36 +40,37 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IProjectRepository _projectRepository;
     private readonly IClock _clock;
 
-    /// <summary>
-    /// 抑制筛选属性联动时的重复加载。
-    /// </summary>
-    /// <remarks>
-    /// 为什么需要：三个 <c>IsXxxSelected</c> 布尔量与 <c>CurrentFilter</c> 互相赋值，
-    /// 原实现在每个 partial 变更回调里各自触发一次 <c>LoadTasksAsync</c>，
-    /// 单次点击导航会连发 2-3 次数据库查询并多次清空重填集合，造成列表闪烁。
-    /// </remarks>
-    private bool _isSyncingFilter;
-
     [ObservableProperty]
     private bool _isDarkTheme = true;
 
     /// <summary>
-    /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="TaskFilter"/> 枚举位。
+    /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="ViewSelection"/> 的取值位。
     /// </summary>
     [ObservableProperty]
     private bool _isSettingsOpen;
 
     /// <summary>
-    /// 当前选中的项目；<c>null</c> 表示未启用项目筛选，此时由 <see cref="CurrentFilter"/> 决定视图。
+    /// 侧边栏「当前查看什么」的单一状态量。
     /// </summary>
     /// <remarks>
-    /// <b>为什么不塞进 <see cref="TaskFilter"/> 枚举</b>：项目筛选与 VIEWS 筛选是两个正交维度 ——
-    /// 枚举只能表达「三选一」，而项目数量动态、且「未选中任何项目」也是合法状态。
-    /// 该枚举此前曾混入「设置页」导致视图模式与数据筛选耦合，已在 spec-editorial-and-ripple-theme 修正；
-    /// 此处不得重犯同类错误（design-domain-contract §5.1）。
+    /// <b>本 SPEC 的核心整改</b>（spec-sidebar-selection-consolidation）：
+    /// VIEWS 三项与项目筛选此前是两套并行状态，互斥全靠手工清零维持，
+    /// 已两次产出「赋同值不触发变更回调、高亮无法恢复」的同类缺陷。
+    /// 收敛为单一状态量后，「同时只能选中一个」由类型保证 ——
+    /// 赋一个新的 <see cref="ViewSelection"/>（哪怕 <c>Kind</c> 相同、<c>ProjectId</c> 不同）
+    /// 都会被记录类型的相等性判定为「值变化」，从而正确触发下方的派生属性同步。
+    /// <para>
+    /// <see cref="CurrentFilter"/>、<see cref="SelectedProject"/> 等公开属性保留为
+    /// 只读派生视图，供既有绑定与测试断言继续读取，避免一次性改动过大。
+    /// </para>
     /// </remarks>
     [ObservableProperty]
-    private Project? _selectedProject;
+    [NotifyPropertyChangedFor(nameof(CurrentFilter))]
+    [NotifyPropertyChangedFor(nameof(SelectedProject))]
+    [NotifyPropertyChangedFor(nameof(IsActiveFilterSelected))]
+    [NotifyPropertyChangedFor(nameof(IsTodayFilterSelected))]
+    [NotifyPropertyChangedFor(nameof(IsCompletedFilterSelected))]
+    private ViewSelection _currentSelection = ViewSelection.Active;
 
     /// <summary>
     /// 当前窗口材质预设。以对象而非 Id 字符串持有，直接充当 ListBox 的 SelectedItem，
@@ -82,23 +83,43 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private AppearanceOption _selectedAccent = AppearanceCoordinator.AccentPresets[0];
 
-    [ObservableProperty]
-    private TaskFilter _currentFilter = TaskFilter.Active;
+    /// <summary>
+    /// 当前 VIEWS 筛选维度，由 <see cref="CurrentSelection"/> 派生。
+    /// </summary>
+    /// <remarks>
+    /// 项目筛选生效时（<c>CurrentSelection.Kind == Project</c>）此属性回落为
+    /// <see cref="TaskFilter.Active"/> —— 该取值此时不驱动任何 UI 高亮
+    /// （侧边栏高亮统一经 <see cref="ViewSelection"/> 直接比对，见 §2.2），
+    /// 仅在 <see cref="LoadTasksAsync"/> 判断项目筛选优先级时作为占位默认值。
+    /// </remarks>
+    public TaskFilter CurrentFilter => CurrentSelection.Kind switch
+    {
+        ViewSelectionKind.Today => TaskFilter.Today,
+        ViewSelectionKind.Completed => TaskFilter.Completed,
+        _ => TaskFilter.Active
+    };
+
+    /// <summary>
+    /// 当前选中的项目，由 <see cref="CurrentSelection"/> 派生；<c>null</c> 表示未启用项目筛选。
+    /// </summary>
+    public Project? SelectedProject => CurrentSelection.Kind == ViewSelectionKind.Project
+        ? _projects.FirstOrDefault(p => p.Id == CurrentSelection.ProjectId)?.Project
+        : null;
+
+    /// <summary>VIEWS「全部任务」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
+    public bool IsActiveFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Active;
+
+    /// <summary>VIEWS「今日聚焦」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
+    public bool IsTodayFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Today;
+
+    /// <summary>VIEWS「已完成归档」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
+    public bool IsCompletedFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Completed;
 
     [ObservableProperty]
     private string _currentCategoryTitle = "全部任务";
 
     [ObservableProperty]
     private string _currentCategorySubtitle = "聚焦所有活跃进行中的待办";
-
-    [ObservableProperty]
-    private bool _isActiveFilterSelected = true;
-
-    [ObservableProperty]
-    private bool _isTodayFilterSelected;
-
-    [ObservableProperty]
-    private bool _isCompletedFilterSelected;
 
     [ObservableProperty]
     private string _newTaskTitle = string.Empty;
@@ -222,6 +243,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         var projects = await _projectRepository.GetActiveProjectsAsync();
 
+        // 在重建 _projects 之前先记录选中项目 Id：CurrentSelection.ProjectId 独立于
+        // _projects 集合存在，但 SelectedProject 派生属性依赖 _projects 查找，
+        // 集合被 Clear() 后该属性会短暂返回 null，须先取原始 Id 才能正确判断存续。
+        var selectedProjectId = CurrentSelection.Kind == ViewSelectionKind.Project
+            ? CurrentSelection.ProjectId
+            : null;
+
         _projects.Clear();
         foreach (var project in projects)
         {
@@ -238,46 +266,48 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         // 选中的项目可能已被删除或归档，此时须解除选中避免筛选到不存在的项目。
-        // 经 ReturnToActiveViewAsync 显式重建状态，而非赋值 CurrentFilter ——
-        // 后者在新值等于旧值时不会触发回调，单选高亮将无法恢复
-        if (SelectedProject is not null
-            && _projects.All(p => p.Id != SelectedProject.Id))
+        // 经 ReturnToActiveViewAsync 显式重建状态 —— 赋一个新的 ViewSelection
+        // 即可保证被记录类型的相等性判定为「值变化」，无需再担心回调不触发
+        if (selectedProjectId is not null
+            && _projects.All(p => p.Id != selectedProjectId))
         {
             await ReturnToActiveViewAsync();
             return;
         }
 
-        // 集合已重建为新实例，须把选中标志重新贴回对应行，否则高亮丢失
-        SyncProjectSelectionFlags(SelectedProject?.Id);
+        // 集合已重建为新实例，须重新同步高亮标志到新实例上，否则高亮丢失
+        SyncProjectSelectionFlags();
     }
 
-    partial void OnCurrentFilterChanged(TaskFilter value)
+    /// <summary>
+    /// 统一选中状态变更时同步派生展示：标题文案与侧边栏项目行高亮。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么不在此触发 <see cref="LoadTasksAsync"/></b>：本回调只在
+    /// <see cref="CurrentSelection"/> 的值**真正变化**时触发（记录类型的相等性保证），
+    /// 而各写入路径对"是否需要重新加载任务"的要求并不相同 ——
+    /// <see cref="ChangeFilter"/> 需要在值不变时仍关闭设置页但跳过重载，
+    /// <see cref="SelectProjectAsync"/> 与 <see cref="ReturnToActiveViewAsync"/>
+    /// 需要无条件同步等待加载完成（供调用方在 await 后立即读取 <see cref="Tasks"/>）。
+    /// 两种取舍无法用同一个属性变更回调满足，因此加载动作留在各写入路径自行决定，
+    /// 本回调只负责与"值确实变了"强绑定的展示同步。
+    /// </remarks>
+    partial void OnCurrentSelectionChanged(ViewSelection value)
     {
-        // 选择 VIEWS 筛选即解除项目筛选：二者正交但在界面上互斥，
-        // 同时高亮两处会让用户无法判断当前看的是哪个集合
-        if (!_isSyncingFilter)
+        (CurrentCategoryTitle, CurrentCategorySubtitle) = value.Kind switch
         {
-            SelectedProject = null;
-        }
-
-        (CurrentCategoryTitle, CurrentCategorySubtitle) = value switch
-        {
-            TaskFilter.Today => ("今日聚焦", "今天需要优先解决的关键事项"),
-            TaskFilter.Completed => ("已完成归档", "所有已达成的历史成果记录"),
+            ViewSelectionKind.Today => ("今日聚焦", "今天需要优先解决的关键事项"),
+            ViewSelectionKind.Completed => ("已完成归档", "所有已达成的历史成果记录"),
+            ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下进行中的待办"),
             _ => ("全部任务", "聚焦所有活跃进行中的待办")
         };
 
-        _isSyncingFilter = true;
-        IsActiveFilterSelected = value == TaskFilter.Active;
-        IsTodayFilterSelected = value == TaskFilter.Today;
-        IsCompletedFilterSelected = value == TaskFilter.Completed;
-        _isSyncingFilter = false;
-
-        // 切换筛选即离开设置页，避免用户点击导航后内容区无响应
-        IsSettingsOpen = false;
-
-        _ = LoadTasksAsync();
+        SyncProjectSelectionFlags();
     }
+
+    /// <summary>按 Id 解析项目名，用于选中项目时的标题展示。</summary>
+    private string ResolveProjectName(string? projectId) =>
+        _projects.FirstOrDefault(p => p.Id == projectId)?.Name ?? string.Empty;
 
     /// <summary>
     /// 选中项目并切换到该项目的任务列表。
@@ -294,20 +324,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        SelectedProject = project.Project;
-        SyncProjectSelectionFlags(project.Id);
-
-        // 解除 VIEWS 三个单选的高亮：项目筛选生效时它们都不该显示为选中。
-        // 借用既有的 _isSyncingFilter 抑制回环，避免另起一套防重载机制
-        _isSyncingFilter = true;
-        IsActiveFilterSelected = false;
-        IsTodayFilterSelected = false;
-        IsCompletedFilterSelected = false;
-        _isSyncingFilter = false;
-
-        CurrentCategoryTitle = project.Name;
-        CurrentCategorySubtitle = "该项目下进行中的待办";
-
+        CurrentSelection = ViewSelection.ForProject(project.Id);
         await LoadTasksAsync();
     }
 
@@ -315,70 +332,46 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 解除项目筛选，回到「全部任务」视图。
     /// </summary>
     /// <remarks>
-    /// <b>为什么不能简单写 <c>CurrentFilter = TaskFilter.Active</c></b>：
-    /// 项目筛选生效期间 <see cref="CurrentFilter"/> 仍停留在其原值（通常就是
-    /// <see cref="TaskFilter.Active"/>），仅三个 <c>IsXxxFilterSelected</c> 被清空。
-    /// 此时赋同值属性不变更、<c>OnCurrentFilterChanged</c> 不触发，
-    /// 单选高亮便永远无法恢复 —— 侧边栏会呈现「没有任何项被选中」的空档状态。
-    /// <para>
-    /// 这与 spec-editorial-and-ripple-theme 修正过的缺陷同源（见 <see cref="ChangeFilter"/> 注释）：
-    /// <b>依赖属性变更回调来同步状态，在「新值等于旧值」时必然失效。</b>
-    /// 因此此处显式重建状态，不经由属性变更通知这条路径。
-    /// </para>
+    /// 只需赋一次统一状态，互斥与高亮的重建交由
+    /// <see cref="OnCurrentSelectionChanged"/> 统一处理 ——
+    /// 不再需要像旧实现那样手工清零三个 <c>IsXxxFilterSelected</c> 布尔量
+    /// （该手工同步正是 spec-editorial-and-ripple-theme / spec-classification-ui
+    /// 两次同类缺陷的根源，见 SPEC §1.2）。
     /// </remarks>
     private async Task ReturnToActiveViewAsync()
     {
-        SelectedProject = null;
-        SyncProjectSelectionFlags(null);
-        CurrentFilter = TaskFilter.Active;
-
-        _isSyncingFilter = true;
-        IsActiveFilterSelected = true;
-        IsTodayFilterSelected = false;
-        IsCompletedFilterSelected = false;
-        _isSyncingFilter = false;
-
-        CurrentCategoryTitle = "全部任务";
-        CurrentCategorySubtitle = "聚焦所有活跃进行中的待办";
-
+        CurrentSelection = ViewSelection.Active;
         await LoadTasksAsync();
-    }
-
-    partial void OnIsActiveFilterSelectedChanged(bool value) => SyncFilterFromRadio(value, TaskFilter.Active);
-
-    partial void OnIsTodayFilterSelectedChanged(bool value) => SyncFilterFromRadio(value, TaskFilter.Today);
-
-    partial void OnIsCompletedFilterSelectedChanged(bool value) => SyncFilterFromRadio(value, TaskFilter.Completed);
-
-    /// <summary>
-    /// 将单选按钮的勾选状态回写为筛选枚举，屏蔽枚举驱动时的反向回环。
-    /// </summary>
-    private void SyncFilterFromRadio(bool isChecked, TaskFilter filter)
-    {
-        if (_isSyncingFilter || !isChecked)
-        {
-            return;
-        }
-
-        // 与 ChangeFilter 同样需要显式离开设置页：左侧导航走 IsChecked 双向绑定路径，
-        // 若目标筛选已是当前值，CurrentFilter 不变更、回调不触发。
-        IsSettingsOpen = false;
-        CurrentFilter = filter;
     }
 
     /// <summary>
     /// 切换任务筛选维度。
     /// </summary>
     /// <remarks>
-    /// 关闭设置页在此显式执行，而不能只依赖 <c>OnCurrentFilterChanged</c>：
-    /// 当目标筛选与当前值相同时属性不发生变更、回调不触发，
-    /// 用户在设置页点击当前已选中的导航项会得不到任何响应。
+    /// 关闭设置页无条件执行；但仅在目标筛选与当前值**确实不同**时才触发重新加载 ——
+    /// 用户点击当前已选中的导航项不应引发多余的数据库查询。
+    /// 该判断显式进行（而非依赖属性变更回调是否触发），
+    /// 因为回调本身不适合承载"是否加载"的决策（见 <see cref="OnCurrentSelectionChanged"/> 注释）。
     /// </remarks>
     [RelayCommand]
     private void ChangeFilter(TaskFilter filter)
     {
         IsSettingsOpen = false;
-        CurrentFilter = filter;
+
+        var target = filter switch
+        {
+            TaskFilter.Today => ViewSelection.Today,
+            TaskFilter.Completed => ViewSelection.Completed,
+            _ => ViewSelection.Active
+        };
+
+        if (CurrentSelection == target)
+        {
+            return;
+        }
+
+        CurrentSelection = target;
+        _ = LoadTasksAsync();
     }
 
     /// <summary>
@@ -387,10 +380,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task LoadTasksAsync()
     {
-        // 项目筛选优先于 VIEWS 筛选：二者在界面上互斥，
-        // 选中项目时 VIEWS 单选已被解除高亮，此处的分支顺序须与之一致
-        var items = SelectedProject is not null
-            ? await _repository.GetTasksByProjectAsync(SelectedProject.Id)
+        // 项目筛选优先于 VIEWS 筛选：二者现由同一状态量表达为互斥的不同取值
+        var items = CurrentSelection.Kind == ViewSelectionKind.Project
+            ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
             : CurrentFilter switch
             {
                 TaskFilter.Today => await _repository.GetTodayTasksAsync(),
@@ -456,10 +448,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         await _repository.SaveTaskAsync(task);
         NewTaskTitle = string.Empty;
 
-        // 在"已完成"视图下新增的任务属于活跃集，留在原视图会让用户以为添加失败
-        if (CurrentFilter == TaskFilter.Completed)
+        // 在"已完成"视图下新增的任务属于活跃集，留在原视图会让用户以为添加失败。
+        // 显式调用 LoadTasksAsync：赋值 CurrentSelection 本身不再触发加载
+        // （加载时机由各写入路径自行决定，见 OnCurrentSelectionChanged 注释）
+        if (CurrentSelection.Kind == ViewSelectionKind.Completed)
         {
-            CurrentFilter = TaskFilter.Active;
+            CurrentSelection = ViewSelection.Active;
+            await LoadTasksAsync();
             return;
         }
 
@@ -726,9 +721,17 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>
     /// 将选中状态同步到各项目行，供侧边栏高亮绑定。
     /// </summary>
-    /// <param name="selectedId">选中项目 Id；<c>null</c> 表示全部取消选中。</param>
-    private void SyncProjectSelectionFlags(string? selectedId)
+    /// <remarks>
+    /// 直接读取 <see cref="CurrentSelection"/> 而非接收参数：
+    /// 选中项目 Id 已是统一状态量的一部分，不再需要调用方另行传入
+    /// （旧实现需要传参正是因为存在两份独立状态，见 SPEC §1.1）。
+    /// </remarks>
+    private void SyncProjectSelectionFlags()
     {
+        var selectedId = CurrentSelection.Kind == ViewSelectionKind.Project
+            ? CurrentSelection.ProjectId
+            : null;
+
         foreach (var row in _projects)
         {
             row.IsSelected = row.Id == selectedId;
@@ -804,6 +807,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
+    /// <remarks>
+    /// <b>为什么无需显式的 <c>wasSelected</c> 分支</b>：<see cref="LoadProjectsAsync"/>
+    /// 已经统一处理「选中项目在重载后已不存在」的情形（发现该 Id 不在新集合中即
+    /// 调用 <see cref="ReturnToActiveViewAsync"/>），归档与删除现在共用同一条回退路径，
+    /// 不必在各自的命令方法里各自记一次 <c>wasSelected</c>（Article 10：同一决策只在一处表达）。
+    /// 未选中该项目时，<see cref="LoadProjectsAsync"/> 不会变更 <see cref="CurrentSelection"/>，
+    /// 因此仍需显式 <see cref="LoadTasksAsync"/> 以刷新侧边栏计数与任务流。
+    /// </remarks>
     [RelayCommand]
     private async Task ArchiveProjectAsync(ProjectItemViewModel? project)
     {
@@ -812,18 +823,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        var wasSelected = SelectedProject?.Id == project.Id;
+        var wasSelected = CurrentSelection.Kind == ViewSelectionKind.Project
+            && CurrentSelection.ProjectId == project.Id;
 
         await _projectRepository.SetArchivedAsync(project.Id, true);
         await LoadProjectsAsync();
 
-        // 归档当前选中项目后须显式重建视图状态，
-        // 不能依赖属性变更回调（新值可能等于旧值，见 ReturnToActiveViewAsync）
-        if (wasSelected)
-        {
-            await ReturnToActiveViewAsync();
-        }
-        else
+        if (!wasSelected)
         {
             await LoadTasksAsync();
         }
@@ -859,6 +865,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <b>其下任务不会被删除</b>，仅 <c>ProjectId</c> 置空退回未归属状态 ——
     /// 任务是用户的核心资产，项目只是它的一个可选属性（design-domain-contract §2.2）。
     /// 该语义由 <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
+    /// <para>
+    /// <b>回退逻辑同 <see cref="ArchiveProjectAsync"/></b>：由 <see cref="LoadProjectsAsync"/>
+    /// 统一判定选中项目是否仍存在，无需在此重复记录 <c>wasSelected</c> 后再调用一次
+    /// <see cref="ReturnToActiveViewAsync"/>。
+    /// </para>
     /// </remarks>
     [RelayCommand]
     private async Task ConfirmDeleteProjectAsync()
@@ -869,18 +880,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        var wasSelected = SelectedProject?.Id == target.Id;
+        var wasSelected = CurrentSelection.Kind == ViewSelectionKind.Project
+            && CurrentSelection.ProjectId == target.Id;
 
         await _projectRepository.DeleteAsync(target.Id);
         ProjectPendingDeletion = null;
 
         await LoadProjectsAsync();
 
-        if (wasSelected)
-        {
-            await ReturnToActiveViewAsync();
-        }
-        else
+        if (!wasSelected)
         {
             await LoadTasksAsync();
         }

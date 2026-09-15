@@ -40,33 +40,40 @@
                     <StackPanel Grid.Row="1" Spacing="2">
                         <TextBlock Text="VIEWS" Classes="MicroLabel" Margin="14,0,0,12" />
 
-                        <RadioButton Classes="NavPill"
-                                     GroupName="ViewNav"
-                                     IsChecked="{Binding IsActiveFilterSelected, Mode=TwoWay}">
+                        <!-- 侧边栏高亮统一表达 (spec-sidebar-selection-consolidation)：
+                             VIEWS 三项与下方 PROJECTS 各行同为 Button + Command 触发、
+                             Classes.Selected 驱动高亮，不再有 RadioButton.IsChecked
+                             双向绑定这条独立回环路径。 -->
+                        <Button Classes="NavPill"
+                                Classes.Selected="{Binding IsActiveFilterSelected}"
+                                Command="{Binding ChangeFilterCommand}"
+                                CommandParameter="{x:Static vm:TaskFilter.Active}">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="全部任务" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
                                 <Border Grid.Column="1" Classes="CountBadge">
                                     <TextBlock Text="{Binding ActiveCount}" />
                                 </Border>
                             </Grid>
-                        </RadioButton>
+                        </Button>
 
-                        <RadioButton Classes="NavPill"
-                                     GroupName="ViewNav"
-                                     IsChecked="{Binding IsTodayFilterSelected, Mode=TwoWay}">
+                        <Button Classes="NavPill"
+                                Classes.Selected="{Binding IsTodayFilterSelected}"
+                                Command="{Binding ChangeFilterCommand}"
+                                CommandParameter="{x:Static vm:TaskFilter.Today}">
                             <TextBlock Text="今日聚焦" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
-                        </RadioButton>
+                        </Button>
 
-                        <RadioButton Classes="NavPill"
-                                     GroupName="ViewNav"
-                                     IsChecked="{Binding IsCompletedFilterSelected, Mode=TwoWay}">
+                        <Button Classes="NavPill"
+                                Classes.Selected="{Binding IsCompletedFilterSelected}"
+                                Command="{Binding ChangeFilterCommand}"
+                                CommandParameter="{x:Static vm:TaskFilter.Completed}">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="已完成归档" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
                                 <Border Grid.Column="1" Classes="CountBadge">
                                     <TextBlock Text="{Binding CompletedCount}" />
                                 </Border>
                             </Grid>
-                        </RadioButton>
+                        </Button>
 
                         <!-- ========== PROJECTS 区块 (spec-classification-ui / design-domain-contract §5.1) ==========
                              整块随 HasProjects 显隐：零项目时不显示空列表、不显示占位，

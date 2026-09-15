@@ -192,12 +192,18 @@ public class MainViewModelTests : IDisposable
         Assert.Equal("已完成归档", vm.CurrentCategoryTitle);
     }
 
+    /// <summary>
+    /// 调用形式随 spec-sidebar-selection-consolidation 变化：VIEWS 已从
+    /// <c>RadioButton.IsChecked</c> 双向绑定改为 <c>Button + Command</c>，
+    /// <c>IsTodayFilterSelected</c> 相应变为只读派生属性，故经命令驱动而非直接赋值。
+    /// 断言（预期结果）与整改前逐一致。
+    /// </summary>
     [AvaloniaFact]
     public void RadioSelection_DrivesFilterWithoutFeedbackLoop()
     {
         var vm = CreateViewModel();
 
-        vm.IsTodayFilterSelected = true;
+        vm.ChangeFilterCommand.Execute(TaskFilter.Today);
 
         Assert.Equal(TaskFilter.Today, vm.CurrentFilter);
         Assert.False(vm.IsActiveFilterSelected);
@@ -220,7 +226,9 @@ public class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// 左侧导航实际走 IsChecked 双向绑定，与命令路径需同等覆盖。
+    /// 覆盖「点击当前已选中的导航项」这一此前需要走 IsChecked 双向绑定
+    /// 才能触发的场景；调用形式随 spec-sidebar-selection-consolidation 改为命令驱动，
+    /// 断言与整改前逐一致。
     /// </summary>
     [AvaloniaFact]
     public void RadioSelectionOnCurrentView_AlsoLeavesSettings()
@@ -228,7 +236,7 @@ public class MainViewModelTests : IDisposable
         var vm = CreateViewModel();
         vm.ToggleSettingsCommand.Execute(null);
 
-        vm.IsCompletedFilterSelected = true;
+        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
 
         Assert.False(vm.IsSettingsOpen);
         Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);

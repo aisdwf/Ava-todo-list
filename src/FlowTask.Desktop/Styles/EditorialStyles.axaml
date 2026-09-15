@@ -20,12 +20,23 @@
 
     <!-- ================= 左侧导航药丸 =================
          选中态用强调色竖条 + 弱底，而非整块填充：参考图的导航是克制的，
-         整块高饱和填充会与右侧 Hero 标题抢夺视觉重心。 -->
-    <Style Selector="RadioButton.NavPill">
+         整块高饱和填充会与右侧 Hero 标题抢夺视觉重心。
+
+         为什么是 Button 而非 RadioButton (spec-sidebar-selection-consolidation)：
+         RadioButton 的 :checked 伪类要求 IsChecked 双向绑定，而这正是旧实现
+         「VIEWS 与项目筛选各用一套独立选中机制」问题的来源之一 ——
+         VIEWS 走 IsChecked 双向绑定回环，项目行走 Tapped 事件 + 自持 IsSelected，
+         两条路径分别维护、必须手工互斥同步。改为 Button + Command + Classes.Selected
+         后，VIEWS 与项目行共用完全相同的高亮表达方式（均由
+         MainViewModel.CurrentSelection 派生的布尔量驱动 Classes.Selected），
+         选中态成为纯粹的单向展示，不再有第二条回环路径需要维护。 -->
+    <Style Selector="Button.NavPill">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Template">
             <ControlTemplate>
@@ -57,23 +68,23 @@
             </ControlTemplate>
         </Setter>
     </Style>
-    <Style Selector="RadioButton.NavPill /template/ Border#ActiveBar">
+    <Style Selector="Button.NavPill /template/ Border#ActiveBar">
         <Setter Property="Transitions">
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="RadioButton.NavPill:pointerover /template/ Border#PillRoot">
+    <Style Selector="Button.NavPill:pointerover /template/ Border#PillRoot">
         <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
     </Style>
-    <Style Selector="RadioButton.NavPill:checked /template/ Border#PillRoot">
+    <Style Selector="Button.NavPill.Selected /template/ Border#PillRoot">
         <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
     </Style>
-    <Style Selector="RadioButton.NavPill:checked /template/ Border#ActiveBar">
+    <Style Selector="Button.NavPill.Selected /template/ Border#ActiveBar">
         <Setter Property="Opacity" Value="1" />
     </Style>
-    <Style Selector="RadioButton.NavPill:checked">
+    <Style Selector="Button.NavPill.Selected">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 

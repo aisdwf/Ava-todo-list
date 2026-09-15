@@ -178,6 +178,116 @@ public class ProjectInteractionTests : IDisposable
         Assert.Null(vm.SelectedProject);
     }
 
+    // ==================== 结构整改回归防护 (spec-sidebar-selection-consolidation) ====================
+
+    /// <summary>
+    /// 从项目 A 切换到项目 B：<c>CurrentSelection.Kind</c> 不变（均为 <c>Project</c>），
+    /// 只有 <c>ProjectId</c> 变化。这正是本次整改要根除的缺陷类的镜像场景 ——
+    /// 旧实现里「同一维度内换值」最容易被误判为「无需同步」，
+    /// 而 <see cref="ViewSelection"/> 的记录类型相等性保证了此处仍会被判定为值变化。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SelectProject_SwitchingBetweenTwoProjects_MovesHighlightCorrectly()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "甲";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        vm.NewProjectName = "乙";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var projectA = vm.Projects[0];
+        var projectB = vm.Projects[1];
+
+        await vm.SelectProjectCommand.ExecuteAsync(projectA);
+        Assert.True(projectA.IsSelected);
+        Assert.False(projectB.IsSelected);
+
+        await vm.SelectProjectCommand.ExecuteAsync(projectB);
+
+        Assert.False(projectA.IsSelected);
+        Assert.True(projectB.IsSelected);
+        Assert.Equal(projectB.Id, vm.SelectedProject!.Id);
+    }
+
+    /// <summary>
+    /// 「赋同值」场景的直接回归防护：重复选中同一个已选中的项目，
+    /// 高亮与筛选结果须保持不变（幂等），不能因为值未变化而丢失状态。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SelectProject_SelectingSameProjectTwice_StaysHighlighted()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "项目";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = vm.Projects[0];
+
+        await vm.SelectProjectCommand.ExecuteAsync(project);
+        await vm.SelectProjectCommand.ExecuteAsync(project);
+
+        Assert.True(project.IsSelected);
+        Assert.Equal(project.Id, vm.SelectedProject!.Id);
+    }
+
+    /// <summary>
+    /// 「赋同值」场景：在设置页时点击当前已选中的 VIEWS 导航项 ——
+    /// 目标筛选与当前值相同，仍须离开设置页（此为
+    /// spec-editorial-and-ripple-theme 教训 1 的直接场景，此处在新结构下复验）。
+    /// </summary>
+    [AvaloniaFact]
+    public void ChangeFilter_ToSameValue_StillLeavesSettingsView()
+    {
+        var vm = CreateViewModel();
+        Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
+
+        vm.ToggleSettingsCommand.Execute(null);
+        Assert.True(vm.IsSettingsOpen);
+
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
+
+        Assert.False(vm.IsSettingsOpen);
+        Assert.True(vm.IsActiveFilterSelected);
+    }
+
+    /// <summary>
+    /// 不变量：任一时刻，VIEWS 三个高亮标志与「是否选中了某个项目」互斥 ——
+    /// 有且只有一个为真。以此防止「全部未选中」或「同时多个选中」的空档状态
+    /// （spec-classification-ui 的实际缺陷正是前者）。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ExactlyOneSelectionIsActive_AcrossAllTransitions()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "项目";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = vm.Projects[0];
+
+        AssertExactlyOneActive(vm); // 初始：全部任务
+
+        vm.ChangeFilterCommand.Execute(TaskFilter.Today);
+        AssertExactlyOneActive(vm);
+
+        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        AssertExactlyOneActive(vm);
+
+        await vm.SelectProjectCommand.ExecuteAsync(project);
+        AssertExactlyOneActive(vm);
+
+        await vm.SelectProjectCommand.ExecuteAsync(null);
+        AssertExactlyOneActive(vm);
+
+        static void AssertExactlyOneActive(MainViewModel vm)
+        {
+            var activeCount = new[]
+            {
+                vm.IsActiveFilterSelected,
+                vm.IsTodayFilterSelected,
+                vm.IsCompletedFilterSelected,
+                vm.SelectedProject is not null
+            }.Count(flag => flag);
+
+            Assert.Equal(1, activeCount);
+        }
+    }
+
     /// <summary>
     /// 项目筛选只返回该项目下的任务。
     /// </summary>
