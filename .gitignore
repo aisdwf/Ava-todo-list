@@ -45,12 +45,9 @@ artifacts/
 # Avalonia temp
 GeneratedArtifacts/
 
-# AI Workflow and Internal Specs (Private)
-AI_CONSTITUTION.md
-docs/
-agent/
-agent.md
-claude.md
+# AI Workflow methodology (private; deep rationale, not required to operate the repo)
+# AGENTS.md + docs/rules/ + docs/specs/ remain tracked so the working memory ships with the repo.
+docs/ai-workflow/
 
 # 设计参考素材（内部协同资产，与 docs/ 同属私有）
 # res/ 下为视觉参考图，是 DESIGN-0002 的设计来源，不随源码公开
