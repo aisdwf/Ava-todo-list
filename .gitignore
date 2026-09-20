@@ -54,3 +54,6 @@ docs/ai-workflow/
 res/
 
 
+
+# CodeGraph local index (machine-local; do not ship)
+.codegraph/

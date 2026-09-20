@@ -59,26 +59,32 @@ public class ProjectInteractionTests : IDisposable
         return vm;
     }
 
+
+    /// <summary>侧边栏中除 Default 外的用户项目（Default 为系统种子，恒存在）。</summary>
+    private static IEnumerable<ProjectItemViewModel> UserProjects(MainViewModel vm)
+        => vm.Projects.Where(p => p.Id != DefaultProject.Id);
+
+    private static ProjectItemViewModel SoleUserProject(MainViewModel vm)
+        => Assert.Single(UserProjects(vm));
+
     // ==================== 零分类体验 ====================
 
     /// <summary>
-    /// 零项目时 <c>HasProjects</c> 为假，驱动侧边栏整块隐藏。
+    /// 初始化后仅有系统 Default 项目（取代「未归属」）（R-2.6）。
     /// </summary>
-    /// <remarks>
-    /// 从不使用项目的用户应获得与改动前完全一致的体验 ——
-    /// 不显示空列表，也不显示「新建项目」占位（design-domain-contract §3.3）。
-    /// </remarks>
     [AvaloniaFact]
-    public async Task HasProjects_IsFalseWhenNoProjectExists()
+    public async Task AfterInit_OnlyDefaultProjectExists()
     {
         var vm = await CreateInitializedAsync();
 
-        Assert.False(vm.HasProjects);
-        Assert.Empty(vm.Projects);
+        Assert.True(vm.HasProjects);
+        Assert.Single(vm.Projects);
+        Assert.Equal(DefaultProject.Id, vm.Projects[0].Id);
+        Assert.Empty(UserProjects(vm));
     }
 
     [AvaloniaFact]
-    public async Task HasProjects_BecomesTrueAfterCreation()
+    public async Task CreateProject_AppearsAlongsideDefault()
     {
         var vm = await CreateInitializedAsync();
 
@@ -86,8 +92,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         Assert.True(vm.HasProjects);
-        Assert.Single(vm.Projects);
-        Assert.Equal("FlowTask", vm.Projects[0].Name);
+        Assert.Equal(2, vm.Projects.Count);
+        Assert.Equal("FlowTask", SoleUserProject(vm).Name);
     }
 
     // ==================== 创建 ====================
@@ -100,7 +106,7 @@ public class ProjectInteractionTests : IDisposable
         vm.NewProjectName = "   ";
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.Projects);
+        Assert.Empty(UserProjects(vm));
     }
 
     [AvaloniaFact]
@@ -111,7 +117,7 @@ public class ProjectInteractionTests : IDisposable
         vm.NewProjectName = new string('x', ProjectName.MaxLength + 1);
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.Projects);
+        Assert.Empty(UserProjects(vm));
     }
 
     [AvaloniaFact]
@@ -141,8 +147,9 @@ public class ProjectInteractionTests : IDisposable
         vm.NewProjectName = "乙";
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, vm.Projects.Count);
-        Assert.NotEqual(vm.Projects[0].ColorHex, vm.Projects[1].ColorHex);
+        var users = UserProjects(vm).ToList();
+        Assert.Equal(2, users.Count);
+        Assert.NotEqual(users[0].ColorHex, users[1].ColorHex);
     }
 
     // ==================== 筛选正交性 ====================
@@ -159,7 +166,7 @@ public class ProjectInteractionTests : IDisposable
 
         Assert.True(vm.IsActiveFilterSelected);
 
-        await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         Assert.False(vm.IsActiveFilterSelected);
         Assert.False(vm.IsCompletedFilterSelected);
@@ -175,7 +182,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
         Assert.NotNull(vm.SelectedProject);
 
         vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
@@ -199,8 +206,9 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
         vm.NewProjectName = "乙";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var projectA = vm.Projects[0];
-        var projectB = vm.Projects[1];
+        var users = UserProjects(vm).ToList();
+        var projectA = users.Single(x => x.Name == "甲");
+        var projectB = users.Single(x => x.Name == "乙");
 
         await vm.SelectProjectCommand.ExecuteAsync(projectA);
         Assert.True(projectA.IsSelected);
@@ -223,7 +231,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         await vm.SelectProjectCommand.ExecuteAsync(project);
         await vm.SelectProjectCommand.ExecuteAsync(project);
@@ -263,7 +271,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         AssertExactlyOneActive(vm); // 初始：全部任务
 
@@ -298,7 +306,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "甲项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.NewTaskTitle = "属于甲";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -320,7 +328,7 @@ public class ProjectInteractionTests : IDisposable
         vm.NewProjectName = "我的项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
-        await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         Assert.Equal("我的项目", vm.CurrentCategoryTitle);
     }
@@ -331,7 +339,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         await vm.SelectProjectCommand.ExecuteAsync(null);
 
@@ -351,7 +359,7 @@ public class ProjectInteractionTests : IDisposable
         vm.ToggleSettingsCommand.Execute(null);
         Assert.True(vm.IsSettingsOpen);
 
-        await vm.SelectProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         Assert.False(vm.IsSettingsOpen);
     }
@@ -364,9 +372,9 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "计数项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var projectId = vm.Projects[0].Id;
+        var projectId = SoleUserProject(vm).Id;
 
-        Assert.Equal(0, vm.Projects[0].TaskCount);
+        Assert.Equal(0, SoleUserProject(vm).TaskCount);
 
         vm.NewTaskTitle = "任务甲";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -374,7 +382,7 @@ public class ProjectInteractionTests : IDisposable
 
         // 重新初始化以触发计数刷新
         var reloaded = await CreateInitializedAsync();
-        Assert.Equal(1, reloaded.Projects[0].TaskCount);
+        Assert.Equal(1, SoleUserProject(reloaded).TaskCount);
     }
 
     // ==================== 重命名 ====================
@@ -385,7 +393,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "原名";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.BeginRenameProjectCommand.Execute(project);
         Assert.True(project.IsRenaming);
@@ -408,7 +416,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "原名";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.BeginRenameProjectCommand.Execute(project);
         project.RenameBuffer = "   ";
@@ -427,7 +435,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "原名";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.BeginRenameProjectCommand.Execute(project);
         project.RenameBuffer = "改到一半";
@@ -447,7 +455,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "原名";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
         await vm.SelectProjectCommand.ExecuteAsync(project);
 
         vm.BeginRenameProjectCommand.Execute(project);
@@ -468,7 +476,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "待归档";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.NewTaskTitle = "归档项目下的任务";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -477,8 +485,8 @@ public class ProjectInteractionTests : IDisposable
 
         await vm.ArchiveProjectCommand.ExecuteAsync(project);
 
-        Assert.Empty(vm.Projects);
-        Assert.False(vm.HasProjects);
+        Assert.Empty(UserProjects(vm));
+        Assert.True(vm.HasProjects); // Default 仍在
 
         // 归档与删除的核心区别：归属不变
         var stored = await _repo.GetByIdAsync(taskId);
@@ -496,7 +504,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "待删除";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.NewTaskTitle = "任务甲";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -518,11 +526,12 @@ public class ProjectInteractionTests : IDisposable
         vm.NewProjectName = "项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
-        await vm.RequestDeleteProjectCommand.ExecuteAsync(vm.Projects[0]);
+        await vm.RequestDeleteProjectCommand.ExecuteAsync(SoleUserProject(vm));
         vm.CancelDeleteProjectCommand.Execute(null);
 
         Assert.Null(vm.ProjectPendingDeletion);
-        Assert.Single(vm.Projects);
+        Assert.Equal(2, vm.Projects.Count); // Default + user
+        Assert.Single(UserProjects(vm));
     }
 
     /// <summary>
@@ -534,7 +543,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "建错的项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
 
         vm.NewTaskTitle = "不该丢失的任务";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -544,12 +553,12 @@ public class ProjectInteractionTests : IDisposable
         await vm.RequestDeleteProjectCommand.ExecuteAsync(project);
         await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.Projects);
+        Assert.Empty(UserProjects(vm));
 
         var stored = await _repo.GetByIdAsync(taskId);
         Assert.NotNull(stored);
         Assert.Equal("不该丢失的任务", stored.Title);
-        Assert.Null(stored.ProjectId);
+        Assert.Equal(DefaultProject.Id, stored.ProjectId);
         Assert.False(stored.IsDeleted);
     }
 
@@ -562,7 +571,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "选中后删除";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
         await vm.SelectProjectCommand.ExecuteAsync(project);
 
         await vm.RequestDeleteProjectCommand.ExecuteAsync(project);
@@ -582,7 +591,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "选中后归档";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
         await vm.SelectProjectCommand.ExecuteAsync(project);
 
         await vm.ArchiveProjectCommand.ExecuteAsync(project);
@@ -599,7 +608,7 @@ public class ProjectInteractionTests : IDisposable
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "改色项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = vm.Projects[0];
+        var project = SoleUserProject(vm);
         var before = project.ColorHex;
 
         await vm.ChangeProjectColorCommand.ExecuteAsync(project);
@@ -624,6 +633,6 @@ public class ProjectInteractionTests : IDisposable
         await vm.RequestDeleteProjectCommand.ExecuteAsync(null);
         await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.Projects);
+        Assert.Empty(UserProjects(vm));
     }
 }

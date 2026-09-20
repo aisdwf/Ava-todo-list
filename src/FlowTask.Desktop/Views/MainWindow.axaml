@@ -7,6 +7,7 @@
         x:Class="FlowTask.Desktop.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="FlowTask"
+        Icon="/Assets/Brand/flowtask-icon.ico"
         Width="1180" Height="780"
         MinWidth="940" MinHeight="600"
         WindowStartupLocation="CenterScreen"

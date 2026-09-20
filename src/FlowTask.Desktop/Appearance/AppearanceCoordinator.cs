@@ -166,6 +166,39 @@ public static class AppearanceCoordinator
         => AccentPresets.FirstOrDefault(p => p.Id == presetId) ?? AccentPresets[0];
 
     /// <summary>
+    /// 按已有条目数循环取调色板中的下一默认色（DarkHex）。
+    /// </summary>
+    /// <remarks>
+    /// 权威定义集中于此，避免项目/标签创建路径各自取色而漂移（TR-1 / Article 6）。
+    /// </remarks>
+    public static string PickPaletteColor(int existingCount)
+    {
+        var palette = AccentPresets;
+        var index = existingCount % palette.Count;
+        if (index < 0)
+        {
+            index += palette.Count;
+        }
+
+        return palette[index].DarkHex;
+    }
+
+    /// <summary>
+    /// 在调色板中将当前 DarkHex 轮转到下一色；未知色值从首项之后开始。
+    /// </summary>
+    public static string CyclePaletteColor(string? currentDarkHex)
+    {
+        var palette = AccentPresets;
+        var currentIndex = palette
+            .Select((option, index) => (option, index))
+            .FirstOrDefault(pair => string.Equals(
+                pair.option.DarkHex, currentDarkHex, StringComparison.OrdinalIgnoreCase))
+            .index;
+
+        return palette[(currentIndex + 1) % palette.Count].DarkHex;
+    }
+
+    /// <summary>
     /// 读取当前生效主题下的窗体底色，供水波纹转场取得准确的目标色。
     /// </summary>
     /// <remarks>

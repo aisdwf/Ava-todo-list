@@ -81,6 +81,8 @@ Research reports, comparisons, gap analyses, and investigation results belong un
 
 An `exploratory` task may use a SPEC as cross-session working memory, but its durable findings must be published under `docs/analysis/` and linked from the SPEC.
 
+**Exception — `docs/technical/`**: research that is not tied to a specific SPEC or decision snapshot, and is expected to be referenced repeatedly or updated as a standing technical resource (e.g. architecture reference surveys, open-source case studies used to derive a `docs/rules/technical-rules.md` mandate), belongs under `docs/technical/` instead of `docs/analysis/`. See `docs/technical/README.md` for the boundary. If a `docs/technical/` finding is promoted into a mandatory rule, the rule card states the normative requirement; it does not duplicate the research narrative.
+
 ---
 
 ## Search before creation

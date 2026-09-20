@@ -4,6 +4,7 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Styling;
@@ -26,6 +27,11 @@ public partial class MainWindow : Window
 
     private readonly QuickCaptureViewModel? _quickCaptureVm;
     private QuickCaptureWindow? _quickCaptureWindow;
+
+    /// <summary>
+    /// 热键关闭小窗后的短暂抑制：焦点回主窗时同一次 Option+Space 勿再打开。
+    /// </summary>
+    private DateTime _suppressQuickCaptureOpenUntil = DateTime.MinValue;
 
     /// <summary>
     /// 转场进行中标志，防止连续点击导致多个动画叠加、遮罩残留。
@@ -64,9 +70,24 @@ public partial class MainWindow : Window
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
         {
             themeButton.Click += async (_, _) => await RunThemeRevealAsync(themeButton, vm);
+            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；带 Alt/Meta 时必须让给随手记热键
+            themeButton.AddHandler(
+                KeyDownEvent,
+                (_, e) =>
+                {
+                    if (e.Key == Key.Space
+                        && (e.KeyModifiers.HasFlag(KeyModifiers.Alt)
+                            || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+                    {
+                        ToggleQuickCaptureWindow();
+                        e.Handled = true;
+                    }
+                },
+                RoutingStrategies.Tunnel);
         }
 
-        KeyDown += OnWindowKeyDown;
+        // Tunnel：先于子控件（含聚焦的主题钮）处理热键，避免 Space 被当成按钮激活
+        AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
         Opened += async (_, _) =>
         {
@@ -108,6 +129,7 @@ public partial class MainWindow : Window
         if (canvas is null || circle is null || _isRevealRunning)
         {
             vm.ApplyTheme(!vm.IsDarkTheme);
+            Focus();
             return;
         }
 
@@ -175,13 +197,22 @@ public partial class MainWindow : Window
             circle.Height = 0;
             canvas.IsVisible = false;
             _isRevealRunning = false;
+            // 把焦点从主题钮挪走，避免后续 Option+Space 被当成「再点一次按钮」
+            Focus();
         }
     }
 
     /// <summary>
+    /// 供进程级热键回调：切到 UI 线程后显隐小窗（spec-quick-window-hotkey-capture）。
+    /// </summary>
+    public void ToggleQuickCaptureFromHotkey() => _ = ToggleQuickCaptureWindowAsync();
+
+    /// <summary>
     /// 唤起或隐藏随手记浮窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
-    private void ToggleQuickCaptureWindow()
+    private void ToggleQuickCaptureWindow() => _ = ToggleQuickCaptureWindowAsync();
+
+    private async Task ToggleQuickCaptureWindowAsync()
     {
         if (_quickCaptureVm is null)
         {
@@ -191,6 +222,8 @@ public partial class MainWindow : Window
         if (_quickCaptureWindow is null)
         {
             _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm);
+            // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
+            _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
             // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
             _quickCaptureWindow.Closing += (_, e) =>
@@ -202,10 +235,18 @@ public partial class MainWindow : Window
 
         if (_quickCaptureWindow.IsVisible)
         {
+            // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
+            _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
             _quickCaptureWindow.Hide();
             return;
         }
 
+        if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
+        {
+            return;
+        }
+
+        await _quickCaptureVm.PrepareAsync();
         _quickCaptureWindow.Show();
         _quickCaptureWindow.Activate();
     }

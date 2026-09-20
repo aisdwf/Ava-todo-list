@@ -163,6 +163,7 @@ public class SqliteProjectRepositoryTests : IDisposable
     [Fact]
     public async Task Delete_KeepsTasksAndClearsAssignment()
     {
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
         var project = NewProject("建错的项目");
         await _projects.SaveProjectAsync(project);
         var taskA = await AddTaskAsync("任务甲", project.Id);
@@ -179,9 +180,9 @@ public class SqliteProjectRepositoryTests : IDisposable
         // 任务必须存在
         Assert.NotNull(storedA);
         Assert.NotNull(storedB);
-        // 且退回未归属状态
-        Assert.Null(storedA.ProjectId);
-        Assert.Null(storedB.ProjectId);
+        // 且改挂 Default（R-2.6）
+        Assert.Equal(DefaultProject.Id, storedA.ProjectId);
+        Assert.Equal(DefaultProject.Id, storedB.ProjectId);
         // 未被误标记为删除
         Assert.False(storedA.IsDeleted);
         Assert.False(storedB.IsDeleted);

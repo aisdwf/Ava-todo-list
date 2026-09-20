@@ -22,16 +22,20 @@ public interface IProjectRepository
     Task<int> SetArchivedAsync(string id, bool isArchived);
 
     /// <summary>
-    /// 删除项目，并将其下任务的 <c>ProjectId</c> 置空。
+    /// 删除项目，并将其下任务改挂 <see cref="DefaultProject"/>（R-2.6）。
     /// </summary>
     /// <returns>受影响的任务条数。</returns>
     /// <remarks>
-    /// <b>绝不删除任务。</b>任务是用户的核心资产，项目只是它的一个可选属性；
-    /// 删除属性不应销毁拥有该属性的实体（design-domain-contract §2.2）。
-    /// 两步操作须在单个事务内完成，否则中途失败会留下指向不存在项目的悬空引用。
+    /// <b>绝不删除任务。</b>禁止删除 Default 本身。
+    /// 两步操作须在单个事务内完成。
     /// </remarks>
     Task<int> DeleteAsync(string id);
 
     /// <summary>统计项目下未删除的任务条数，用于删除前的影响提示。</summary>
     Task<int> CountTasksAsync(string projectId);
+
+    /// <summary>
+    /// 确保 Default 项目存在，并将历史 <c>ProjectId IS NULL</c> 的任务迁到 Default。
+    /// </summary>
+    Task EnsureDefaultProjectAsync(DateTime createdAtUtc);
 }

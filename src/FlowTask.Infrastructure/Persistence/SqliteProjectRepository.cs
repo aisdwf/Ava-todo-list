@@ -60,6 +60,7 @@ public class SqliteProjectRepository : IProjectRepository
                 await _db.CreateTableAsync<Project>();
                 await _db.CreateTableAsync<TaskItem>();
                 _initialized = true;
+                // Default 种子在 EnsureDefaultProjectAsync 中执行（需 IClock 时刻）
             }
         }
         finally
@@ -147,19 +148,43 @@ public class SqliteProjectRepository : IProjectRepository
     /// </remarks>
     public async Task<int> DeleteAsync(string id)
     {
+        if (id == DefaultProject.Id)
+        {
+            throw new InvalidOperationException("系统项目 Default 不可删除。");
+        }
+
         await InitializeAsync();
 
         var affectedTasks = 0;
 
         await _db.RunInTransactionAsync(conn =>
         {
+            // R-2.6：删除用户项目后改挂 Default，不再置 null
             affectedTasks = conn.Execute(
-                "UPDATE Tasks SET ProjectId = NULL WHERE ProjectId = ?", id);
+                "UPDATE Tasks SET ProjectId = ? WHERE ProjectId = ?",
+                DefaultProject.Id,
+                id);
 
             conn.Delete<Project>(id);
         });
 
         return affectedTasks;
+    }
+
+    /// <inheritdoc />
+    public async Task EnsureDefaultProjectAsync(DateTime createdAtUtc)
+    {
+        await InitializeAsync();
+
+        var existing = await GetByIdAsync(DefaultProject.Id);
+        if (existing is null)
+        {
+            await _db.InsertAsync(DefaultProject.CreateSeed(createdAtUtc));
+        }
+
+        await _db.ExecuteAsync(
+            "UPDATE Tasks SET ProjectId = ? WHERE ProjectId IS NULL AND IsDeleted = 0",
+            DefaultProject.Id);
     }
 
     /// <inheritdoc />

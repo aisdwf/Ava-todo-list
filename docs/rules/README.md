@@ -20,6 +20,7 @@ AI 会话开始任务前必须先读这四份（见 `AGENTS.md` Gate 2）：
 | [docs-conventions.md](./docs-conventions.md) | SPEC 目录（area 子目录）/命名/状态机/新鲜度阈值的唯一权威 |
 | [commit-conventions.md](./commit-conventions.md) | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` |
 | [project-rules.md](./project-rules.md) | FlowTask 项目专属业务/技术/架构规则（宪法 Article 7） |
+| [technical-rules.md](./technical-rules.md) | 强制性技术/架构分解规则（如 ViewModel 命令拆分），来自结构性代码质量调研 |
 
 ---
 

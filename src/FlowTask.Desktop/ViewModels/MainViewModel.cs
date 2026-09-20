@@ -7,6 +7,7 @@ using FlowTask.Core.Interfaces;
 using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
 
@@ -275,7 +276,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         await _settingsRepository.InitializeAsync();
         DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
-        
+
+        // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
+        await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
+
         AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
         await LoadTagsAsync();
         await LoadProjectsAsync();
@@ -382,18 +386,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="project">目标项目行；传 <c>null</c> 回到「全部任务」。</param>
     [RelayCommand]
     private async Task SelectProjectAsync(ProjectItemViewModel? project)
-    {
-        IsSettingsOpen = false;
-
-        if (project is null)
-        {
-            await ReturnToActiveViewAsync();
-            return;
-        }
-
-        CurrentSelection = ViewSelection.ForProject(project.Id);
-        await LoadTasksAsync();
-    }
+        => await new SelectProjectViewModel().ExecuteAsync(
+            project,
+            () => IsSettingsOpen = false,
+            ReturnToActiveViewAsync,
+            id => CurrentSelection = ViewSelection.ForProject(id),
+            LoadTasksAsync);
 
     /// <summary>
     /// 解除项目筛选，回到「全部任务」视图。
@@ -422,23 +420,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private void ChangeFilter(TaskFilter filter)
-    {
-        IsSettingsOpen = false;
-
-        var target = filter switch
-        {
-            TaskFilter.Completed => ViewSelection.Completed,
-            _ => ViewSelection.Active
-        };
-
-        if (CurrentSelection == target)
-        {
-            return;
-        }
-
-        CurrentSelection = target;
-        _ = LoadTasksAsync();
-    }
+        => new ChangeFilterViewModel().Execute(
+            filter,
+            CurrentSelection,
+            () => IsSettingsOpen = false,
+            selection => CurrentSelection = selection,
+            () => _ = LoadTasksAsync());
 
     /// <summary>
     /// 按当前筛选载入任务，并同步侧边栏计数。
@@ -497,63 +484,37 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private async Task AddTaskAsync()
-    {
-        // 经 TaskTitle 而非各自判空：三处入口（此处、编辑态、随手记）
-        // 共用同一规则，含长度上限（Article 6）
-        if (!TaskTitle.IsValid(NewTaskTitle))
-        {
-            return;
-        }
-
-        // 经 TaskItemFactory 创建而非直接 new：创建时刻赋值与标签规范化等不变量
-        // 集中在单一入口，避免主窗口与小窗各写一份而漂移（Article 6）
-        var task = TaskItemFactory.Create(
-            _clock,
+        => await new AddTaskViewModel(_repository, _tagRepository, _clock).ExecuteAsync(
             NewTaskTitle,
             NewTaskPriority,
-            dueDate: NewDueDateEditor.TakeValue());
-
-        await _repository.SaveTaskAsync(task);
-        await _tagRepository.ReplaceTaskTagsAsync(
-            task.Id,
-            NewTagChoices
-                .Where(choice => choice.IsSelected)
-                .Select(choice => choice.Tag.Id));
-        NewTaskTitle = string.Empty;
-        NewDueDateEditor.Load(null);  // 重置编辑器
-        foreach (var choice in NewTagChoices)
-        {
-            choice.IsSelected = false;
-        }
-
-        // 在"已完成"视图下新增的任务属于活跃集，留在原视图会让用户以为添加失败。
-        // 显式调用 LoadTasksAsync：赋值 CurrentSelection 本身不再触发加载
-        // （加载时机由各写入路径自行决定，见 OnCurrentSelectionChanged 注释）
-        if (CurrentSelection.Kind == ViewSelectionKind.Completed)
-        {
-            CurrentSelection = ViewSelection.Active;
-            await LoadTasksAsync();
-            return;
-        }
-
-        await LoadTasksAsync();
-    }
+            NewDueDateEditor.TakeValue(),
+            NewTagChoices.Where(choice => choice.IsSelected).Select(choice => choice.Tag.Id),
+            () =>
+            {
+                NewTaskTitle = string.Empty;
+                NewDueDateEditor.Load(null);
+                foreach (var choice in NewTagChoices)
+                {
+                    choice.IsSelected = false;
+                }
+            },
+            CurrentSelection.Kind == ViewSelectionKind.Completed,
+            () => CurrentSelection = ViewSelection.Active,
+            LoadTasksAsync);
 
     /// <summary>
     /// 打开行编辑弹出层，用于修改到期日。
     /// </summary>
     [RelayCommand]
     private void OpenDueDatePopup(TaskRowViewModel? row)
-    {
-        if (row is null)
-        {
-            return;
-        }
-
-        EditingDueDateTarget = row;
-        EditingDueDateEditor.Load(row.Task.DueDate, expandCalendar: true);
-        IsDueDatePopupOpen = true;
-    }
+        => new OpenDueDatePopupViewModel().Execute(
+            row,
+            target =>
+            {
+                EditingDueDateTarget = target;
+                EditingDueDateEditor.Load(target.Task.DueDate, expandCalendar: true);
+                IsDueDatePopupOpen = true;
+            });
 
     /// <summary>
     /// 关闭到期日编辑弹出层，不保存更改。
@@ -570,21 +531,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private async Task CommitDueDatePopupAsync()
-    {
-        var row = EditingDueDateTarget;
-        if (row is null)
-        {
-            IsDueDatePopupOpen = false;
-            return;
-        }
-
-        row.Task.DueDate = EditingDueDateEditor.TakeValue();
-        await _repository.SaveTaskAsync(row.Task);
-        await LoadTasksAsync();
-
-        IsDueDatePopupOpen = false;
-        EditingDueDateTarget = null;
-    }
+        => await new CommitDueDatePopupViewModel(_repository).ExecuteAsync(
+            EditingDueDateTarget,
+            EditingDueDateEditor.TakeValue(),
+            () =>
+            {
+                IsDueDatePopupOpen = false;
+                EditingDueDateTarget = null;
+            },
+            LoadTasksAsync);
 
     /// <summary>
     /// 保存默认到期偏移设置。
@@ -607,16 +562,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="item">目标任务；勾选框已通过双向绑定更新其 IsCompleted。</param>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
-    {
-        if (item is null)
-        {
-            return;
-        }
-
-        item.CompletedAt = item.IsCompleted ? _clock.UtcNow : null;
-        await _repository.SaveTaskAsync(item);
-        await LoadTasksAsync();
-    }
+        => await new ToggleCompleteTaskViewModel(_repository, _clock).ExecuteAsync(item, LoadTasksAsync);
 
     /// <summary>
     /// 软删除任务。
@@ -629,15 +575,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task DeleteTaskAsync(TaskItem? item)
-    {
-        if (item is null)
-        {
-            return;
-        }
-
-        await _repository.SoftDeleteAsync(item.Id);
-        await LoadTasksAsync();
-    }
+        => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync);
 
     /// <summary>
     /// 展开或收起某行的编辑面板。
@@ -648,26 +586,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task ToggleEditAsync(TaskRowViewModel? row)
-    {
-        if (row is null)
-        {
-            return;
-        }
-
-        if (row.IsEditing)
-        {
-            await SaveEditAsync(row);
-            return;
-        }
-
-        // 收起其他行并提交它们的改动，避免未落库的编辑被静默丢弃
-        foreach (var other in _tasks.Where(r => r.IsEditing && r != row).ToList())
-        {
-            await SaveEditAsync(other);
-        }
-
-        row.BeginEdit(ProjectChoices, _tags.Select(item => item.Tag));
-    }
+        => await new ToggleEditTaskViewModel(
+                new SaveEditTaskViewModel(_repository, _tagRepository))
+            .ExecuteAsync(
+                row,
+                _tasks,
+                ProjectChoices,
+                _tags.Select(item => item.Tag),
+                LoadTasksAsync);
 
     /// <summary>
     /// 提交某行的编辑缓冲并收起面板。
@@ -688,34 +614,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task SaveEditAsync(TaskRowViewModel? row)
-    {
-        if (row is null)
-        {
-            return;
-        }
-
-        var task = row.Task;
-
-        // 标题非法时保留原值，其余字段的修改照常生效
-        if (TaskTitle.IsValid(row.EditTitle))
-        {
-            task.Title = TaskTitle.Normalize(row.EditTitle);
-        }
-
-        task.Priority = row.EditPriority;
-        task.ProjectId = row.EditProject.ProjectId;
-        // 到期日仅经行上弹出编辑器写入，展开编辑不再改 DueDate。
-
-        await _repository.SaveTaskAsync(task);
-        await _tagRepository.ReplaceTaskTagsAsync(
-            task.Id,
-            row.EditTagChoices
-                .Where(choice => choice.IsSelected)
-                .Select(choice => choice.Tag.Id));
-
-        row.EndEdit();
-        await LoadTasksAsync();
-    }
+        => await new SaveEditTaskViewModel(_repository, _tagRepository)
+            .ExecuteAsync(row, LoadTasksAsync);
 
 
     /// <summary>
@@ -793,48 +693,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private async Task CreateProjectAsync()
-    {
-        if (!ProjectName.IsValid(NewProjectName))
-        {
-            return;
-        }
-
-        var project = new Project
-        {
-            Name = ProjectName.Normalize(NewProjectName),
-            // 新项目排在末位：以当前项目数作为序号，避免与既有项目争位
-            SortOrder = _projects.Count,
-            ColorHex = PickNextProjectColor(),
-            CreatedAt = _clock.UtcNow
-        };
-
-        await _projectRepository.SaveProjectAsync(project);
-
-        NewProjectName = string.Empty;
-        IsCreatingProject = false;
-
-        await LoadProjectsAsync();
-    }
-
-    /// <summary>
-    /// 为新项目挑选一个默认色。
-    /// </summary>
-    /// <remarks>
-    /// 按项目数循环取用调色板，使相邻新建的项目自然获得不同颜色 ——
-    /// 若全部默认同色，项目色条就失去了区分作用。
-    /// 调色板取自既有强调色预设，避免另立一套颜色词汇（Article 6）。
-    /// </remarks>
-    /// <remarks>
-    /// 取 <c>DarkHex</c> 而非 <c>Swatch.ToString()</c>：后者返回笔刷对象的字符串形式
-    /// （可为 null，且格式不保证是十六进制色值），而 <c>ColorHex</c> 字段需要可解析的色值。
-    /// 且 <c>Swatch</c> 是 UI 线程绑定的 <c>SolidColorBrush</c>，
-    /// ViewModel 层不应为取一个色值而触达它。
-    /// </remarks>
-    private string PickNextProjectColor()
-    {
-        var palette = AppearanceCoordinator.AccentPresets;
-        return palette[_projects.Count % palette.Count].DarkHex;
-    }
+        => await new CreateProjectViewModel(_projectRepository, _clock).ExecuteAsync(
+            NewProjectName,
+            _projects.Count,
+            () =>
+            {
+                NewProjectName = string.Empty;
+                IsCreatingProject = false;
+            },
+            LoadProjectsAsync);
 
     /// <summary>
     /// 将选中状态同步到各项目行，供侧边栏高亮绑定。
@@ -869,60 +736,17 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private async Task CommitRenameProjectAsync(ProjectItemViewModel? project)
-    {
-        if (project is null)
-        {
-            return;
-        }
-
-        if (!ProjectName.IsValid(project.RenameBuffer))
-        {
-            project.CancelRename();
-            return;
-        }
-
-        project.Project.Name = ProjectName.Normalize(project.RenameBuffer);
-        await _projectRepository.SaveProjectAsync(project.Project);
-
-        // 就地同步而非重载整个集合：重载会丢失侧边栏选中态
-        project.SyncFromEntity();
-        project.CancelRename();
-
-        // 选中项目被重命名时，标题区需同步
-        if (SelectedProject?.Id == project.Id)
-        {
-            CurrentCategoryTitle = project.Name;
-        }
-    }
+        => await new CommitRenameProjectViewModel(_projectRepository).ExecuteAsync(
+            project,
+            SelectedProject?.Id,
+            title => CurrentCategoryTitle = title);
 
     /// <summary>
     /// 变更项目颜色。
     /// </summary>
     [RelayCommand]
     private async Task ChangeProjectColorAsync(ProjectItemViewModel? project)
-    {
-        if (project is null)
-        {
-            return;
-        }
-
-        // 在调色板中轮转到下一色：项目属性仅名称与颜色两项，
-        // 为改色单独开一个取色器界面不成比例（渐进披露）。
-        // 以 DarkHex 比对而非 Swatch —— 同 PickNextProjectColor 的理由
-        var palette = AppearanceCoordinator.AccentPresets;
-        var currentIndex = palette
-            .Select((option, index) => (option, index))
-            .FirstOrDefault(pair => string.Equals(
-                pair.option.DarkHex, project.ColorHex, StringComparison.OrdinalIgnoreCase))
-            .index;
-
-        project.Project.ColorHex = palette[(currentIndex + 1) % palette.Count].DarkHex;
-        await _projectRepository.SaveProjectAsync(project.Project);
-        project.SyncFromEntity();
-
-        // 任务行的项目色条依赖该颜色，须重载任务流才能刷新
-        await LoadTasksAsync();
-    }
+        => await new ChangeProjectColorViewModel(_projectRepository).ExecuteAsync(project, LoadTasksAsync);
 
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
     /// <remarks>
@@ -935,23 +759,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task ArchiveProjectAsync(ProjectItemViewModel? project)
-    {
-        if (project is null)
-        {
-            return;
-        }
-
-        var wasSelected = CurrentSelection.Kind == ViewSelectionKind.Project
-            && CurrentSelection.ProjectId == project.Id;
-
-        await _projectRepository.SetArchivedAsync(project.Id, true);
-        await LoadProjectsAsync();
-
-        if (!wasSelected)
-        {
-            await LoadTasksAsync();
-        }
-    }
+        => await new ArchiveProjectViewModel(_projectRepository).ExecuteAsync(
+            project,
+            CurrentSelection.Kind == ViewSelectionKind.Project
+                && CurrentSelection.ProjectId == project?.Id,
+            LoadProjectsAsync,
+            LoadTasksAsync);
 
     /// <summary>
     /// 请求删除项目：先查询影响范围，交由界面确认。
@@ -962,15 +775,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task RequestDeleteProjectAsync(ProjectItemViewModel? project)
-    {
-        if (project is null)
-        {
-            return;
-        }
-
-        ProjectPendingDeletionTaskCount = await _projectRepository.CountTasksAsync(project.Id);
-        ProjectPendingDeletion = project;
-    }
+        => await new RequestDeleteProjectViewModel(_projectRepository).ExecuteAsync(
+            project,
+            (pending, count) =>
+            {
+                ProjectPendingDeletion = pending;
+                ProjectPendingDeletionTaskCount = count;
+            });
 
     /// <summary>撤销删除确认。</summary>
     [RelayCommand]
@@ -993,23 +804,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private async Task ConfirmDeleteProjectAsync()
     {
         var target = ProjectPendingDeletion;
-        if (target is null)
-        {
-            return;
-        }
-
-        var wasSelected = CurrentSelection.Kind == ViewSelectionKind.Project
-            && CurrentSelection.ProjectId == target.Id;
-
-        await _projectRepository.DeleteAsync(target.Id);
-        ProjectPendingDeletion = null;
-
-        await LoadProjectsAsync();
-
-        if (!wasSelected)
-        {
-            await LoadTasksAsync();
-        }
+        await new ConfirmDeleteProjectViewModel(_projectRepository).ExecuteAsync(
+            target,
+            CurrentSelection.Kind == ViewSelectionKind.Project
+                && CurrentSelection.ProjectId == target?.Id,
+            () => ProjectPendingDeletion = null,
+            LoadProjectsAsync,
+            LoadTasksAsync);
     }
 
     /// <summary>
@@ -1046,31 +847,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>新建标签。名称为空或重复时不写入数据库。</summary>
     [RelayCommand]
     private async Task CreateTagAsync()
-    {
-        if (!TagName.IsValid(NewTagName))
-        {
-            return;
-        }
-
-        var normalizedName = TagName.Normalize(NewTagName);
-        if (_tags.Any(existing =>
-                string.Equals(existing.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
-        {
-            return;
-        }
-
-        var tag = new Tag
-        {
-            Name = normalizedName,
-            ColorHex = PickNextTagColor(),
-            SortOrder = _tags.Count,
-            CreatedAt = _clock.UtcNow
-        };
-
-        await _tagRepository.SaveAsync(tag);
-        NewTagName = string.Empty;
-        await LoadTagsAsync();
-    }
+        => await new CreateTagViewModel(_tagRepository, _clock).ExecuteAsync(
+            NewTagName,
+            _tags.Select(item => item.Name),
+            _tags.Count,
+            () => NewTagName = string.Empty,
+            LoadTagsAsync);
 
     /// <summary>进入标签重命名编辑态。</summary>
     [RelayCommand]
@@ -1083,76 +865,26 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>提交标签重命名，并保留所有任务关联。</summary>
     [RelayCommand]
     private async Task CommitRenameTagAsync(TagItemViewModel? tag)
-    {
-        if (tag is null)
-        {
-            return;
-        }
-
-        if (!TagName.IsValid(tag.RenameBuffer))
-        {
-            tag.CancelRename();
-            return;
-        }
-
-        var normalizedName = TagName.Normalize(tag.RenameBuffer);
-        if (_tags.Any(existing =>
-                existing.Id != tag.Id
-                && string.Equals(existing.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
-        {
-            tag.CancelRename();
-            return;
-        }
-
-        tag.Tag.Name = normalizedName;
-        await _tagRepository.SaveAsync(tag.Tag);
-        tag.SyncFromEntity();
-        tag.CancelRename();
-        await LoadTasksAsync();
-    }
+        => await new CommitRenameTagViewModel(_tagRepository).ExecuteAsync(
+            tag,
+            _tags.Select(item => (item.Id, item.Name)),
+            LoadTasksAsync);
 
     /// <summary>循环切换标签色。</summary>
     [RelayCommand]
     private async Task ChangeTagColorAsync(TagItemViewModel? tag)
-    {
-        if (tag is null)
-        {
-            return;
-        }
-
-        var palette = AppearanceCoordinator.AccentPresets;
-        var currentIndex = palette
-            .Select((option, index) => (option, index))
-            .FirstOrDefault(pair => string.Equals(
-                pair.option.DarkHex, tag.ColorHex, StringComparison.OrdinalIgnoreCase))
-            .index;
-
-        tag.Tag.ColorHex = palette[(currentIndex + 1) % palette.Count].DarkHex;
-        await _tagRepository.SaveAsync(tag.Tag);
-        tag.SyncFromEntity();
-        await LoadTagsAsync();
-        await LoadTasksAsync();
-    }
+        => await new ChangeTagColorViewModel(_tagRepository).ExecuteAsync(
+            tag,
+            LoadTagsAsync,
+            LoadTasksAsync);
 
     /// <summary>删除标签，同时清理所有任务关联。</summary>
     [RelayCommand]
     private async Task DeleteTagAsync(TagItemViewModel? tag)
-    {
-        if (tag is null)
-        {
-            return;
-        }
-
-        await _tagRepository.DeleteAsync(tag.Id);
-        await LoadTagsAsync();
-        await LoadTasksAsync();
-    }
-
-    private string PickNextTagColor()
-    {
-        var palette = AppearanceCoordinator.AccentPresets;
-        return palette[_tags.Count % palette.Count].DarkHex;
-    }
+        => await new DeleteTagViewModel(_tagRepository).ExecuteAsync(
+            tag,
+            LoadTagsAsync,
+            LoadTasksAsync);
 
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。
@@ -1172,9 +904,19 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadTasksAsync());
+        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = RefreshAfterCaptureAsync());
 
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
         => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadTasksAsync());
+
+    /// <summary>
+    /// 小窗可能在保存时新建项目/标签，须连同侧边栏一并刷新。
+    /// </summary>
+    private async Task RefreshAfterCaptureAsync()
+    {
+        await LoadTagsAsync();
+        await LoadProjectsAsync();
+        await LoadTasksAsync();
+    }
 }

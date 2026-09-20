@@ -5,7 +5,8 @@
         x:Class="FlowTask.Desktop.Views.QuickCaptureWindow"
         x:DataType="vm:QuickCaptureViewModel"
         Title="FlowTask 随手记"
-        Width="620" Height="150"
+        Icon="/Assets/Brand/flowtask-icon.ico"
+        Width="640" Height="220"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
         CanResize="False"
@@ -23,9 +24,9 @@
                 BoxShadow="0 16 40 0 #45000000, 0 2 8 0 #25000000"
                 ClipToBounds="True">
 
-            <Grid RowDefinitions="*,Auto" Margin="24,20,24,14">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="24,20,24,14">
 
-                <!-- 贯穿式主输入：无内框，靠字号建立焦点 (design-visual-language §3) -->
+                <!-- 贯穿式主输入：无内框，靠字号建立焦点 -->
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                     <TextBlock Grid.Column="0"
                                Text="✦"
@@ -38,12 +39,34 @@
                              x:Name="InputBox"
                              Classes="EditorialInput"
                              Text="{Binding InputText, Mode=TwoWay}"
-                             Watermark="闪现的灵感、待办、会议纪要…"
+                             Watermark="灵感…  @项目  #标签"
                              VerticalAlignment="Center" />
                 </Grid>
 
+                <!-- @/# 补全列表：仅在有候选时显示 -->
+                <Border Grid.Row="1"
+                        Margin="32,8,0,0"
+                        IsVisible="{Binding IsCompletionOpen}"
+                        Background="{DynamicResource FloatingSurfaceBrush}"
+                        BorderBrush="{DynamicResource HairlineStrongBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        MaxHeight="96">
+                    <ListBox x:Name="CompletionList"
+                             ItemsSource="{Binding CompletionItems}"
+                             SelectedIndex="{Binding SelectedCompletionIndex, Mode=TwoWay}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Margin="8,4" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
                 <!-- 底部：优先级分段选择 + 快捷键指引 -->
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+                <Grid Grid.Row="2" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                         <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P1"
                                      IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />

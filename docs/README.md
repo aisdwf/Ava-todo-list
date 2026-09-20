@@ -21,6 +21,7 @@ This document serves as the master navigation map for developers and AI agents.
 | [`adr/`](./adr/) | 架构决策记录（Architecture Decision Records），记录重大架构演进背景与取舍 | 架构决策留痕 |
 | [`trobleshooting/`](./trobleshooting/) | 线上/线下重大故障与调试排查手册（Runbook 与 5 Whys 根因分析） | 事故排查手册 |
 | [`analysis/`](./analysis/) | 技术调研、可行性对比、性能压测与选型分析报告 | 调研结论归档 |
+| [`technical/`](./technical/) | **与功能开发进度无关**的技术性资料：架构调研原文、开源项目源码走查等；提炼出的强制规则写入 `rules/` | 技术资料沉淀 |
 | [`design/`](./design/) | **长期有效的设计约束**：视觉语言、领域契约、交互原则。仅 active/superseded 两态 | 约束层，长期有效 |
 | [`refenence/`](./refenence/) | 外部依赖协议、平台 SDK 参考手册与编码规范参考 | 参考与外部接口 |
 | [`archived/`](./archived/) | 历史归档与废弃文档（指向研究/分析，不可直接作为执行依据；必须包含重定向） | 软归档保留 |
@@ -56,6 +57,7 @@ This document serves as the master navigation map for developers and AI agents.
 | [`docs-conventions.md`](./rules/docs-conventions.md) | SPEC 目录（area 子目录）、命名、状态机、新鲜度阈值的唯一权威 |
 | [`commit-conventions.md`](./rules/commit-conventions.md) | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` 约定 |
 | [`project-rules.md`](./rules/project-rules.md) | FlowTask 项目专属业务/技术/架构规则（宪法 Article 7） |
+| [`technical-rules.md`](./rules/technical-rules.md) | 强制性技术/架构分解规则（如 ViewModel 命令拆分） |
 
 ### 2.1b `requirements/` (需求基线)
 
@@ -87,6 +89,7 @@ This document serves as the master navigation map for developers and AI agents.
 | `commit-conventions.md` | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` | BLOCK |
 | `project-rules.md` | FlowTask 项目专属业务/技术/架构规则 | — |
 | `rule-code-standards.md` | C# 12 / Avalonia 11 编码与注释规范 | BLOCK |
+| `technical-rules.md` | 强制性技术/架构分解规则（如 ViewModel 命令拆分） | BLOCK |
 | `rule-spec-review-gate.md` | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（事故记录） | BLOCK |
 | `rule-no-invented-user-behavior.md` | 交互设计严禁凭推理产出用户行为假设（事故记录） | BLOCK |
 | `rule-doc-boundary.md` | 文档类型边界（design vs spec）与命名规范（事故记录） | BLOCK |
@@ -127,6 +130,13 @@ This document serves as the master navigation map for developers and AI agents.
 | 文件名 | 作用简述 | 核心内容 |
 | :--- | :--- | :--- |
 | [`README.md`](./analysis/README.md) | 技术分析与方案调研目录指引 | 方案调研与可行性报告归档 |
+
+### 2.7b `technical/` (与功能开发进度无关的技术资料)
+
+| 文件名 | 作用简述 | 核心内容 |
+| :--- | :--- | :--- |
+| [`README.md`](./technical/README.md) | 目录职责说明；与 `analysis/`、`refenence/` 的边界区分 | 目录定位 |
+| `analysis-avalonia-architecture-references.md` | Avalonia 大型应用架构参考调研原文 | SourceGit / PicView 案例走查；提炼规则见 `rules/technical-rules.md` |
 
 ### 2.8 `design/` (设计约束)
 
@@ -175,18 +185,19 @@ This document serves as the master navigation map for developers and AI agents.
 计数与实际不符时，必须核对实际文件后修正本表，而非调整数字掩盖差异（Article 10）。
 -->
 
-- **顶层受控目录数**：`12` 个
-- **Markdown 文档总数**：`52` 篇（截至 2026-09-17，ai-workflow 深度接入后重计）
+- **顶层受控目录数**：`13` 个（新增 `technical/`）
+- **Markdown 文档总数**：`55` 篇（截至 2026-09-17，新增 `technical-rules.md` 与 `technical/` 目录后重计）
 
 | 目录 | 篇数 | 构成 |
 | :--- | :--- | :--- |
 | `specs/` | 13 | README + 12 份 SPEC（6 个 area 子目录） |
-| `rules/` | 9 | README + 8 条规则（4 张机器权威规则卡 + 4 条事故记录） |
+| `rules/` | 10 | README + 9 条规则（5 张机器权威规则卡 + 4 条事故记录） |
 | `ai-workflow/` | 7 | 总览 + 6 篇体系文章（已 gitignore，不计入版本库） |
 | `archived/` | 6 | README + 5 份已归档 design（均含重定向） |
 | `templates/` | 5 | README + 4 个标准工程模板 |
 | `design/` | 4 | README + 3 份设计约束（视觉 / 契约 / 交互） |
 | `adr/` | 2 | README + 技术栈选型 |
+| `technical/` | 2 | README + 1 篇 Avalonia 架构参考调研 |
 | `requirements/` | 1 | REQUIREMENTS（需求基线，无 README） |
 | `trobleshooting/` | 1 | README（尚无故障手册） |
 | `analysis/` | 1 | README（尚无调研报告） |
