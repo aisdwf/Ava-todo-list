@@ -69,6 +69,23 @@
                             </Grid>
                         </Button>
 
+                        <!-- 完成 ≠ 归档 (spec-task-complete-before-archive)：勾选完成后任务仍留在活动列表，
+                             需显式点击本按钮才会移入「已完成归档」。仅在有待归档项时可见，避免空操作。 -->
+                        <Button Classes="NavPill"
+                                Margin="14,4,0,0"
+                                Command="{Binding ArchiveCompletedCommand}"
+                                IsVisible="{Binding HasPendingArchive}"
+                                ToolTip.Tip="将所有已勾选完成但尚未归档的任务移入「已完成归档」">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="归档全部已完成" FontSize="13"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Classes="CountBadge">
+                                    <TextBlock Text="{Binding PendingArchiveCount}" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
                         <!-- ========== PROJECTS 区块 (spec-classification-ui / design-domain-contract §5.1) ==========
                              整块随 HasProjects 显隐：零项目时不显示空列表、不显示占位，
                              使从不使用项目的用户获得与改动前完全一致的侧边栏（§3.3）。

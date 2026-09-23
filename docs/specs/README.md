@@ -41,9 +41,10 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`quick-capture/spec-quick-window-hotkey-capture` 为 `in-progress`；
-`task-domain/spec-task-complete-before-archive` 与 `quick-capture/spec-quick-window-single-project-list`
-仍为 `draft`。上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
+**当前阶段（`feature/quick-window-standalone` 分支）：`quick-capture/spec-quick-window-hotkey-capture`
+与 `task-domain/spec-task-complete-before-archive` 均为 `in-progress`（后者机器验证已过，等人工验证）；
+`quick-capture/spec-quick-window-single-project-list` 为下一项待开工。
+上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -105,7 +106,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-task-contract-and-clock](./task-domain/spec-task-contract-and-clock[DONE].md) | task-domain | 任务数据契约扩展、IClock 整改与编辑闭环 | `done` | DESIGN 三段实施的第 1 段；产出无 UI 入口，见其 §5 |
 | [spec-tag-entity](./task-domain/spec-tag-entity[DONE].md) | task-domain | 标签实体化与设置页管理 | `done` | 直接切换实体模型，不兼容旧字符串标签；含 TODO(tag-filter) |
 | [spec-due-date-calendar](./task-domain/spec-due-date-calendar[DONE].md) | task-domain | 到期日三来源录入、日历、偏移设置；主窗移除今日聚焦 | `done` | 基础初版已验收；创建不自动写；快捷启用/清除；AppSettings N∈[1,30]；行上点击改期；日历按需展开；主窗删今日聚焦；含 TODO(quick-capture-today) |
-| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[DRAFT].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `draft` | **第 2 份**；归档保留项目来源 |
+| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[IN-PROGRESS].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `in-progress` | **第 2 份**；归档保留项目来源；D3 采用全局「归档全部已完成」入口，不做逐项目/多选 |
 | [spec-classification-ui](./main-window/spec-classification-ui[DONE].md) | main-window | 主窗口分类交互与校验值对象 | `done` | **其交互设计已被用户实测证伪**，由 design-interaction-principles 重做 |
 | [spec-sidebar-selection-consolidation](./main-window/spec-sidebar-selection-consolidation[DONE].md) | main-window | 侧边栏选中机制收敛（结构整改） | `done` | 机器验证（167 测试通过）与人工验证均已完成，行为零变化 |
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | main-window | MainViewModel TR-1 命令拆分（操作类抽取） | `done` | 人工验证通过；薄命令保留 XAML 绑定；`MainViewModel` 1183→912 行 |

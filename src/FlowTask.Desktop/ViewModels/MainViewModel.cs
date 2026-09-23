@@ -147,8 +147,20 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private int _activeCount;
 
+    /// <summary>「已完成归档」计数，语义为已归档任务数（spec-task-complete-before-archive）。</summary>
     [ObservableProperty]
     private int _completedCount;
+
+    /// <summary>
+    /// 已完成但尚未归档的任务数，驱动「归档全部已完成」按钮的可用/可见状态。
+    /// </summary>
+    /// <remarks>0 时该按钮应禁用或隐藏，避免空操作（spec-task-complete-before-archive §2.4 D3）。</remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPendingArchive))]
+    private int _pendingArchiveCount;
+
+    /// <summary>是否存在可归档的已完成任务，驱动按钮 IsVisible/IsEnabled 绑定。</summary>
+    public bool HasPendingArchive => PendingArchiveCount > 0;
 
     /// <summary>
     /// 当前筛选下的任务行集合（只读投影）。
@@ -485,6 +497,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         ActiveCount = active.Count;
         CompletedCount = completed.Count;
+
+        // 活动列表本身已含「已完成未归档」（完成 ≠ 归档），从中筛出待归档数，
+        // 无需新增仓储查询方法
+        PendingArchiveCount = active.Count(t => t.IsCompleted);
     }
 
     /// <summary>
@@ -571,6 +587,20 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
         => await new ToggleCompleteTaskViewModel(_repository, _clock).ExecuteAsync(item, LoadTasksAsync);
+
+    /// <summary>
+    /// 手动归档全部已完成任务（spec-task-complete-before-archive D3：全局范围）。
+    /// </summary>
+    /// <remarks>
+    /// 完成 ≠ 归档：勾选完成只是划线低饱和地留在活动列表；
+    /// 用户需要显式点击这个动作才会真正移入「已完成归档」视图。
+    /// </remarks>
+    [RelayCommand]
+    private async Task ArchiveCompletedAsync()
+    {
+        await _repository.ArchiveAllCompletedAsync();
+        await LoadTasksAsync();
+    }
 
     /// <summary>
     /// 软删除任务。
