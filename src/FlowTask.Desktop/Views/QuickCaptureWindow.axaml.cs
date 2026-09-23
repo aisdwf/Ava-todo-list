@@ -79,8 +79,8 @@ public partial class QuickCaptureWindow : Window
         }
 
         // 小窗前台：热键只通知主窗统一 Toggle，不在此 Hide（否则焦点回主窗会再开一次）
-        if (e.Key == Key.Space
-            && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        // 修饰键判断按平台分流，与 MainWindow 保持一致，避免 Windows 上 Win 键误触
+        if (e.Key == Key.Space && MainWindow.IsQuickCaptureModifier(e.KeyModifiers))
         {
             RequestToggleHotkey?.Invoke();
             e.Handled = true;

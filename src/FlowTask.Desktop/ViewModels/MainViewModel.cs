@@ -225,6 +225,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>请求唤起随手记浮窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
 
+    /// <summary>
+    /// 唤起小窗热键的平台正确按键提示（macOS 显示 ⌥ 符号，Windows 显示 Alt 文字）。
+    /// </summary>
+    /// <remarks>
+    /// 此前 UI 写死 macOS 的 <c>⌥ Space</c>，Windows 用户看到的图标与实际热键不符。
+    /// </remarks>
+    public string QuickCaptureHotkeyLabel => OperatingSystem.IsMacOS() ? "⌥ Space" : "Alt+Space";
+
     /// <summary>请求应用窗口材质。窗口实例归视图层所有，故以事件外发。</summary>
     public event Action<MaterialOption>? MaterialPresetChanged;
 

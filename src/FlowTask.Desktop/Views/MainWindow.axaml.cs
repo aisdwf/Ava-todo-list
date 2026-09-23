@@ -70,14 +70,12 @@ public partial class MainWindow : Window
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
         {
             themeButton.Click += async (_, _) => await RunThemeRevealAsync(themeButton, vm);
-            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；带 Alt/Meta 时必须让给随手记热键
+            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；命中小窗热键修饰键时必须让给随手记热键
             themeButton.AddHandler(
                 KeyDownEvent,
                 (_, e) =>
                 {
-                    if (e.Key == Key.Space
-                        && (e.KeyModifiers.HasFlag(KeyModifiers.Alt)
-                            || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+                    if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
                     {
                         ToggleQuickCaptureWindow();
                         e.Handled = true;
@@ -99,14 +97,26 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        // Alt+Space (Windows) / Cmd+Space (macOS 习惯) 唤起随手记
-        if (e.Key == Key.Space
-            && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起随手记；按平台分流，不跨平台混判修饰键
+        if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
             ToggleQuickCaptureWindow();
             e.Handled = true;
         }
     }
+
+    /// <summary>
+    /// 判断按键修饰符是否命中当前平台的随手记唤起手势。
+    /// </summary>
+    /// <remarks>
+    /// Windows 用 <c>Alt+Space</c>；macOS 用 <c>Option(Meta)+Space</c>。
+    /// 此前两平台的修饰键判断混在一起（<c>Alt || Meta</c>），
+    /// 导致 Windows 上 Win 键（映射为 <see cref="KeyModifiers.Meta"/>）也能误触唤起。
+    /// </remarks>
+    internal static bool IsQuickCaptureModifier(KeyModifiers modifiers)
+        => OperatingSystem.IsMacOS()
+            ? modifiers.HasFlag(KeyModifiers.Meta)
+            : modifiers.HasFlag(KeyModifiers.Alt);
 
     /// <summary>
     /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (spec-editorial-and-ripple-theme §2)。

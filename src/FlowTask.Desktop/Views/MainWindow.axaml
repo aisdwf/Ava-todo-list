@@ -183,7 +183,7 @@
                                 <TextBlock Text="捕获闪现的灵感" Classes="CaptionText" />
                             </StackPanel>
                             <Border Grid.Column="1" Classes="KeyCap">
-                                <TextBlock Text="⌥ Space" />
+                                <TextBlock Text="{Binding QuickCaptureHotkeyLabel}" />
                             </Border>
                         </Grid>
                     </Button>
