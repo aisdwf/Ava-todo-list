@@ -189,15 +189,17 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- 底部随手记唤起钮 (design-visual-language §2.2) -->
+                    <!-- 底部快捷小窗唤起钮 (design-visual-language §2.2)：
+                         spec-quick-window-single-project-list 后小窗已不只是输入胶囊，
+                         而是独立的查看+勾选+捕捉小窗，文案与副标题同步更新，不再称「随手记」 -->
                     <Button Grid.Row="2"
                             Classes="CaptureTrigger"
                             Command="{Binding OpenQuickCaptureCommand}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
-                                <TextBlock Text="随手记" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Text="快捷小窗" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="捕获闪现的灵感" Classes="CaptionText" />
+                                <TextBlock Text="查看待办、勾选、随手记一件事" Classes="CaptionText" />
                             </StackPanel>
                             <Border Grid.Column="1" Classes="KeyCap">
                                 <TextBlock Text="{Binding QuickCaptureHotkeyLabel}" />

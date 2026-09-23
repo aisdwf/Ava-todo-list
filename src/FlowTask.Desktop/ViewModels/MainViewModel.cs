@@ -234,7 +234,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>可选窗口材质预设，直接引用权威定义。</summary>
     public IReadOnlyList<MaterialOption> MaterialPresets => AppearanceCoordinator.MaterialPresets;
 
-    /// <summary>请求唤起随手记浮窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
+    /// <summary>请求唤起快捷小窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
 
     /// <summary>
@@ -282,7 +282,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
-        // 弱引用消息总线：随手记浮窗写入后通知主窗口刷新，双方互不持有强引用 (rule-code-standards §2.1)
+        // 弱引用消息总线：快捷小窗写入后通知主窗口刷新，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
 
@@ -852,7 +852,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 唤起随手记浮窗。
+    /// 唤起快捷小窗。
     /// </summary>
     [RelayCommand]
     private void OpenQuickCapture() => RequestOpenQuickCapture?.Invoke();

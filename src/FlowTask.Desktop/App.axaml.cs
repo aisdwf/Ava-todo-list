@@ -48,7 +48,7 @@ public partial class App : Application
 
             var mainVm = new MainViewModel(repository, projectRepository, tagRepository, clock, settingsRepository);
             var quickCaptureVm = new QuickCaptureViewModel(
-                repository, projectRepository, tagRepository, clock);
+                repository, projectRepository, tagRepository, settingsRepository, clock);
 
             var mainWindow = new MainWindow(mainVm, quickCaptureVm);
             desktop.MainWindow = mainWindow;

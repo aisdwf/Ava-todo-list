@@ -50,7 +50,7 @@ public partial class MainWindow : Window
     /// 构造主视窗。
     /// </summary>
     /// <param name="vm">主视图模型。</param>
-    /// <param name="quickCaptureVm">随手记视图模型。</param>
+    /// <param name="quickCaptureVm">快捷小窗视图模型。</param>
     public MainWindow(MainViewModel vm, QuickCaptureViewModel quickCaptureVm)
     {
         InitializeComponent();
@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
         {
             themeButton.Click += async (_, _) => await RunThemeRevealAsync(themeButton, vm);
-            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；命中小窗热键修饰键时必须让给随手记热键
+            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；命中小窗热键修饰键时必须让给快捷小窗热键
             themeButton.AddHandler(
                 KeyDownEvent,
                 (_, e) =>
@@ -97,7 +97,7 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起随手记；按平台分流，不跨平台混判修饰键
+        // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起快捷小窗；按平台分流，不跨平台混判修饰键
         if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
             ToggleQuickCaptureWindow();
@@ -106,7 +106,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 判断按键修饰符是否命中当前平台的随手记唤起手势。
+    /// 判断按键修饰符是否命中当前平台的快捷小窗唤起手势。
     /// </summary>
     /// <remarks>
     /// Windows 用 <c>Alt+Space</c>；macOS 用 <c>Option(Meta)+Space</c>。
@@ -218,7 +218,7 @@ public partial class MainWindow : Window
     public void ToggleQuickCaptureFromHotkey() => _ = ToggleQuickCaptureWindowAsync();
 
     /// <summary>
-    /// 唤起或隐藏随手记浮窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
+    /// 唤起或隐藏快捷小窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
     private void ToggleQuickCaptureWindow() => _ = ToggleQuickCaptureWindowAsync();
 

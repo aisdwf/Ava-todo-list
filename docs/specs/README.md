@@ -41,9 +41,10 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段（`feature/quick-window-standalone` 分支）：`quick-capture/spec-quick-window-hotkey-capture`
-与 `task-domain/spec-task-complete-before-archive` 均为 `in-progress`（后者机器验证已过，等人工验证）；
-`quick-capture/spec-quick-window-single-project-list` 为下一项待开工。
+**当前阶段（`feature/quick-window-standalone` 分支）：三份 quick-capture 相关 SPEC
+（`spec-quick-window-hotkey-capture` / `task-domain/spec-task-complete-before-archive` /
+`spec-quick-window-single-project-list`）均为 `in-progress`，机器验证（195 测试）均已通过，
+统一等待用户在 Windows 端做一次性人工验收（见各 SPEC §4 人工验证表）。
 上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
@@ -111,7 +112,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-sidebar-selection-consolidation](./main-window/spec-sidebar-selection-consolidation[DONE].md) | main-window | 侧边栏选中机制收敛（结构整改） | `done` | 机器验证（167 测试通过）与人工验证均已完成，行为零变化 |
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | main-window | MainViewModel TR-1 命令拆分（操作类抽取） | `done` | 人工验证通过；薄命令保留 XAML 绑定；`MainViewModel` 1183→912 行 |
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
-| [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[DRAFT].md) | quick-capture | 小窗单项目列表 + 勾选 | `draft` | **第 3 份**；依赖前两份；记忆上次项目 |
+| [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
 
 ### 待办事项索引（跨 SPEC 汇总）
