@@ -69,6 +69,23 @@
                             </Grid>
                         </Button>
 
+                        <!-- 完成 ≠ 归档 (spec-task-complete-before-archive)：勾选完成后任务仍留在活动列表，
+                             需显式点击本按钮才会移入「已完成归档」。仅在有待归档项时可见，避免空操作。 -->
+                        <Button Classes="NavPill"
+                                Margin="14,4,0,0"
+                                Command="{Binding ArchiveCompletedCommand}"
+                                IsVisible="{Binding HasPendingArchive}"
+                                ToolTip.Tip="将所有已勾选完成但尚未归档的任务移入「已完成归档」">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="归档全部已完成" FontSize="13"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Classes="CountBadge">
+                                    <TextBlock Text="{Binding PendingArchiveCount}" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
                         <!-- ========== PROJECTS 区块 (spec-classification-ui / design-domain-contract §5.1) ==========
                              整块随 HasProjects 显隐：零项目时不显示空列表、不显示占位，
                              使从不使用项目的用户获得与改动前完全一致的侧边栏（§3.3）。
@@ -172,18 +189,20 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- 底部随手记唤起钮 (design-visual-language §2.2) -->
+                    <!-- 底部快捷小窗唤起钮 (design-visual-language §2.2)：
+                         spec-quick-window-single-project-list 后小窗已不只是输入胶囊，
+                         而是独立的查看+勾选+捕捉小窗，文案与副标题同步更新，不再称「随手记」 -->
                     <Button Grid.Row="2"
                             Classes="CaptureTrigger"
                             Command="{Binding OpenQuickCaptureCommand}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
-                                <TextBlock Text="随手记" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Text="快捷小窗" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="捕获闪现的灵感" Classes="CaptionText" />
+                                <TextBlock Text="查看待办、勾选、随手记一件事" Classes="CaptionText" />
                             </StackPanel>
                             <Border Grid.Column="1" Classes="KeyCap">
-                                <TextBlock Text="⌥ Space" />
+                                <TextBlock Text="{Binding QuickCaptureHotkeyLabel}" />
                             </Border>
                         </Grid>
                     </Button>

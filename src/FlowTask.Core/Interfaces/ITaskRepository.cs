@@ -7,6 +7,9 @@ namespace FlowTask.Core.Interfaces;
 /// </summary>
 public interface ITaskRepository
 {
+    /// <summary>
+    /// 载入活动任务：未删除且**未归档**（含已完成未归档，spec-task-complete-before-archive）。
+    /// </summary>
     Task<List<TaskItem>> GetAllActiveTasksAsync();
 
     /// <summary>
@@ -18,10 +21,18 @@ public interface ITaskRepository
     /// </remarks>
     Task<List<TaskItem>> GetTodayTasksAsync();
 
+    /// <summary>
+    /// 载入「已完成归档」视图：未删除且**已归档**的任务。
+    /// </summary>
+    /// <remarks>
+    /// 命名沿用历史（曾等价于 <c>IsCompleted</c>），语义已随
+    /// spec-task-complete-before-archive 改为 <c>IsArchived</c> ——
+    /// 完成但未归档的任务不在此列，仍留在活动列表。
+    /// </remarks>
     Task<List<TaskItem>> GetCompletedTasksAsync();
 
     /// <summary>
-    /// 按项目载入未完成任务。
+    /// 按项目载入活动任务（未归档，含已完成未归档）。
     /// </summary>
     /// <param name="projectId">
     /// 目标项目；传 <c>null</c> 时返回**未归属任何项目**的任务，
@@ -42,4 +53,14 @@ public interface ITaskRepository
 
     Task<int> SoftDeleteAsync(string id);
     Task<int> PermanentDeleteAsync(string id);
+
+    /// <summary>
+    /// 手动归档全部已完成且未归档的任务（D3：全局范围，不按单项目拆分）。
+    /// </summary>
+    /// <remarks>
+    /// 只处理 <c>IsCompleted &amp;&amp; !IsArchived</c> 的行（D1：未完成任务不可归档）；
+    /// 归档后保留 <c>ProjectId</c> 来源，不是「整棵项目归档消失」。
+    /// </remarks>
+    /// <returns>受影响的行数。</returns>
+    Task<int> ArchiveAllCompletedAsync();
 }

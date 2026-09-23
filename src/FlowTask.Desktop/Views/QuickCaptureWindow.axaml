@@ -4,9 +4,11 @@
         xmlns:conv="using:FlowTask.Desktop.Converters"
         x:Class="FlowTask.Desktop.Views.QuickCaptureWindow"
         x:DataType="vm:QuickCaptureViewModel"
-        Title="FlowTask 随手记"
+        Title="FlowTask 快捷小窗"
         Icon="/Assets/Brand/flowtask-icon.ico"
-        Width="640" Height="220"
+        Width="420"
+        SizeToContent="Height"
+        MaxHeight="520"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
         CanResize="False"
@@ -24,7 +26,7 @@
                 BoxShadow="0 16 40 0 #45000000, 0 2 8 0 #25000000"
                 ClipToBounds="True">
 
-            <Grid RowDefinitions="Auto,*,Auto" Margin="24,20,24,14">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="20,18,20,14">
 
                 <!-- 贯穿式主输入：无内框，靠字号建立焦点 -->
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
@@ -65,8 +67,71 @@
                     </ListBox>
                 </Border>
 
+                <!-- 单项目切换下拉 (spec-quick-window-single-project-list D1)：
+                     切换即联动下方任务列表重新查询，不通过 @ 补全间接触发，避免输入语法与列表状态耦合 -->
+                <ComboBox Grid.Row="2"
+                          Margin="0,14,0,0"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Projects}"
+                          SelectedItem="{Binding SelectedProject, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="vm:ProjectItemViewModel">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Ellipse Grid.Column="0"
+                                         Width="8" Height="8"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center"
+                                         Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- 单项目任务列表：查看 + 勾选，不打开主窗即可完成（R-1.1/R-1.2/R-1.4） -->
+                <Grid Grid.Row="3" Margin="0,10,0,0">
+                    <TextBlock Text="这个项目还没有任务"
+                               Classes="CaptionText"
+                               HorizontalAlignment="Center"
+                               Margin="0,12,0,12"
+                               IsVisible="{Binding IsTaskListEmpty}" />
+
+                    <ScrollViewer x:Name="TaskListScroll"
+                                  MaxHeight="260"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  IsVisible="{Binding !IsTaskListEmpty}">
+                        <ItemsControl ItemsSource="{Binding Tasks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:TaskRowViewModel">
+                                    <Border BorderBrush="{DynamicResource HairlineBrush}"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="0,8">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <CheckBox Grid.Column="0"
+                                                      Classes="RingCheck"
+                                                      IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,12,0"
+                                                      Command="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).ToggleTaskCompleteCommand}"
+                                                      CommandParameter="{Binding Task}" />
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Task.Title}"
+                                                       FontSize="14"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Classes.QuickCaptureCompleted="{Binding Task.IsCompleted}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
                 <!-- 底部：优先级分段选择 + 快捷键指引 -->
-                <Grid Grid.Row="2" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+                <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                         <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P1"
                                      IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />

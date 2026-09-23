@@ -41,10 +41,13 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`visual-theme/spec-settings-master-detail-and-theme-presets` 与
-`quick-capture/spec-quick-window-hotkey-capture` 均为 `in-progress`；
-`task-domain/spec-task-complete-before-archive` 与 `quick-capture/spec-quick-window-single-project-list`
-仍为 `draft`。上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
+**当前阶段：四份 SPEC 为 `in-progress`——
+`visual-theme/spec-settings-master-detail-and-theme-presets`（代码已提交，人工验证按例外推迟）；
+三份 quick-capture 相关 SPEC（`spec-quick-window-hotkey-capture` /
+`task-domain/spec-task-complete-before-archive` / `spec-quick-window-single-project-list`，
+均源自 `feature/quick-window-standalone` 分支，机器验证 195 测试已通过，
+统一等待用户在 Windows 端做一次性人工验收，见各 SPEC §4 人工验证表）。
+上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -106,12 +109,12 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-task-contract-and-clock](./task-domain/spec-task-contract-and-clock[DONE].md) | task-domain | 任务数据契约扩展、IClock 整改与编辑闭环 | `done` | DESIGN 三段实施的第 1 段；产出无 UI 入口，见其 §5 |
 | [spec-tag-entity](./task-domain/spec-tag-entity[DONE].md) | task-domain | 标签实体化与设置页管理 | `done` | 直接切换实体模型，不兼容旧字符串标签；含 TODO(tag-filter) |
 | [spec-due-date-calendar](./task-domain/spec-due-date-calendar[DONE].md) | task-domain | 到期日三来源录入、日历、偏移设置；主窗移除今日聚焦 | `done` | 基础初版已验收；创建不自动写；快捷启用/清除；AppSettings N∈[1,30]；行上点击改期；日历按需展开；主窗删今日聚焦；含 TODO(quick-capture-today) |
-| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[DRAFT].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `draft` | **第 2 份**；归档保留项目来源 |
+| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[IN-PROGRESS].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `in-progress` | **第 2 份**；归档保留项目来源；D3 采用全局「归档全部已完成」入口，不做逐项目/多选 |
 | [spec-classification-ui](./main-window/spec-classification-ui[DONE].md) | main-window | 主窗口分类交互与校验值对象 | `done` | **其交互设计已被用户实测证伪**，由 design-interaction-principles 重做 |
 | [spec-sidebar-selection-consolidation](./main-window/spec-sidebar-selection-consolidation[DONE].md) | main-window | 侧边栏选中机制收敛（结构整改） | `done` | 机器验证（167 测试通过）与人工验证均已完成，行为零变化 |
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | main-window | MainViewModel TR-1 命令拆分（操作类抽取） | `done` | 人工验证通过；薄命令保留 XAML 绑定；`MainViewModel` 1183→912 行 |
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
-| [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[DRAFT].md) | quick-capture | 小窗单项目列表 + 勾选 | `draft` | **第 3 份**；依赖前两份；记忆上次项目 |
+| [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[IN-PROGRESS].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `in-progress` | 代码已提交；**人工功能验证按 rule-spec-review-gate §5 例外推迟至提交后**（用户原话见其 SPEC「Risks」）；Anthropic/暗夜/海风等预设色值待 browser-use agent 采集 |
 

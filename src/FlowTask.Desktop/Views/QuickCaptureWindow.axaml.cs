@@ -7,7 +7,7 @@ using FlowTask.Desktop.ViewModels;
 namespace FlowTask.Desktop.Views;
 
 /// <summary>
-/// 随手记浮窗：Raycast 风格的极速捕捉胶囊窗 (design-visual-language §3)。
+/// 快捷小窗：Raycast 风格的极速捕捉胶囊窗 (design-visual-language §3)。
 /// </summary>
 public partial class QuickCaptureWindow : Window
 {
@@ -25,9 +25,9 @@ public partial class QuickCaptureWindow : Window
     }
 
     /// <summary>
-    /// 构造随手记浮窗。
+    /// 构造快捷小窗。
     /// </summary>
-    /// <param name="vm">随手记视图模型。</param>
+    /// <param name="vm">快捷小窗视图模型。</param>
     public QuickCaptureWindow(QuickCaptureViewModel vm) : this()
     {
         DataContext = vm;
@@ -40,13 +40,19 @@ public partial class QuickCaptureWindow : Window
             }
         };
 
-        // 拖拽整窗：无系统装饰条时，用户只能靠窗体本身移动浮窗
+        // 拖拽整窗：无系统装饰条时，用户只能靠窗体本身移动浮窗。
+        // 单项目列表 (spec-quick-window-single-project-list) 加入项目下拉与任务勾选后，
+        // 排除范围须覆盖 ComboBox、CheckBox 与任务列表的 ScrollViewer，
+        // 否则点击这些控件会先触发整窗拖拽，吞掉点击/勾选事件。
         PointerPressed += (_, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
                 && e.Source is not ListBox
                 && e.Source is not ListBoxItem
-                && !IsDescendantOfListBox(e.Source))
+                && e.Source is not ComboBox
+                && e.Source is not ComboBoxItem
+                && e.Source is not CheckBox
+                && !IsDescendantOfInteractiveRegion(e.Source))
             {
                 BeginMoveDrag(e);
             }
@@ -79,8 +85,8 @@ public partial class QuickCaptureWindow : Window
         }
 
         // 小窗前台：热键只通知主窗统一 Toggle，不在此 Hide（否则焦点回主窗会再开一次）
-        if (e.Key == Key.Space
-            && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        // 修饰键判断按平台分流，与 MainWindow 保持一致，避免 Windows 上 Win 键误触
+        if (e.Key == Key.Space && MainWindow.IsQuickCaptureModifier(e.KeyModifiers))
         {
             RequestToggleHotkey?.Invoke();
             e.Handled = true;
@@ -133,7 +139,12 @@ public partial class QuickCaptureWindow : Window
         }
     }
 
-    private static bool IsDescendantOfListBox(object? source)
+    /// <summary>
+    /// 判断指针事件来源是否落在需要保留自身点击行为的交互控件内
+    /// （补全列表、项目下拉、任务列表滚动区、勾选框），
+    /// 这些区域内的点击不应被整窗拖拽抢走。
+    /// </summary>
+    private static bool IsDescendantOfInteractiveRegion(object? source)
     {
         if (source is not Control control)
         {
@@ -142,7 +153,7 @@ public partial class QuickCaptureWindow : Window
 
         for (var current = control; current is not null; current = current.Parent as Control)
         {
-            if (current is ListBox or ListBoxItem)
+            if (current is ListBox or ListBoxItem or ComboBox or ComboBoxItem or CheckBox or ScrollViewer)
             {
                 return true;
             }

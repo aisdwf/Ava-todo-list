@@ -133,13 +133,23 @@ public class MainViewModelTests : IDisposable
 
         Assert.Equal(2, vm.ActiveCount);
         Assert.Equal(0, vm.CompletedCount);
+        Assert.Equal(0, vm.PendingArchiveCount);
 
         var first = vm.Tasks[0].Task;
         first.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(first);
 
+        // 完成 ≠ 归档（spec-task-complete-before-archive）：勾选完成后任务仍留在活动列表，
+        // ActiveCount 不变；CompletedCount（=已归档数）在显式归档前也不变
+        Assert.Equal(2, vm.ActiveCount);
+        Assert.Equal(0, vm.CompletedCount);
+        Assert.Equal(1, vm.PendingArchiveCount);
+
+        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
+
         Assert.Equal(1, vm.ActiveCount);
         Assert.Equal(1, vm.CompletedCount);
+        Assert.Equal(0, vm.PendingArchiveCount);
     }
 
     [AvaloniaFact]
@@ -162,7 +172,7 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task CompletedFilter_ShowsOnlyCompletedTasks()
+    public async Task CompletedFilter_ShowsOnlyArchivedTasks()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -176,9 +186,14 @@ public class MainViewModelTests : IDisposable
         done.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(done);
 
+        // 完成 ≠ 归档：只勾选完成时，「已完成归档」视图仍应为空
         vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        await vm.LoadTasksCommand.ExecuteAsync(null);
+        Assert.Empty(vm.Tasks);
 
-        // 筛选变更以 fire-and-forget 启动加载，显式再拉一次以取得确定状态
+        // 显式归档后才出现在「已完成归档」视图
+        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
         await vm.LoadTasksCommand.ExecuteAsync(null);
 
         Assert.Single(vm.Tasks);

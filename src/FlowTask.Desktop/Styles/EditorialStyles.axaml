@@ -88,7 +88,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
-    <!-- ================= 随手记唤起卡 ================= -->
+    <!-- ================= 快捷小窗唤起卡 ================= -->
     <Style Selector="Button.CaptureTrigger">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -342,6 +342,13 @@
         <Setter Property="Opacity" Value="0.4" />
         <Setter Property="TextDecorations" Value="Strikethrough" />
         <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- 快捷小窗任务行完成态：与 .TaskTitle.Completed 视觉一致，但独立成类以配合小窗紧凑字号
+         (spec-quick-window-single-project-list)，不与主窗大字号任务标题样式耦合 -->
+    <Style Selector="TextBlock.QuickCaptureCompleted">
+        <Setter Property="Opacity" Value="0.4" />
+        <Setter Property="TextDecorations" Value="Strikethrough" />
     </Style>
 
     <!-- 微标签 (Micro-label)：序号、时间、分区标题共用 -->
