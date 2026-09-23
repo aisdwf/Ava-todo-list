@@ -1,0 +1,94 @@
+name: Release Windows
+
+# Why: Windows publish previously had no CI path; contributors had to build
+# locally and manually distribute ~44 loose files. This workflow builds the
+# win-x64 single-file executable (see FlowTask.Desktop.csproj) on a real
+# Windows runner and publishes it as a GitHub Release asset, so consumers can
+# fetch a ready-to-run .exe without running dotnet build/restore themselves.
+#
+# Trigger design:
+# - `push` of a `v*` tag is the only path that creates/updates a GitHub
+#   Release. Version number comes solely from the tag (single source of
+#   truth per AI_CONSTITUTION.md Article 6); nothing here reacts to PRs or
+#   pushes to main, so day-to-day PR activity does not consume Actions usage
+#   for this workflow.
+# - `workflow_dispatch` only verifies that the publish step succeeds; it does
+#   not create or update a Release, to avoid an unintended Release being
+#   published from an arbitrary commit/version.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Resolve version from tag
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $version = $env:GITHUB_REF.Substring("refs/tags/v".Length)
+          } else {
+            # workflow_dispatch on a non-tag ref: build-only verification, use a placeholder version.
+            $version = "0.0.0-dev"
+          }
+          echo "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Publish win-x64 single-file
+        shell: pwsh
+        run: >
+          dotnet publish src/FlowTask.Desktop/FlowTask.Desktop.csproj
+          -c Release
+          -r win-x64
+          --self-contained
+          -p:Version=${{ steps.version.outputs.value }}
+          -o publish/win-x64
+
+      - name: List publish output (verification)
+        shell: pwsh
+        run: Get-ChildItem -Path publish/win-x64 -Recurse | Select-Object FullName, Length
+
+      - name: Create release zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish/win-x64/* -DestinationPath FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+
+      - name: Copy standalone exe
+        # Why: the publish output is already a single self-contained .exe, so
+        # a plain copy (renamed with the version for clarity) gives users a
+        # second, zip-free download option alongside the .zip asset.
+        shell: pwsh
+        run: |
+          Copy-Item publish/win-x64/FlowTask.Desktop.exe FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlowTask-win-x64-${{ steps.version.outputs.value }}
+          path: |
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
+          generate_release_notes: true

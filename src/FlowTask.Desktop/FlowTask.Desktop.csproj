@@ -9,6 +9,26 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+  <!--
+    Windows single-file publish configuration.
+    Why: Default `dotnet publish` (framework-dependent) scatters ~44 loose files
+    (Avalonia/*.dll, Skia/HarfBuzz/SQLite native libs, FlowTask.*.dll, .exe) next
+    to each other, which is hard to distribute as a single artifact. This group
+    only activates when RuntimeIdentifier=win-x64 is explicitly requested (e.g.
+    `dotnet publish -r win-x64`), so ordinary `dotnet build`/`dotnet test` and
+    non-Windows RIDs are unaffected.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)'=='win-x64'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
   <ItemGroup>
     <AvaloniaResource Include="$(ApplicationIcon)" />
     <Content Include="Assets/Brand/flowtask-icon.png"
@@ -28,4 +48,20 @@
     <ProjectReference Include="..\FlowTask.Core\FlowTask.Core.csproj" />
     <ProjectReference Include="..\FlowTask.Infrastructure\FlowTask.Infrastructure.csproj" />
   </ItemGroup>
+
+  <!--
+    Why: `DebugType=none` above only suppresses this project's own .pdb.
+    Referenced projects (FlowTask.Core/Infrastructure) still emit their own
+    .pdb via `dotnet build` before publish, and MSBuild copies those into the
+    publish output regardless of the referencing project's DebugType. There is
+    no ProjectReference-level switch to suppress a dependency's own DebugType,
+    so the leftover .pdb files are removed post-publish to keep the win-x64
+    single-file output down to just the one .exe.
+  -->
+  <Target Name="RemoveLeftoverPdbFromSingleFilePublish" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)'=='win-x64' And '$(PublishSingleFile)'=='true'">
+    <ItemGroup>
+      <_LeftoverPdb Include="$(PublishDir)*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_LeftoverPdb)" />
+  </Target>
 </Project>
