@@ -67,16 +67,28 @@ jobs:
         run: |
           Compress-Archive -Path publish/win-x64/* -DestinationPath FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
 
-      - name: Upload build artifact
+      - name: Copy standalone exe
+        # Why: the publish output is already a single self-contained .exe, so
+        # a plain copy (renamed with the version for clarity) gives users a
+        # second, zip-free download option alongside the .zip asset.
+        shell: pwsh
+        run: |
+          Copy-Item publish/win-x64/FlowTask.Desktop.exe FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: FlowTask-win-x64-${{ steps.version.outputs.value }}
-          path: FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+          path: |
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
           retention-days: 14
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+          files: |
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.zip
+            FlowTask-win-x64-${{ steps.version.outputs.value }}.exe
           generate_release_notes: true

@@ -113,7 +113,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[DRAFT].md) | quick-capture | 小窗单项目列表 + 勾选 | `draft` | **第 3 份**；依赖前两份；记忆上次项目 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
-| [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[IN-PROGRESS].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `in-progress` | 新建 `packaging` area；用户已确认执行计划，开工中 |
+| [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[IN-PROGRESS].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `in-progress` | 新建 `packaging` area；CI 实测通过（44 文件→1 exe），待用户 Windows 手动验证 |
 
 ### 待办事项索引（跨 SPEC 汇总）
 
