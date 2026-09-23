@@ -15,6 +15,7 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 | [`main-window/`](./main-window/) | 主窗口布局、侧边栏、分类交互 |
 | [`quick-capture/`](./quick-capture/) | 快捷键显隐小窗、捕捉补全 |
 | [`docs-system/`](./docs-system/) | 文档体系自身的重构 |
+| [`packaging/`](./packaging/) | 发布产物形态、CI 构建与分发流程 |
 
 新增 area 前必须满足 `docs-conventions.md` 的三条判据（无现成归属 / 稳定域身份 / 一句话可描述边界）。
 
@@ -112,6 +113,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[DRAFT].md) | quick-capture | 小窗单项目列表 + 勾选 | `draft` | **第 3 份**；依赖前两份；记忆上次项目 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
+| [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[IN-PROGRESS].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `in-progress` | 新建 `packaging` area；用户已确认执行计划，开工中 |
 
 ### 待办事项索引（跨 SPEC 汇总）
 
