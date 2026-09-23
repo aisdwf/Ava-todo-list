@@ -53,6 +53,31 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private bool _isSettingsOpen;
 
     /// <summary>
+    /// 设置页当前选中的左侧设置项（spec-settings-master-detail-and-theme-presets）。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="IsSettingsOpen"/> 正交：前者只回答"是否在设置页"，
+    /// 本属性回答"设置页内右侧渲染哪一项内容"，二者职责不重叠。
+    /// 权威状态是枚举而非 <see cref="SettingsNavItem"/> 对象，
+    /// 避免右侧内容区的 <c>IsVisible</c> 判断依赖对象引用相等。
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedSettingsNavItem))]
+    private SettingsSection _selectedSettingsSection = SettingsSection.ThemePreset;
+
+    /// <summary>
+    /// 左侧导航 <c>ListBox</c> 的 <c>SelectedItem</c> 绑定桥接：
+    /// 该控件的原生选中语义是对象而非枚举，此处在对象与
+    /// <see cref="SelectedSettingsSection"/> 之间做双向同步，
+    /// 避免为枚举单独实现一套 IsSelected 比对逻辑（对齐 ChoiceGrid 既有模式）。
+    /// </summary>
+    public SettingsNavItem SelectedSettingsNavItem
+    {
+        get => SettingsNavItems.First(item => item.Section == SelectedSettingsSection);
+        set => SelectedSettingsSection = value.Section;
+    }
+
+    /// <summary>
     /// 侧边栏「当前查看什么」的单一状态量。
     /// </summary>
     /// <remarks>
@@ -84,6 +109,16 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>当前强调色预设。</summary>
     [ObservableProperty]
     private AppearanceOption _selectedAccent = AppearanceCoordinator.AccentPresets[0];
+
+    /// <summary>
+    /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
+    /// </summary>
+    /// <remarks>
+    /// 目前 <see cref="AppearanceCoordinator.ThemePresets"/> 只回填了现有强调色作为过渡，
+    /// 真实的 Anthropic / 暗夜 / 海风等预设色值尚未采集（见该 SPEC 的 Risks and open questions）。
+    /// </remarks>
+    [ObservableProperty]
+    private ThemePreset _selectedThemePreset = AppearanceCoordinator.ThemePresets[0];
 
     /// <summary>
     /// 当前 VIEWS 筛选维度，由 <see cref="CurrentSelection"/> 派生。
@@ -221,6 +256,27 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>可选窗口材质预设，直接引用权威定义。</summary>
     public IReadOnlyList<MaterialOption> MaterialPresets => AppearanceCoordinator.MaterialPresets;
+
+    /// <summary>可选命名主题预设，直接引用权威定义（spec-settings-master-detail-and-theme-presets）。</summary>
+    public IReadOnlyList<ThemePreset> ThemePresets => AppearanceCoordinator.ThemePresets;
+
+    /// <summary>
+    /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
+    /// </summary>
+    /// <remarks>
+    /// 固定列表，顺序即当前卷动流的既有顺序（外观主题 → 强调色 → 窗口材质 →
+    /// 默认到期偏移 → 标签管理 → 关于），未引入新的信息架构判断
+    /// （spec-settings-master-detail-and-theme-presets §Constraints [推断]）。
+    /// </remarks>
+    public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
+    {
+        new SettingsNavItem(SettingsSection.ThemePreset, "外观主题", "选择一套命名主题预设。"),
+        new SettingsNavItem(SettingsSection.Accent, "强调色", "点缀色实时应用于按钮与高光。"),
+        new SettingsNavItem(SettingsSection.Material, "窗口材质", "桌面原生视觉质感。"),
+        new SettingsNavItem(SettingsSection.DueDateOffset, "默认到期偏移", "「启用默认到期」的天数。"),
+        new SettingsNavItem(SettingsSection.Tags, "标签管理", "维护任务可选标签。"),
+        new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
+    };
 
     /// <summary>请求唤起随手记浮窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
@@ -839,8 +895,26 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>
     /// 展开或收起外观设置视图。
     /// </summary>
+    /// <remarks>
+    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项——
+    /// 与「返回清单」按钮的语义对称：外观偏好子标题永远描述"当前在设置页的哪里"，
+    /// 不需要跨会话记忆导航位置（spec-settings-master-detail-and-theme-presets）。
+    /// </remarks>
     [RelayCommand]
-    private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
+    private void ToggleSettings()
+    {
+        IsSettingsOpen = !IsSettingsOpen;
+        if (IsSettingsOpen)
+        {
+            SelectedSettingsSection = SettingsSection.ThemePreset;
+        }
+    }
+
+    /// <summary>
+    /// 切换设置页右侧渲染的具体设置项。
+    /// </summary>
+    [RelayCommand]
+    private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
 
     // ==================== 标签管理 ====================
 
@@ -895,6 +969,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 强调色预设选中变更时立即写入主题字典，实现即时生效。
     /// </summary>
     partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
+
+    /// <summary>
+    /// 命名主题预设选中变更时立即应用（当前等价于应用其内嵌强调色）。
+    /// </summary>
+    partial void OnSelectedThemePresetChanged(ThemePreset value) => AppearanceCoordinator.ApplyThemePreset(value.Id);
 
     /// <summary>
     /// 手动刷新任务流。

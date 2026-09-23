@@ -219,6 +219,64 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
+    <!-- ================= 设置页左侧导航 (spec-settings-master-detail-and-theme-presets) =================
+         垂直单列，选中态用左侧细竖条呼应 NavPill 的视觉语言，
+         但走 ListBox.SelectedItem 原生语义而非 Button + Classes.Selected，
+         因为这里是"单选一项持久展示"而非"点击触发一次性动作"。 -->
+    <Style Selector="ListBox.SettingsNav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.SettingsNav ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="SettingsNavItemRoot"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="14,11">
+                    <Grid ColumnDefinitions="3,*">
+                        <Border x:Name="SettingsNavActiveBar"
+                                Grid.Column="0"
+                                Width="3"
+                                CornerRadius="2"
+                                Background="{DynamicResource AccentBrush}"
+                                Opacity="0"
+                                Margin="0,1,0,1" />
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="13,0,0,0"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          VerticalAlignment="Center" />
+                    </Grid>
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.18" />
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.SettingsNav ListBoxItem:pointerover /template/ Border#SettingsNavItemRoot">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+    </Style>
+    <Style Selector="ListBox.SettingsNav ListBoxItem:selected /template/ Border#SettingsNavItemRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="ListBox.SettingsNav ListBoxItem:selected /template/ Border#SettingsNavActiveBar">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="ListBox.SettingsNav ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
     <!-- ================= 贯穿式无边框输入 =================
          design-visual-language §2.3：快速添加栏"无边框贯穿式设计"。 -->
     <Style Selector="TextBox.EditorialInput">

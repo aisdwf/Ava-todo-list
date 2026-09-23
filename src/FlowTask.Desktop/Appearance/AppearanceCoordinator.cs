@@ -43,6 +43,19 @@ public static class AppearanceCoordinator
     };
 
     /// <summary>
+    /// 命名主题预设（spec-settings-master-detail-and-theme-presets）。
+    /// </summary>
+    /// <remarks>
+    /// 目前**仅承载架构**，不包含 Anthropic / 暗夜 / 海风等命名预设的真实色值——
+    /// 这些色值需先从 dogapi.cc / linkapi.ai 的风格设置面板采集，采集完成前
+    /// 此列表只回填现有 4 个强调色作为过渡，避免设置页出现空列表。
+    /// 新增预设只需在此追加条目，不需要改动任何 XAML 结构（Acceptance criteria）。
+    /// </remarks>
+    public static readonly IReadOnlyList<ThemePreset> ThemePresets = AccentPresets
+        .Select(accent => new ThemePreset(accent.Id, accent.DisplayName, accent, SurfaceOverride: null))
+        .ToArray();
+
+    /// <summary>
     /// 可选窗口材质预设。<c>Hint</c> 为 Avalonia 透明度等级候选链，
     /// 首选项不被平台支持时按序回退，末位 None 保证始终有可用的不透明底。
     /// </summary>
@@ -166,6 +179,22 @@ public static class AppearanceCoordinator
         => AccentPresets.FirstOrDefault(p => p.Id == presetId) ?? AccentPresets[0];
 
     /// <summary>
+    /// 查询指定命名主题预设，未知标识回退至首个预设。
+    /// </summary>
+    public static ThemePreset FindThemePreset(string presetId)
+        => ThemePresets.FirstOrDefault(p => p.Id == presetId) ?? ThemePresets[0];
+
+    /// <summary>
+    /// 应用命名主题预设：目前等价于应用其内嵌的强调色（架构预留 <see cref="ThemePreset.SurfaceOverride"/>，
+    /// 待真实预设色值采集后再启用表面基调覆写）。
+    /// </summary>
+    public static void ApplyThemePreset(string presetId)
+    {
+        var preset = FindThemePreset(presetId);
+        ApplyAccent(preset.Accent.Id);
+    }
+
+    /// <summary>
     /// 按已有条目数循环取调色板中的下一默认色（DarkHex）。
     /// </summary>
     /// <remarks>
@@ -278,6 +307,34 @@ public sealed record AppearanceOption(string Id, string DisplayName, string Dark
     /// </remarks>
     public IBrush Swatch => _swatch ??= new SolidColorBrush(Color.Parse(DarkHex));
 }
+
+/// <summary>
+/// 命名主题预设定义（spec-settings-master-detail-and-theme-presets）。
+/// </summary>
+/// <param name="Id">稳定标识，用于持久化与命令参数；与内嵌 <see cref="Accent"/> 的 Id 一致。</param>
+/// <param name="DisplayName">界面展示名称，例如 "Anthropic"、"暗夜"、"海风"。</param>
+/// <param name="Accent">该主题预设采用的强调色，当前直接复用 <see cref="AppearanceCoordinator.AccentPresets"/> 中的条目。</param>
+/// <param name="SurfaceOverride">
+/// 表面基调覆写（窗体底色、卡片底色等），当前恒为 <c>null</c>——
+/// Anthropic / 暗夜 / 海风等真实预设的表面配色需先从参考站点采集后才能填入，
+/// 本次只交付可承载该字段的结构，不虚构色值（rule-no-invented-user-behavior）。
+/// </param>
+public sealed record ThemePreset(
+    string Id,
+    string DisplayName,
+    AppearanceOption Accent,
+    ThemeSurfaceOverride? SurfaceOverride)
+{
+    /// <summary>设置面板中的色样笔刷，直接复用强调色的色样。</summary>
+    public IBrush Swatch => Accent.Swatch;
+}
+
+/// <summary>
+/// 主题预设可选的表面基调覆写（架构预留，当前无预设填充此结构）。
+/// </summary>
+/// <param name="DarkSurfaceHex">深色主题下的窗体底色覆写。</param>
+/// <param name="LightSurfaceHex">浅色主题下的窗体底色覆写。</param>
+public sealed record ThemeSurfaceOverride(string DarkSurfaceHex, string LightSurfaceHex);
 
 /// <summary>
 /// 窗口材质预设定义。

@@ -41,7 +41,8 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`quick-capture/spec-quick-window-hotkey-capture` 为 `in-progress`；
+**当前阶段：`visual-theme/spec-settings-master-detail-and-theme-presets` 与
+`quick-capture/spec-quick-window-hotkey-capture` 均为 `in-progress`；
 `task-domain/spec-task-complete-before-archive` 与 `quick-capture/spec-quick-window-single-project-list`
 仍为 `draft`。上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
 跨 SPEC 未实现项见下方「待办事项索引」。
@@ -112,6 +113,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[DRAFT].md) | quick-capture | 小窗单项目列表 + 勾选 | `draft` | **第 3 份**；依赖前两份；记忆上次项目 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
+| [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[IN-PROGRESS].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `in-progress` | 代码已提交；**人工功能验证按 rule-spec-review-gate §5 例外推迟至提交后**（用户原话见其 SPEC「Risks」）；Anthropic/暗夜/海风等预设色值待 browser-use agent 采集 |
 
 ### 待办事项索引（跨 SPEC 汇总）
 
@@ -126,3 +128,4 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | `Description` 仍为死字段（无 UI 读写路径） | 2026-10-05 | 无（编辑态已有 5 字段，加备注需多行框、显著增高面板） | [spec-classification-ui 的推迟事项](./main-window/spec-classification-ui[DONE].md) |
 | 软删除任务无恢复入口，`PermanentDeleteAsync` 无调用方 | 2026-10-05 | 需先决定回收站是否作为需求纳入 REQUIREMENTS | [spec-task-contract-and-clock 的推迟事项](./task-domain/spec-task-contract-and-clock[DONE].md) |
 | **项目归档命令已实现但无 UI 入口**（只能删除，不能归档） | 2026-10-12 | 需决策承载方式（右键菜单 / 项目详情弹层） | [spec-classification-ui 的推迟事项](./main-window/spec-classification-ui[DONE].md) |
+| **Anthropic/暗夜/海风等命名主题预设的具体色值未定义** | 待定 | 需具备浏览器操作能力的 agent 实际访问 dogapi.cc / linkapi.ai 的风格设置面板采集预设与色值，本轮不得凭推理编造 | [spec-settings-master-detail-and-theme-presets 的推迟事项](./visual-theme/spec-settings-master-detail-and-theme-presets[IN-PROGRESS].md) |
