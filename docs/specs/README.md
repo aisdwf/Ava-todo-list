@@ -48,7 +48,8 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 `task-domain/spec-task-complete-before-archive` / `spec-quick-window-single-project-list`，
 均源自 `feature/quick-window-standalone` 分支，机器验证 195 测试已通过，
 统一等待用户在 Windows 端做一次性人工验收，见各 SPEC §4 人工验证表）。
-上一完成项为 `main-window/spec-viewmodel-command-decomposition`（TR-1）。**
+上一完成项为 `packaging/spec-windows-single-file-release`（Windows win-x64 单文件发布
++ GitHub Actions Release 流水线；`v0.1.0` 已发布，zip + 裸 exe 双资产；人工验证通过）。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -118,7 +119,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[IN-PROGRESS].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `in-progress` | 代码已提交；**人工功能验证按 rule-spec-review-gate §5 例外推迟至提交后**（用户原话见其 SPEC「Risks」）；Anthropic/暗夜/海风等预设色值待 browser-use agent 采集 |
-| [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[IN-PROGRESS].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `in-progress` | 新建 `packaging` area；CI 实测通过（44 文件→1 exe）；用户已手动验证通过；Release 同时提供 zip 与裸 exe |
+| [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[DONE].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `done` | 新建 `packaging` area；44 文件→1 exe；`v0.1.0` 已正式发布，zip + 裸 exe 双资产；人工验证通过 |
 
 ### 待办事项索引（跨 SPEC 汇总）
 

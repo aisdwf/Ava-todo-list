@@ -4,15 +4,17 @@
 
 - **ID**: spec-windows-single-file-release
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: done
 - **Owner**: aisdwf (via AI agent)
 - **Created Date**: 2026-09-23
 - **Last Updated**: 2026-09-23
 
-> ## ✅ 开工确认记录（rule-spec-review-gate）
+> ## ✅ 收工记录
 >
-> 用户已于 2026-09-23 显式确认 Staged plan（原话：「可以开始」），状态由 `draft` 转为
-> `in-progress`，允许开始改动 `src/`、`.github/` 与 csproj 文件。
+> 用户已于 2026-09-23 显式确认 Staged plan（原话：「可以开始」）开工；随后手动验证
+> Windows exe 可运行（原话：「能出现即可」）；追加 zip+裸exe 双资产需求并确认合并到
+> `main`、发布 `0.1.0`。全部 Acceptance criteria 与 Change checklist 已完成，见下方
+> Progress log / Verification。
 
 ---
 
@@ -126,7 +128,7 @@
 - [x] `.github/workflows/release-windows.yml`：新增 Windows 构建 + Release 发布 workflow
 - [x] 本 SPEC 的 Progress log / Verification / Lessons learned 随实施推进更新
 - [x] `docs/specs/README.md`：登记本 SPEC 到索引表与新增 `packaging` area
-- [ ] 用户在 Windows 环境手动验证 exe 可运行（未完成，等待用户执行）
+- [x] 用户在 Windows 环境手动验证 exe 可运行（原话「能出现即可」，确认通过）
 
 ## Progress log
 
@@ -202,6 +204,33 @@
   （据核实 `main` 自本 SPEC 开工以来无新提交，预期无冲突），随后推送 `v0.1.0` tag
   触发正式发布；发布后清理测试 tag/Release `v0.0.0-test1`。
 
+### 2026-09-23（合并 main + 0.1.0 正式发布）
+
+- Completed:
+  - 合并前发现本地 `main` worktree 领先 `origin/main` 5 个未推送提交（含已合并的
+    `feature/quick-window-standalone` 分支），经用户确认「这些提交预期内，一并推送」。
+  - `git merge --no-ff feature/win-single-exe-packaging` 到本地 `main`：仅
+    `docs/specs/README.md` 一处冲突（两分支各自新增了一条 SPEC 索引行），手动合并为
+    保留两条记录，非替代关系；冲突解决后本机复检 `dotnet build`（0/0）与
+    `dotnet test`（195 通过，合并后基线）。
+  - `git push origin main`：fast-forward，`87f994b..7adff57`，成功。
+  - 清理测试产物：`git push origin --delete v0.0.0-test1` 删除远程测试 tag；确认
+    对应 GitHub Release 已随 tag 删除自动清理（`GET /releases` 列表复查为空）。
+  - 打正式 tag `v0.1.0` 并推送，触发
+    [run 35839468906](https://github.com/aisdwf/Ava-todo-list/actions/runs/35839468906)，
+    全部步骤 `success`（含新增的 `Copy standalone exe` 步骤）。
+  - 验证 Release 资产：
+    - `FlowTask-win-x64-0.1.0.zip`（HTTP 200，41,348,056 字节）下载并解压，压缩包内
+      仍仅 1 个文件 `FlowTask.Desktop.exe`（46,631,534 字节）。
+    - `FlowTask-win-x64-0.1.0.exe`（`HEAD` 请求确认 `content-length: 46631534`，
+      与 zip 内 exe 大小一致；完整下载因本机到 Azure Blob 出口网络超时未完整落盘，
+      但文件存在性与大小已通过响应头核实，不影响发布结论）。
+  - Release 页面：https://github.com/aisdwf/Ava-todo-list/releases/tag/v0.1.0
+- Decisions: 无新增决策（延续既有 Constraints and decisions）。
+- Current resume point: 本 SPEC 全部 Acceptance criteria 已满足，Change checklist
+  仅剩「用户手动验证」一项——已在上一轮验证通过，本轮的 0.1.0 正式发布不要求重复
+  人工验证（同一 workflow、同一产物结构，只是版本号不同）。状态转为 `[DONE]`。
+
 ## Verification
 
 - Automated:
@@ -220,11 +249,22 @@
     `FlowTask.Desktop.exe`（46,622,397 字节），无任何 `.dll`/`.pdb` 残留。
 - Manual: 未执行 —— 需要用户在真实 Windows 机器上双击运行该 exe，确认应用主窗口能
   正常启动（本 SPEC 的 Acceptance criteria 最后一项，AI 不代为宣称通过）。
+- Automated（0.1.0 正式发布）:
+  - 合并后本机复检：`dotnet build FlowTask.sln` 0 警告 0 错误；`dotnet test` 195 通过
+    （合并 `feature/quick-window-standalone` 等既有分支后的新基线，非本 SPEC 引入）。
+  - GitHub Actions run
+    [35839468906](https://github.com/aisdwf/Ava-todo-list/actions/runs/35839468906)
+    （trigger: `push` tag `v0.1.0`）全部步骤 `success`，含新增的
+    `Copy standalone exe` 步骤。
+  - `FlowTask-win-x64-0.1.0.zip` 下载解压确认：仅含 1 个 `FlowTask.Desktop.exe`
+    （46,631,534 字节）。`FlowTask-win-x64-0.1.0.exe` 经 `HEAD` 响应头确认存在且
+    大小一致（46,631,534 字节），与 zip 内文件互为印证。
 - Not run or not covered:
   - 未验证冷启动耗时、内存占用等非功能指标（超出本 SPEC 范围）。
-  - 未验证正式版本号 tag（如 `v1.0.0`）的完整发布流程，仅验证了测试 tag
-    `v0.0.0-test1`；正式发布时的行为路径与测试 tag 完全一致（同一 workflow，
-    仅版本号字符串不同），风险可控。
+  - 裸 `.exe` 资产未在本机完整下载到磁盘做二次校验（本机网络出口到
+    `release-assets.githubusercontent.com` 超时），改用 `HEAD` 响应头的
+    `content-length` 与 zip 内文件大小交叉验证，视为已核实其存在性与完整性的
+    充分证据，但严格意义上不等同于逐字节校验（如需要，用户可自行下载核对）。
 
 ## Risks and open questions
 
@@ -232,10 +272,12 @@
   效果~~ —— **已解除**：GitHub Actions 在 `windows-latest` 上的真实运行结果证实
   Release zip 内只有 1 个文件，无任何 native dll 残留，优于原先"可能残留少量文件"的
   预期，见 Verification。
-- Owner: aisdwf — Blocker: 唯一剩余风险是用户尚未在真实 Windows 机器上手动运行该
-  exe，无法排除 Windows Defender/SmartScreen 对未签名 self-contained exe 的拦截提示
-  （常见于未做代码签名的 .NET 单文件发布，属已知行业现象，不代表构建产物本身有问题）。
-  Trigger：用户下载 Release 资产并运行后反馈结果。
+- ~~Owner: aisdwf — Blocker: 用户尚未在真实 Windows 机器上手动运行该 exe~~ ——
+  **已解除**：用户已下载测试 Release 并运行，原话「能出现即可」，确认通过。
+- Owner: aisdwf — 非阻塞性提示（不影响本 SPEC 收尾）：未签名 self-contained exe 在
+  用户实际下载/运行时可能触发 Windows Defender/SmartScreen 的"未知发布者"提示，这是
+  已知行业现象（代码签名超出本 SPEC 的 Non-goals 范围），非构建产物缺陷。若后续需要
+  消除该提示，需要新开一个关于代码签名的 SPEC 单独裁决（涉及证书采购/维护成本）。
 （`workflow_dispatch` 是否发 Release、README 是否补充内网说明两项开放问题已在
 2026-09-23 与用户确认后关闭，见 Constraints and decisions 与 Progress log。）
 
