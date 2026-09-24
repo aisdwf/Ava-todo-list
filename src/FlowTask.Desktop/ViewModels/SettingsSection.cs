@@ -22,9 +22,6 @@ public enum SettingsSection
     /// <summary>默认到期偏移。</summary>
     DueDateOffset,
 
-    /// <summary>标签管理。</summary>
-    Tags,
-
     /// <summary>关于。</summary>
     About
 }

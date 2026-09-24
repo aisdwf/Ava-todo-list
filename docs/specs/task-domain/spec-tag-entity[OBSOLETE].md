@@ -4,12 +4,27 @@
 
 - **ID**: spec-tag-entity
 - **Type**: complex
-- **Status**: done
+- **Status**: obsolete
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-15
-- **Last Updated**: 2026-09-15
+- **Last Updated**: 2026-09-24
 
-> ## ⛔ 开工前置条件（rule-spec-review-gate）
+> ## ⚠ 作废说明（docs-conventions §终态要求）
+>
+> **本 SPEC 记录的标签功能已被 [spec-remove-tag-feature](./spec-remove-tag-feature[IN-PROGRESS].md) 完全移除。**
+>
+> **作废原因**：标签功能本身按用户当时的明确裁决（见下方 §1.1 原话）正确落地并交付，
+> 机器验证与人工验证均已在 2026-09-15 通过 —— 本 SPEC 记录的实现**没有过失**。
+> 2026-09-24，用户基于**实际使用体验**重新评估，认为标签功能「很累赘」，
+> 主动裁决完全移除。这是产品方向的调整，不是本 SPEC 设计或实现的缺陷。
+>
+> **是否有部分保留**：无。Core/Infrastructure/ViewModel/UI/测试/内置预设标签全部移除；
+> 数据库中已存在的 `Tags`/`TaskTags` 表按用户裁决不做迁移，保留为死表，不再被代码引用。
+>
+> **当前应参照**：[spec-remove-tag-feature](./spec-remove-tag-feature[IN-PROGRESS].md)。
+> 本文件自本次作废起仅作历史留存，不可再作为实现依据。
+>
+> ---
 >
 > **本 SPEC 已获用户显式确认并进入 `in-progress`。**
 > 本轮按用户决定直接切换到最新标签实体模型，**不兼容现有逗号分隔标签数据**，

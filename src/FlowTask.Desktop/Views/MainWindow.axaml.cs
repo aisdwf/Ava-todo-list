@@ -335,9 +335,9 @@ public partial class MainWindow : Window
     /// 因此能覆盖"点击空白区域"这一 LostFocus 覆盖不到的场景。
     /// </para>
     /// <para>
-    /// 仍保留 <c>TextBox.LostFocus</c>（<see cref="OnProjectRenameLostFocus"/> /
-    /// <see cref="OnTagRenameLostFocus"/>）作为 Tab 切焦点等非指针路径的兜底；
-    /// 两条路径都委托到同一个幂等的 CommitRename*Command，重复触发不会产生副作用。
+    /// 仍保留 <see cref="OnProjectRenameLostFocus"/>（<c>TextBox.LostFocus</c>）
+    /// 作为 Tab 切焦点等非指针路径的兜底；两条路径都委托到同一个幂等的
+    /// <c>CommitRenameProjectCommand</c>，重复触发不会产生副作用。
     /// </para>
     /// </remarks>
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -353,12 +353,6 @@ public partial class MainWindow : Window
         if (renamingProject is not null && !IsInsideRenamingTextBox(target, renamingProject))
         {
             vm.CommitRenameProjectCommand.Execute(renamingProject);
-        }
-
-        var renamingTag = vm.Tags.FirstOrDefault(t => t.IsRenaming);
-        if (renamingTag is not null && !IsInsideRenamingTextBox(target, renamingTag))
-        {
-            vm.CommitRenameTagCommand.Execute(renamingTag);
         }
     }
 
@@ -397,27 +391,6 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
         {
             vm.CommitRenameProjectCommand.Execute(row);
-        }
-    }
-
-    /// <summary>
-    /// 标签重命名输入框失焦时提交。原理同 <see cref="OnProjectRenameLostFocus"/>。
-    /// </summary>
-    private void OnTagRenameLostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: TagItemViewModel row })
-        {
-            return;
-        }
-
-        if (!row.IsRenaming)
-        {
-            return;
-        }
-
-        if (DataContext is MainViewModel vm)
-        {
-            vm.CommitRenameTagCommand.Execute(row);
         }
     }
 }

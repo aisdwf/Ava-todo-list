@@ -88,8 +88,17 @@
 **用户裁决（2026-09-16）**：取消「全部 / 未归属」切片，改为系统 **Default 项目**。
 不想填项目时任务落入 Default，既零摩擦又保持 base-on-project。
 
+> **实现落地记录（2026-09-24）**：本节「某个项目 → 该项目」这一条此前虽已设计，
+> 但主窗创建路径（`AddTaskViewModel`）从未实际读取当前选中项目，一直硬编码为未归属。
+> 已由 [spec-create-task-inherits-selected-project](../specs/main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md)
+> 补齐。「Default 项目 / 已归档 → Default 项目」这一条仍是**已知未落地**的设计
+> （代码实际写 `null` 而非 `DefaultProject.Id`），已登记为待办事项
+> （见 `docs/specs/README.md`），本轮不在此修复范围内。
+
 **小窗**：不继承主窗口当前项目；无 `@项目` 时落入 **Default**。
-未知 `@`/`#` 在**保存时创建**对应项目/标签（R-1.8，2026-09-18）；已存在的靠补全选中。
+未知 `@` 在**保存时创建**对应项目（R-1.8，2026-09-18）；已存在的靠补全选中。
+**[已随标签移除废弃]**（2026-09-24）原文亦含 `#标签`；标签功能已完全移除，
+详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[IN-PROGRESS].md)。
 
 ---
 
@@ -103,20 +112,27 @@
 | :--- | :--- |
 | 标题 | 文本输入（**唯一允许**） |
 | 项目 | 下拉选择 |
-| 标签 | 多选 |
 | deadline | 快捷预设 / 日历 / 纯数字加速输入 |
 | 优先级 | 三选按钮 |
 
-### 4.2 标签只选不输
+> **[已随标签移除废弃]**（2026-09-24）本表原含「标签 | 多选」一行；
+> 标签功能已完全移除，见下方 §4.2 废弃说明。
+
+### 4.2 标签只选不输（已废弃）
+
+> **⚠ 本节已废弃（2026-09-24）**：标签功能已被用户裁决完全移除
+> （原话：「标签实际体验下来功能很累赘，可以考虑清理这个功能」），
+> 详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[IN-PROGRESS].md)。
+> 以下原文保留作历史记录，**不再是当前实现依据**。
 
 标签是**受管理的预设集合**（字段语义见
-[design-domain-contract](./design-domain-contract.md) §4.3）：
+[design-domain-contract](./design-domain-contract.md) §4.3，该节亦已废弃）：
 
 - 应用内置一批可删除的预设；
 - 用户可在**设置页**自定义新增；
 - 任务侧**只能选择**，严禁自由文本输入。
 
-**为什么**：手输标签导致拼写不一致、产生大量近似重复标签，
+**为什么（历史记录）**：手输标签导致拼写不一致、产生大量近似重复标签，
 用户评价其对后续维护是「灾难级」的。
 
 ### 4.3 deadline 三来源同步

@@ -9,12 +9,10 @@ namespace FlowTask.Desktop.ViewModels.Actions;
 public sealed class SaveEditTaskViewModel
 {
     private readonly ITaskRepository _taskRepository;
-    private readonly ITagRepository _tagRepository;
 
-    public SaveEditTaskViewModel(ITaskRepository taskRepository, ITagRepository tagRepository)
+    public SaveEditTaskViewModel(ITaskRepository taskRepository)
     {
         _taskRepository = taskRepository;
-        _tagRepository = tagRepository;
     }
 
     public async Task ExecuteAsync(TaskRowViewModel? row, Func<Task> reloadTasks)
@@ -35,11 +33,6 @@ public sealed class SaveEditTaskViewModel
         task.ProjectId = row.EditProject.ProjectId;
 
         await _taskRepository.SaveTaskAsync(task);
-        await _tagRepository.ReplaceTaskTagsAsync(
-            task.Id,
-            row.EditTagChoices
-                .Where(choice => choice.IsSelected)
-                .Select(choice => choice.Tag.Id));
 
         row.EndEdit();
         await reloadTasks();
