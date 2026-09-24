@@ -23,19 +23,24 @@ public class SchemaMigrationTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// 回归防护（spec-remove-tag-feature）：标签功能已完全移除，新数据库
+    /// 不应再创建 <c>Tags</c>/<c>TaskTags</c> 表 —— 若未来有代码不慎重新引入
+    /// 标签表创建逻辑，本测试应失败并提醒违反了移除决策。
+    /// </summary>
     [Fact]
-    public async Task NewSchema_CreatesTaskAndTagTables()
+    public async Task NewSchema_CreatesTaskTable_ButNotTagTables()
     {
-        var tags = new SqliteTagRepository(_clock, _dbPath);
-        await tags.InitializeAsync();
+        var tasks = new SqliteTaskRepository(_clock, _dbPath);
+        await tasks.InitializeAsync();
 
         var connection = new SQLiteAsyncConnection(_dbPath);
         var tables = await connection.QueryAsync<TableInfo>(
             "SELECT name AS Name FROM sqlite_master WHERE type = 'table'");
 
         Assert.Contains(tables, table => table.Name == "Tasks");
-        Assert.Contains(tables, table => table.Name == "Tags");
-        Assert.Contains(tables, table => table.Name == "TaskTags");
+        Assert.DoesNotContain(tables, table => table.Name == "Tags");
+        Assert.DoesNotContain(tables, table => table.Name == "TaskTags");
     }
 
     private sealed class TableInfo

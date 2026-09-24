@@ -43,12 +43,11 @@ public partial class App : Application
             // 项目仓储须与任务仓储指向同一数据库文件：
             // 删除项目要在单事务内同时改动 Projects 与 Tasks 两张表，跨连接无法保证原子性。
             IProjectRepository projectRepository = new SqliteProjectRepository();
-            ITagRepository tagRepository = new SqliteTagRepository(clock);
             IAppSettingsRepository settingsRepository = new SqliteAppSettingsRepository();
 
-            var mainVm = new MainViewModel(repository, projectRepository, tagRepository, clock, settingsRepository);
+            var mainVm = new MainViewModel(repository, projectRepository, clock, settingsRepository);
             var quickCaptureVm = new QuickCaptureViewModel(
-                repository, projectRepository, tagRepository, settingsRepository, clock);
+                repository, projectRepository, settingsRepository, clock);
 
             var mainWindow = new MainWindow(mainVm, quickCaptureVm);
             desktop.MainWindow = mainWindow;

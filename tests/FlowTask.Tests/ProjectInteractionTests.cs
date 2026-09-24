@@ -27,7 +27,6 @@ public class ProjectInteractionTests : IDisposable
     private readonly FakeClock _clock;
     private readonly SqliteTaskRepository _repo;
     private readonly SqliteProjectRepository _projectRepo;
-    private readonly SqliteTagRepository _tagRepo;
 
     public ProjectInteractionTests()
     {
@@ -35,7 +34,6 @@ public class ProjectInteractionTests : IDisposable
         _clock = new FakeClock(new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc));
         _repo = new SqliteTaskRepository(_clock, _dbPath);
         _projectRepo = new SqliteProjectRepository(_dbPath);
-        _tagRepo = new SqliteTagRepository(_clock, _dbPath);
     }
 
     public void Dispose()
@@ -49,7 +47,7 @@ public class ProjectInteractionTests : IDisposable
     private MainViewModel CreateViewModel()
     {
         var settingsRepo = new SqliteAppSettingsRepository(_dbPath);
-        return new(_repo, _projectRepo, _tagRepo, _clock, settingsRepo);
+        return new(_repo, _projectRepo, _clock, settingsRepo);
     }
 
     private async Task<MainViewModel> CreateInitializedAsync()
@@ -295,6 +293,44 @@ public class ProjectInteractionTests : IDisposable
 
             Assert.Equal(1, activeCount);
         }
+    }
+
+    /// <summary>
+    /// 选中某项目后新建任务，应直接归属该项目，不落入未分类（用户原话：
+    /// 「选中某个project时，应该直接在对应project创建，而不是创建到未分类」）。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task AddTask_WhileProjectSelected_InheritsSelectedProjectId()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "甲项目";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = SoleUserProject(vm);
+
+        await vm.SelectProjectCommand.ExecuteAsync(project);
+
+        vm.NewTaskTitle = "在甲项目下新建";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+
+        Assert.Single(vm.Tasks);
+        Assert.Equal(project.Id, vm.Tasks[0].Task.ProjectId);
+    }
+
+    /// <summary>
+    /// 未选中具体项目（全部任务视图）时新建任务，行为保持不变：不推断归属。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task AddTask_WithoutProjectSelected_StaysUnassigned()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "甲项目";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+
+        vm.NewTaskTitle = "未选中项目时新建";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+
+        var created = Assert.Single(vm.Tasks, t => t.Task.Title == "未选中项目时新建");
+        Assert.Null(created.Task.ProjectId);
     }
 
     /// <summary>

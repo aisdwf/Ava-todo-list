@@ -20,7 +20,6 @@ public class QuickCaptureViewModelTests : IDisposable
     private readonly FakeClock _clock;
     private readonly SqliteTaskRepository _taskRepo;
     private readonly SqliteProjectRepository _projectRepo;
-    private readonly SqliteTagRepository _tagRepo;
     private readonly SqliteAppSettingsRepository _settingsRepo;
 
     public QuickCaptureViewModelTests()
@@ -29,7 +28,6 @@ public class QuickCaptureViewModelTests : IDisposable
         _clock = new FakeClock(new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc));
         _taskRepo = new SqliteTaskRepository(_clock, _dbPath);
         _projectRepo = new SqliteProjectRepository(_dbPath);
-        _tagRepo = new SqliteTagRepository(_clock, _dbPath);
         _settingsRepo = new SqliteAppSettingsRepository(_dbPath);
     }
 
@@ -49,7 +47,7 @@ public class QuickCaptureViewModelTests : IDisposable
     }
 
     private QuickCaptureViewModel CreateViewModel()
-        => new(_taskRepo, _projectRepo, _tagRepo, _settingsRepo, _clock);
+        => new(_taskRepo, _projectRepo, _settingsRepo, _clock);
 
     [AvaloniaFact]
     public async Task PrepareAsync_DefaultsToDefaultProjectWhenNoMemoryExists()

@@ -300,21 +300,6 @@
                                             <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
                                         </TextBox.KeyBindings>
                                     </TextBox>
-                                    <ItemsControl ItemsSource="{Binding NewTagChoices}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:TagChoice">
-                                                <CheckBox Content="{Binding Name}"
-                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                          Margin="0,0,8,0" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
                                     <!-- 到期日：默认仅快捷项+数字；日历按需展开，避免常驻占位 -->
                                     <StackPanel DataContext="{Binding NewDueDateEditor}" Spacing="6" Margin="0,4,0,0">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -413,7 +398,7 @@
                                                 BorderBrush="{DynamicResource HairlineBrush}"
                                                 BorderThickness="0,0,0,1"
                                                 Padding="{DynamicResource TaskRowPadding}">
-                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
 
                                                 <CheckBox Grid.Column="0"
                                                           Classes="RingCheck"
@@ -460,37 +445,8 @@
                                                                VerticalAlignment="Center" />
                                                 </Button>
 
-                                                <!-- 标签：弱化呈现，无标签时不占位；超出上限折叠为 +N -->
-                                                <StackPanel Grid.Column="4"
-                                                            Orientation="Horizontal"
-                                                            Spacing="6"
-                                                            Margin="12,0,0,0"
-                                                            VerticalAlignment="Center"
-                                                            IsVisible="{Binding HasTags}">
-                                                    <ItemsControl ItemsSource="{Binding VisibleAssignedTags}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <StackPanel Orientation="Horizontal" Spacing="4" />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="models:Tag">
-                                                                <Border Classes="TagChip"
-                                                                        Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}">
-                                                                    <TextBlock Text="{Binding Name}" />
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-
-                                                    <TextBlock Classes="CaptionText"
-                                                               Text="{Binding HiddenTagCount, StringFormat='+{0}'}"
-                                                               IsVisible="{Binding HasHiddenTags}"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-
                                                 <!-- 到期日：点击打开同一套三来源编辑器 -->
-                                                <Button Grid.Column="5"
+                                                <Button Grid.Column="4"
                                                         Classes="DueBadgeButton"
                                                         Margin="14,0,0,0"
                                                         VerticalAlignment="Center"
@@ -509,13 +465,13 @@
                                                     </Panel>
                                                 </Button>
 
-                                                <TextBlock Grid.Column="6"
+                                                <TextBlock Grid.Column="5"
                                                            Classes="CaptionText"
                                                            Text="{Binding Task.CreatedAt, StringFormat='{}{0:MM/dd}'}"
                                                            VerticalAlignment="Center"
                                                            Margin="16,0,4,0" />
 
-                                                <Button Grid.Column="7"
+                                                <Button Grid.Column="6"
                                                         Classes="IconCircle Compact RowAction"
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DeleteTaskCommand}"
                                                         CommandParameter="{Binding Task}"
@@ -540,27 +496,6 @@
                                                     <TextBox Classes="FieldInput"
                                                              Text="{Binding EditTitle, Mode=TwoWay}"
                                                              Watermark="任务标题" />
-                                                </StackPanel>
-
-                                                <StackPanel>
-                                                    <TextBlock Text="标签" Classes="FieldLabel" />
-                                                    <TextBlock Classes="CaptionText"
-                                                               Text="到期日请点击任务行上的「到期」标记修改。"
-                                                               Margin="0,0,0,8" />
-                                                    <ItemsControl ItemsSource="{Binding EditTagChoices}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <WrapPanel Orientation="Horizontal" />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="vm:TagChoice">
-                                                                <CheckBox Content="{Binding Name}"
-                                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                                          Margin="0,0,8,8" />
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
                                                 </StackPanel>
 
                                                 <StackPanel>
@@ -751,97 +686,6 @@
                                                 Command="{Binding SaveDefaultDueOffsetCommand}"
                                                 CommandParameter="{Binding DefaultDueOffsetDays}" />
                                     </Grid>
-                                </StackPanel>
-
-                                <!-- 标签管理 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Tags}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="标签管理" Classes="SectionTitle" />
-                                        <TextBlock Text="任务中只能选择这里维护的标签。"
-                                                   Classes="CaptionText" />
-                                    </StackPanel>
-
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBox Grid.Column="0"
-                                                 Classes="FieldInput"
-                                                 Watermark="新建标签名称"
-                                                 Text="{Binding NewTagName, Mode=TwoWay}" />
-                                        <Button Grid.Column="1"
-                                                Classes="PrimaryAction"
-                                                Margin="10,0,0,0"
-                                                Command="{Binding CreateTagCommand}"
-                                                Content="添加" />
-                                    </Grid>
-
-                                    <ItemsControl ItemsSource="{Binding Tags}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:TagItemViewModel">
-                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto"
-                                                      Margin="0,4">
-                                                    <Ellipse Grid.Column="0"
-                                                             Width="10"
-                                                             Height="10"
-                                                             VerticalAlignment="Center"
-                                                             Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
-
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding Name}"
-                                                               VerticalAlignment="Center"
-                                                               IsVisible="{Binding !IsRenaming}" />
-                                                    <TextBox Grid.Column="1"
-                                                             Classes="FieldInput"
-                                                             Text="{Binding RenameBuffer, Mode=TwoWay}"
-                                                             IsVisible="{Binding IsRenaming}" />
-
-                                                    <TextBlock Grid.Column="2"
-                                                               Classes="CaptionText"
-                                                               Text="{Binding UsageCount, StringFormat='使用 {0} 次'}"
-                                                               VerticalAlignment="Center" />
-
-                                                    <Button Grid.Column="3"
-                                                            Classes="IconCircle Compact"
-                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).BeginRenameTagCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            IsVisible="{Binding !IsRenaming}"
-                                                            ToolTip.Tip="重命名">
-                                                        <TextBlock Text="✎" />
-                                                    </Button>
-                                                    <Button Grid.Column="4"
-                                                            Classes="IconCircle Compact"
-                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DeleteTagCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            IsVisible="{Binding !IsRenaming}"
-                                                            ToolTip.Tip="删除标签">
-                                                        <TextBlock Text="✕" />
-                                                    </Button>
-
-                                                    <Button Grid.Column="5"
-                                                            Classes="IconCircle Compact"
-                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ChangeTagColorCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            IsVisible="{Binding !IsRenaming}"
-                                                            ToolTip.Tip="更换颜色">
-                                                        <TextBlock Text="◐" />
-                                                    </Button>
-
-                                                    <StackPanel Grid.Column="3"
-                                                                Grid.ColumnSpan="3"
-                                                                Orientation="Horizontal"
-                                                                Spacing="6"
-                                                                IsVisible="{Binding IsRenaming}">
-                                                        <Button Classes="PrimaryAction"
-                                                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRenameTagCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                Content="完成" />
-                                                        <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CancelRenameTagCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                Content="取消" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
                                 </StackPanel>
 
                                 <!-- 关于 -->

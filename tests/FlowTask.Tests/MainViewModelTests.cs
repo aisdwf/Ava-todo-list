@@ -22,7 +22,6 @@ public class MainViewModelTests : IDisposable
     private readonly FakeClock _clock;
     private readonly SqliteTaskRepository _repo;
     private readonly SqliteProjectRepository _projectRepo;
-    private readonly SqliteTagRepository _tagRepo;
 
     /// <summary>
     /// 每个用例使用独立数据库文件，避免相互干扰。
@@ -34,7 +33,6 @@ public class MainViewModelTests : IDisposable
         _repo = new SqliteTaskRepository(_clock, _dbPath);
         // 与任务仓储同库：删除项目的事务需跨两张表
         _projectRepo = new SqliteProjectRepository(_dbPath);
-        _tagRepo = new SqliteTagRepository(_clock, _dbPath);
     }
 
     /// <inheritdoc />
@@ -56,7 +54,7 @@ public class MainViewModelTests : IDisposable
     private MainViewModel CreateViewModel()
     {
         var settingsRepo = new SqliteAppSettingsRepository(_dbPath);
-        return new(_repo, _projectRepo, _tagRepo, _clock, settingsRepo);
+        return new(_repo, _projectRepo, _clock, settingsRepo);
     }
 
     [AvaloniaFact]
@@ -384,25 +382,6 @@ public class MainViewModelTests : IDisposable
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal("原标题", stored!.Title);
         Assert.Equal(TaskPriority.High, stored.Priority);
-    }
-
-    [AvaloniaFact]
-    public async Task SaveEdit_PersistsSelectedTags()
-    {
-        var vm = CreateViewModel();
-        await vm.InitializeAsync();
-
-        vm.NewTaskTitle = "带标签的任务";
-        await vm.AddTaskCommand.ExecuteAsync(null);
-
-        var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        var tag = vm.Tags.First(tag => tag.Name == "工作");
-        row.EditTagChoices.First(choice => choice.Tag.Id == tag.Id).IsSelected = true;
-        await vm.SaveEditCommand.ExecuteAsync(row);
-
-        var assigned = await _tagRepo.GetTagsForTasksAsync(new[] { row.Task.Id });
-        Assert.Equal("工作", Assert.Single(assigned[row.Task.Id]).Name);
     }
 
     /// <summary>
