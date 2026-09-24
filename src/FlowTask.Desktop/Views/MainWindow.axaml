@@ -121,7 +121,8 @@
                                                          Classes="FieldInput"
                                                          Text="{Binding RenameBuffer, Mode=TwoWay}"
                                                          IsVisible="{Binding IsRenaming}"
-                                                         VerticalAlignment="Center">
+                                                         VerticalAlignment="Center"
+                                                         LostFocus="OnProjectRenameLostFocus">
                                                     <TextBox.KeyBindings>
                                                         <KeyBinding Gesture="Enter"
                                                                     Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRenameProjectCommand}"
@@ -792,7 +793,17 @@
                                                     <TextBox Grid.Column="1"
                                                              Classes="FieldInput"
                                                              Text="{Binding RenameBuffer, Mode=TwoWay}"
-                                                             IsVisible="{Binding IsRenaming}" />
+                                                             IsVisible="{Binding IsRenaming}"
+                                                             LostFocus="OnTagRenameLostFocus">
+                                                        <TextBox.KeyBindings>
+                                                            <KeyBinding Gesture="Enter"
+                                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRenameTagCommand}"
+                                                                        CommandParameter="{Binding}" />
+                                                            <KeyBinding Gesture="Escape"
+                                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CancelRenameTagCommand}"
+                                                                        CommandParameter="{Binding}" />
+                                                        </TextBox.KeyBindings>
+                                                    </TextBox>
 
                                                     <TextBlock Grid.Column="2"
                                                                Classes="CaptionText"

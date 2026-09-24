@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
@@ -9,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.ViewModels;
 
@@ -86,6 +88,10 @@ public partial class MainWindow : Window
 
         // Tunnel：先于子控件（含聚焦的主题钮）处理热键，避免 Space 被当成按钮激活
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+
+        // Tunnel：点击落在编辑框以外的任意位置（包括 Border/StackPanel 等本身不可
+        // 聚焦的空白区域）都要提交重命名 —— 见 OnWindowPointerPressed 备注。
+        AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
 
         Opened += async (_, _) =>
         {
@@ -309,6 +315,109 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
         {
             vm.SelectProjectCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
+    /// 点击窗口内任意位置时，若有正在编辑的重命名输入框且点击落在其外部，则提交该重命名。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么不能只靠 <c>TextBox.LostFocus</c></b>：Avalonia 的失焦只在点击目标本身
+    /// 「可聚焦」（如 Button、TextBox）时才会转移键盘焦点。点击侧边栏的 <c>Border</c>、
+    /// <c>StackPanel</c> 等容器或任何空白区域时，这些控件默认 <c>Focusable="False"</c>，
+    /// 焦点根本不会离开正在编辑的 TextBox —— 因此"随便点旁边"没有反应，
+    /// 只有点到「全部任务」「已完成归档」这类天生可聚焦的按钮才凑巧生效。
+    /// </para>
+    /// <para>
+    /// 改为在 Window 级别用 Tunnel 策略监听 <see cref="PointerPressedEvent"/>：
+    /// 该事件在点击发生的瞬间、且早于目标控件自身处理之前触发，不依赖目标是否可聚焦，
+    /// 因此能覆盖"点击空白区域"这一 LostFocus 覆盖不到的场景。
+    /// </para>
+    /// <para>
+    /// 仍保留 <c>TextBox.LostFocus</c>（<see cref="OnProjectRenameLostFocus"/> /
+    /// <see cref="OnTagRenameLostFocus"/>）作为 Tab 切焦点等非指针路径的兜底；
+    /// 两条路径都委托到同一个幂等的 CommitRename*Command，重复触发不会产生副作用。
+    /// </para>
+    /// </remarks>
+    private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        var target = e.Source as Visual;
+
+        var renamingProject = vm.Projects.FirstOrDefault(p => p.IsRenaming);
+        if (renamingProject is not null && !IsInsideRenamingTextBox(target, renamingProject))
+        {
+            vm.CommitRenameProjectCommand.Execute(renamingProject);
+        }
+
+        var renamingTag = vm.Tags.FirstOrDefault(t => t.IsRenaming);
+        if (renamingTag is not null && !IsInsideRenamingTextBox(target, renamingTag))
+        {
+            vm.CommitRenameTagCommand.Execute(renamingTag);
+        }
+    }
+
+    /// <summary>
+    /// 判断点击目标是否位于「该行自身」的可视树内 —— 点击同一行的 TextBox（包括继续
+    /// 输入或拖选文字）不应被当成"点了外部"而提交。
+    /// </summary>
+    private static bool IsInsideRenamingTextBox(Visual? target, object row)
+    {
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (node is Control { DataContext: { } dataContext } && ReferenceEquals(dataContext, row))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 项目重命名输入框失焦时提交，兜底 Tab 切焦点等非指针路径（见 <see cref="OnWindowPointerPressed"/>）。
+    /// </summary>
+    private void OnProjectRenameLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: ProjectItemViewModel row })
+        {
+            return;
+        }
+
+        if (!row.IsRenaming)
+        {
+            return;
+        }
+
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CommitRenameProjectCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
+    /// 标签重命名输入框失焦时提交。原理同 <see cref="OnProjectRenameLostFocus"/>。
+    /// </summary>
+    private void OnTagRenameLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: TagItemViewModel row })
+        {
+            return;
+        }
+
+        if (!row.IsRenaming)
+        {
+            return;
+        }
+
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CommitRenameTagCommand.Execute(row);
         }
     }
 }

@@ -539,12 +539,19 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 刷新侧边栏活跃与已完成计数。
+    /// 刷新侧边栏活跃与已完成计数，以及各项目行的任务数。
     /// </summary>
     /// <remarks>
     /// 原实现声明了 ActiveCount / CompletedCount 却从未赋值，侧边栏徽标恒显 0。
     /// 计数必须独立查询：当前筛选为"已完成"时，Tasks 集合内不含活跃项，
     /// 无法从中推导出活跃数。
+    /// <para>
+    /// <b>项目行计数同理需独立查询</b>：<see cref="ProjectItemViewModel.TaskCount"/>
+    /// 只在 <see cref="LoadProjectsAsync"/> 重建项目集合时被赋值一次；新增/删除任务、
+    /// 切换完成、改指派项目等操作只经 <see cref="LoadTasksAsync"/> 而不重建项目集合，
+    /// 若不在此处一并回写，侧边栏计数会与任务表实际状态脱节，直到下次重启或
+    /// 项目 CRUD 触发 <see cref="LoadProjectsAsync"/> 才被动刷新。
+    /// </para>
     /// </remarks>
     private async Task RefreshCountsAsync()
     {
@@ -557,6 +564,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // 活动列表本身已含「已完成未归档」（完成 ≠ 归档），从中筛出待归档数，
         // 无需新增仓储查询方法
         PendingArchiveCount = active.Count(t => t.IsCompleted);
+
+        foreach (var project in _projects)
+        {
+            project.TaskCount = await _projectRepository.CountTasksAsync(project.Id);
+        }
     }
 
     /// <summary>
