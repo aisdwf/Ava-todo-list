@@ -56,7 +56,10 @@ public partial class App : Application
             // Windows：进程级热键（主窗非前台亦可）；失败则保留主窗内 KeyDown 回退
             _hotkeyService = new GlobalHotkeyService(() =>
                 Dispatcher.UIThread.Post(mainWindow.ToggleQuickCaptureFromHotkey));
-            _ = _hotkeyService.TryStart();
+
+            // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
+            // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
+            mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
 
             desktop.Exit += (_, _) =>
             {

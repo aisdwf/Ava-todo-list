@@ -34,6 +34,22 @@ public partial class MainWindow : Window
     private DateTime _suppressQuickCaptureOpenUntil = DateTime.MinValue;
 
     /// <summary>
+    /// 进程级全局热键（Windows <see cref="Services.GlobalHotkeyService"/>）是否已注册成功。
+    /// </summary>
+    /// <remarks>
+    /// 注册成功后，主窗/小窗内的 Alt+Space 键盘监听必须停用：否则当主窗或小窗恰好持有键盘焦点时，
+    /// 同一次物理按键会被「系统级热键」与「窗内 KeyDown」两条路径分别触发一次 Toggle，
+    /// 二者之间存在 <see cref="ToggleQuickCaptureWindowAsync"/> 的 await 间隙，
+    /// 导致小窗被连续 Show 两次或开关状态错乱（Windows 上可复现，macOS 无系统级热键不受影响）。
+    /// </remarks>
+    private bool _systemHotkeyActive;
+
+    /// <summary>
+    /// <see cref="ToggleQuickCaptureWindowAsync"/> 重入锁，防止同一时刻有多次 Toggle 逻辑并发执行。
+    /// </summary>
+    private bool _isTogglingQuickCapture;
+
+    /// <summary>
     /// 转场进行中标志，防止连续点击导致多个动画叠加、遮罩残留。
     /// </summary>
     private bool _isRevealRunning;
@@ -75,7 +91,7 @@ public partial class MainWindow : Window
                 KeyDownEvent,
                 (_, e) =>
                 {
-                    if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
+                    if (!_systemHotkeyActive && e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
                     {
                         ToggleQuickCaptureWindow();
                         e.Handled = true;
@@ -95,8 +111,20 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// 记录进程级全局热键是否已生效，据此关闭窗内重复监听（见 <see cref="_systemHotkeyActive"/>）。
+    /// </summary>
+    /// <param name="active">系统级热键是否注册成功。</param>
+    public void SetSystemHotkeyActive(bool active) => _systemHotkeyActive = active;
+
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        // 系统级热键已生效时窗内不再重复响应，否则同一次按键会触发两次 Toggle
+        if (_systemHotkeyActive)
+        {
+            return;
+        }
+
         // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起快捷小窗；按平台分流，不跨平台混判修饰键
         if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
@@ -229,36 +257,52 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_quickCaptureWindow is null)
+        // 重入锁：同一次物理按键可能被系统级热键与窗内 KeyDown 两条路径分别触发一次 Toggle
+        // （见 _systemHotkeyActive 注释）；PrepareAsync 的 await 期间没有它会被第二次调用抢先，
+        // 表现为小窗被连续 Show 两次或开关状态错乱。多余的调用直接忽略，不排队。
+        if (_isTogglingQuickCapture)
         {
-            _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm);
-            // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
-            _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
+            return;
+        }
 
-            // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
-            _quickCaptureWindow.Closing += (_, e) =>
+        _isTogglingQuickCapture = true;
+        try
+        {
+            if (_quickCaptureWindow is null)
             {
-                e.Cancel = true;
-                _quickCaptureWindow?.Hide();
-            };
-        }
+                _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm, () => _systemHotkeyActive);
+                // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
+                _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
-        if (_quickCaptureWindow.IsVisible)
+                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
+                _quickCaptureWindow.Closing += (_, e) =>
+                {
+                    e.Cancel = true;
+                    _quickCaptureWindow?.Hide();
+                };
+            }
+
+            if (_quickCaptureWindow.IsVisible)
+            {
+                // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
+                _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
+                _quickCaptureWindow.Hide();
+                return;
+            }
+
+            if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
+            {
+                return;
+            }
+
+            await _quickCaptureVm.PrepareAsync();
+            _quickCaptureWindow.Show();
+            _quickCaptureWindow.Activate();
+        }
+        finally
         {
-            // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
-            _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
-            _quickCaptureWindow.Hide();
-            return;
+            _isTogglingQuickCapture = false;
         }
-
-        if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
-        {
-            return;
-        }
-
-        await _quickCaptureVm.PrepareAsync();
-        _quickCaptureWindow.Show();
-        _quickCaptureWindow.Activate();
     }
 
     /// <summary>
