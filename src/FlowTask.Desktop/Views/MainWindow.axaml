@@ -282,16 +282,8 @@
                                 BorderThickness="0,0,0,1"
                                 Padding="4,0,4,16"
                                 Margin="0,0,0,8">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0"
-                                           Text="＋"
-                                           FontSize="24"
-                                           FontWeight="Light"
-                                           Foreground="{DynamicResource AccentBrush}"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,18,0" />
-
-                                <StackPanel Grid.Column="1" Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="6">
                                     <TextBox x:Name="NewTaskInput"
                                              Classes="EditorialInput"
                                              Text="{Binding NewTaskTitle, Mode=TwoWay}"
@@ -336,7 +328,7 @@
                                 </StackPanel>
 
                                 <!-- 优先级分段直选，替代原下拉框 -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                                     <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P1"
                                                  IsChecked="{Binding NewTaskPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
                                     <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P2"
