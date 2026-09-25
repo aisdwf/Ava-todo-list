@@ -1,5 +1,3 @@
-using FlowTask.Core.Models;
-
 namespace FlowTask.Desktop.ViewModels.Actions;
 
 /// <summary>
@@ -18,7 +16,6 @@ public sealed class ToggleEditTaskViewModel
         TaskRowViewModel? row,
         IEnumerable<TaskRowViewModel> allRows,
         IEnumerable<ProjectChoice> projectChoices,
-        IEnumerable<Tag> availableTags,
         Func<Task> reloadTasks)
     {
         if (row is null)
@@ -37,6 +34,6 @@ public sealed class ToggleEditTaskViewModel
             await _saveEdit.ExecuteAsync(other, reloadTasks);
         }
 
-        row.BeginEdit(projectChoices, availableTags);
+        row.BeginEdit(projectChoices);
     }
 }

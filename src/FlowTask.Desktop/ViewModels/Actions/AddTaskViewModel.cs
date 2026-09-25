@@ -5,21 +5,18 @@ using FlowTask.Core.Models;
 namespace FlowTask.Desktop.ViewModels.Actions;
 
 /// <summary>
-/// 新增任务：工厂创建、标签替换、输入复位与列表刷新（TR-1）。
+/// 新增任务：工厂创建、输入复位与列表刷新（TR-1）。
 /// </summary>
 public sealed class AddTaskViewModel
 {
     private readonly ITaskRepository _taskRepository;
-    private readonly ITagRepository _tagRepository;
     private readonly IClock _clock;
 
     public AddTaskViewModel(
         ITaskRepository taskRepository,
-        ITagRepository tagRepository,
         IClock clock)
     {
         _taskRepository = taskRepository;
-        _tagRepository = tagRepository;
         _clock = clock;
     }
 
@@ -27,7 +24,7 @@ public sealed class AddTaskViewModel
         string title,
         TaskPriority priority,
         DateTime? dueDate,
-        IEnumerable<string> selectedTagIds,
+        string? projectId,
         Action resetInput,
         bool leaveCompletedView,
         Action switchToActiveView,
@@ -38,9 +35,8 @@ public sealed class AddTaskViewModel
             return;
         }
 
-        var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
+        var task = TaskItemFactory.Create(_clock, title, priority, projectId: projectId, dueDate: dueDate);
         await _taskRepository.SaveTaskAsync(task);
-        await _tagRepository.ReplaceTaskTagsAsync(task.Id, selectedTagIds);
         resetInput();
 
         if (leaveCompletedView)

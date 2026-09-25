@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
@@ -9,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.ViewModels;
 
@@ -32,6 +34,22 @@ public partial class MainWindow : Window
     /// 热键关闭小窗后的短暂抑制：焦点回主窗时同一次 Option+Space 勿再打开。
     /// </summary>
     private DateTime _suppressQuickCaptureOpenUntil = DateTime.MinValue;
+
+    /// <summary>
+    /// 进程级全局热键（Windows <see cref="Services.GlobalHotkeyService"/>）是否已注册成功。
+    /// </summary>
+    /// <remarks>
+    /// 注册成功后，主窗/小窗内的 Alt+Space 键盘监听必须停用：否则当主窗或小窗恰好持有键盘焦点时，
+    /// 同一次物理按键会被「系统级热键」与「窗内 KeyDown」两条路径分别触发一次 Toggle，
+    /// 二者之间存在 <see cref="ToggleQuickCaptureWindowAsync"/> 的 await 间隙，
+    /// 导致小窗被连续 Show 两次或开关状态错乱（Windows 上可复现，macOS 无系统级热键不受影响）。
+    /// </remarks>
+    private bool _systemHotkeyActive;
+
+    /// <summary>
+    /// <see cref="ToggleQuickCaptureWindowAsync"/> 重入锁，防止同一时刻有多次 Toggle 逻辑并发执行。
+    /// </summary>
+    private bool _isTogglingQuickCapture;
 
     /// <summary>
     /// 转场进行中标志，防止连续点击导致多个动画叠加、遮罩残留。
@@ -75,7 +93,7 @@ public partial class MainWindow : Window
                 KeyDownEvent,
                 (_, e) =>
                 {
-                    if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
+                    if (!_systemHotkeyActive && e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
                     {
                         ToggleQuickCaptureWindow();
                         e.Handled = true;
@@ -87,6 +105,10 @@ public partial class MainWindow : Window
         // Tunnel：先于子控件（含聚焦的主题钮）处理热键，避免 Space 被当成按钮激活
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
+        // Tunnel：点击落在编辑框以外的任意位置（包括 Border/StackPanel 等本身不可
+        // 聚焦的空白区域）都要提交重命名 —— 见 OnWindowPointerPressed 备注。
+        AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
+
         Opened += async (_, _) =>
         {
             AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
@@ -95,8 +117,20 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// 记录进程级全局热键是否已生效，据此关闭窗内重复监听（见 <see cref="_systemHotkeyActive"/>）。
+    /// </summary>
+    /// <param name="active">系统级热键是否注册成功。</param>
+    public void SetSystemHotkeyActive(bool active) => _systemHotkeyActive = active;
+
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        // 系统级热键已生效时窗内不再重复响应，否则同一次按键会触发两次 Toggle
+        if (_systemHotkeyActive)
+        {
+            return;
+        }
+
         // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起快捷小窗；按平台分流，不跨平台混判修饰键
         if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
@@ -229,36 +263,52 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_quickCaptureWindow is null)
+        // 重入锁：同一次物理按键可能被系统级热键与窗内 KeyDown 两条路径分别触发一次 Toggle
+        // （见 _systemHotkeyActive 注释）；PrepareAsync 的 await 期间没有它会被第二次调用抢先，
+        // 表现为小窗被连续 Show 两次或开关状态错乱。多余的调用直接忽略，不排队。
+        if (_isTogglingQuickCapture)
         {
-            _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm);
-            // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
-            _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
+            return;
+        }
 
-            // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
-            _quickCaptureWindow.Closing += (_, e) =>
+        _isTogglingQuickCapture = true;
+        try
+        {
+            if (_quickCaptureWindow is null)
             {
-                e.Cancel = true;
-                _quickCaptureWindow?.Hide();
-            };
-        }
+                _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm, () => _systemHotkeyActive);
+                // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
+                _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
-        if (_quickCaptureWindow.IsVisible)
+                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
+                _quickCaptureWindow.Closing += (_, e) =>
+                {
+                    e.Cancel = true;
+                    _quickCaptureWindow?.Hide();
+                };
+            }
+
+            if (_quickCaptureWindow.IsVisible)
+            {
+                // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
+                _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
+                _quickCaptureWindow.Hide();
+                return;
+            }
+
+            if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
+            {
+                return;
+            }
+
+            await _quickCaptureVm.PrepareAsync();
+            _quickCaptureWindow.Show();
+            _quickCaptureWindow.Activate();
+        }
+        finally
         {
-            // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
-            _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
-            _quickCaptureWindow.Hide();
-            return;
+            _isTogglingQuickCapture = false;
         }
-
-        if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
-        {
-            return;
-        }
-
-        await _quickCaptureVm.PrepareAsync();
-        _quickCaptureWindow.Show();
-        _quickCaptureWindow.Activate();
     }
 
     /// <summary>
@@ -309,6 +359,82 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
         {
             vm.SelectProjectCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
+    /// 点击窗口内任意位置时，若有正在编辑的重命名输入框且点击落在其外部，则提交该重命名。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么不能只靠 <c>TextBox.LostFocus</c></b>：Avalonia 的失焦只在点击目标本身
+    /// 「可聚焦」（如 Button、TextBox）时才会转移键盘焦点。点击侧边栏的 <c>Border</c>、
+    /// <c>StackPanel</c> 等容器或任何空白区域时，这些控件默认 <c>Focusable="False"</c>，
+    /// 焦点根本不会离开正在编辑的 TextBox —— 因此"随便点旁边"没有反应，
+    /// 只有点到「全部任务」「已完成归档」这类天生可聚焦的按钮才凑巧生效。
+    /// </para>
+    /// <para>
+    /// 改为在 Window 级别用 Tunnel 策略监听 <see cref="PointerPressedEvent"/>：
+    /// 该事件在点击发生的瞬间、且早于目标控件自身处理之前触发，不依赖目标是否可聚焦，
+    /// 因此能覆盖"点击空白区域"这一 LostFocus 覆盖不到的场景。
+    /// </para>
+    /// <para>
+    /// 仍保留 <see cref="OnProjectRenameLostFocus"/>（<c>TextBox.LostFocus</c>）
+    /// 作为 Tab 切焦点等非指针路径的兜底；两条路径都委托到同一个幂等的
+    /// <c>CommitRenameProjectCommand</c>，重复触发不会产生副作用。
+    /// </para>
+    /// </remarks>
+    private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        var target = e.Source as Visual;
+
+        var renamingProject = vm.Projects.FirstOrDefault(p => p.IsRenaming);
+        if (renamingProject is not null && !IsInsideRenamingTextBox(target, renamingProject))
+        {
+            vm.CommitRenameProjectCommand.Execute(renamingProject);
+        }
+    }
+
+    /// <summary>
+    /// 判断点击目标是否位于「该行自身」的可视树内 —— 点击同一行的 TextBox（包括继续
+    /// 输入或拖选文字）不应被当成"点了外部"而提交。
+    /// </summary>
+    private static bool IsInsideRenamingTextBox(Visual? target, object row)
+    {
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (node is Control { DataContext: { } dataContext } && ReferenceEquals(dataContext, row))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 项目重命名输入框失焦时提交，兜底 Tab 切焦点等非指针路径（见 <see cref="OnWindowPointerPressed"/>）。
+    /// </summary>
+    private void OnProjectRenameLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: ProjectItemViewModel row })
+        {
+            return;
+        }
+
+        if (!row.IsRenaming)
+        {
+            return;
+        }
+
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CommitRenameProjectCommand.Execute(row);
         }
     }
 }

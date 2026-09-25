@@ -39,7 +39,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 {
     private readonly ITaskRepository _repository;
     private readonly IProjectRepository _projectRepository;
-    private readonly ITagRepository _tagRepository;
     private readonly IAppSettingsRepository _settingsRepository;
     private readonly IClock _clock;
 
@@ -240,19 +239,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>可变的内部项目集合，仅本类可写。</summary>
     private readonly ObservableCollection<ProjectItemViewModel> _projects = new();
 
-    /// <summary>设置页中的标签管理列表。</summary>
-    public ReadOnlyObservableCollection<TagItemViewModel> Tags { get; }
-
-    /// <summary>可变的内部标签集合，仅本类可写。</summary>
-    private readonly ObservableCollection<TagItemViewModel> _tags = new();
-
-    /// <summary>创建区中的标签选择项。</summary>
-    public ObservableCollection<TagChoice> NewTagChoices { get; } = new();
-
-    /// <summary>新建标签的名称输入。</summary>
-    [ObservableProperty]
-    private string _newTagName = string.Empty;
-
     /// <summary>
     /// 是否存在任何项目。
     /// </summary>
@@ -286,7 +272,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         new SettingsNavItem(SettingsSection.Accent, "强调色", "点缀色实时应用于按钮与高光。"),
         new SettingsNavItem(SettingsSection.Material, "窗口材质", "桌面原生视觉质感。"),
         new SettingsNavItem(SettingsSection.DueDateOffset, "默认到期偏移", "「启用默认到期」的天数。"),
-        new SettingsNavItem(SettingsSection.Tags, "标签管理", "维护任务可选标签。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -312,19 +297,16 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <param name="repository">任务仓储。</param>
     /// <param name="projectRepository">项目仓储。</param>
-    /// <param name="tagRepository">标签仓储。</param>
     /// <param name="clock">时间提供者，用于显式赋值任务的创建与完成时刻（Article 9）。</param>
     /// <param name="settingsRepository">应用设置仓储。</param>
     public MainViewModel(
         ITaskRepository repository,
         IProjectRepository projectRepository,
-        ITagRepository tagRepository,
         IClock clock,
         IAppSettingsRepository settingsRepository)
     {
         _repository = repository;
         _projectRepository = projectRepository;
-        _tagRepository = tagRepository;
         _clock = clock;
         _settingsRepository = settingsRepository;
 
@@ -334,7 +316,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         Tasks = new ReadOnlyObservableCollection<TaskRowViewModel>(_tasks);
         Projects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_projects);
-        Tags = new ReadOnlyObservableCollection<TagItemViewModel>(_tags);
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
@@ -357,31 +338,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
 
         AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
-        await LoadTagsAsync();
         await LoadProjectsAsync();
         await LoadTasksAsync();
-    }
-
-    /// <summary>
-    /// 载入标签管理列表，并将使用计数绑定到设置页。
-    /// </summary>
-    private async Task LoadTagsAsync()
-    {
-        var tags = await _tagRepository.GetAllAsync();
-        var usageCounts = await _tagRepository.GetUsageCountsAsync();
-
-        _tags.Clear();
-        var selectedNewTagIds = NewTagChoices
-            .Where(choice => choice.IsSelected)
-            .Select(choice => choice.Tag.Id)
-            .ToHashSet(StringComparer.Ordinal);
-        NewTagChoices.Clear();
-        foreach (var tag in tags)
-        {
-            usageCounts.TryGetValue(tag.Id, out var count);
-            _tags.Add(new TagItemViewModel(tag, count));
-            NewTagChoices.Add(new TagChoice(tag, selectedNewTagIds.Contains(tag.Id)));
-        }
     }
 
     /// <summary>
@@ -520,7 +478,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         // 建立 Id → 项目 的查找表，避免为每行任务各查一次库（N+1 查询）
         var projectLookup = _projects.ToDictionary(p => p.Id, p => p.Project);
-        var tagLookup = await _tagRepository.GetTagsForTasksAsync(items.Select(item => item.Id));
 
         _tasks.Clear();
         foreach (var item in items)
@@ -531,20 +488,26 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 projectLookup.TryGetValue(item.ProjectId, out owner);
             }
 
-            tagLookup.TryGetValue(item.Id, out var assignedTags);
-            _tasks.Add(new TaskRowViewModel(item, owner, assignedTags ?? new List<Tag>()));
+            _tasks.Add(new TaskRowViewModel(item, owner));
         }
 
         await RefreshCountsAsync();
     }
 
     /// <summary>
-    /// 刷新侧边栏活跃与已完成计数。
+    /// 刷新侧边栏活跃与已完成计数，以及各项目行的任务数。
     /// </summary>
     /// <remarks>
     /// 原实现声明了 ActiveCount / CompletedCount 却从未赋值，侧边栏徽标恒显 0。
     /// 计数必须独立查询：当前筛选为"已完成"时，Tasks 集合内不含活跃项，
     /// 无法从中推导出活跃数。
+    /// <para>
+    /// <b>项目行计数同理需独立查询</b>：<see cref="ProjectItemViewModel.TaskCount"/>
+    /// 只在 <see cref="LoadProjectsAsync"/> 重建项目集合时被赋值一次；新增/删除任务、
+    /// 切换完成、改指派项目等操作只经 <see cref="LoadTasksAsync"/> 而不重建项目集合，
+    /// 若不在此处一并回写，侧边栏计数会与任务表实际状态脱节，直到下次重启或
+    /// 项目 CRUD 触发 <see cref="LoadProjectsAsync"/> 才被动刷新。
+    /// </para>
     /// </remarks>
     private async Task RefreshCountsAsync()
     {
@@ -557,6 +520,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // 活动列表本身已含「已完成未归档」（完成 ≠ 归档），从中筛出待归档数，
         // 无需新增仓储查询方法
         PendingArchiveCount = active.Count(t => t.IsCompleted);
+
+        foreach (var project in _projects)
+        {
+            project.TaskCount = await _projectRepository.CountTasksAsync(project.Id);
+        }
     }
 
     /// <summary>
@@ -564,19 +532,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private async Task AddTaskAsync()
-        => await new AddTaskViewModel(_repository, _tagRepository, _clock).ExecuteAsync(
+        => await new AddTaskViewModel(_repository, _clock).ExecuteAsync(
             NewTaskTitle,
             NewTaskPriority,
             NewDueDateEditor.TakeValue(),
-            NewTagChoices.Where(choice => choice.IsSelected).Select(choice => choice.Tag.Id),
+            SelectedProject?.Id,
             () =>
             {
                 NewTaskTitle = string.Empty;
                 NewDueDateEditor.Load(null);
-                foreach (var choice in NewTagChoices)
-                {
-                    choice.IsSelected = false;
-                }
             },
             CurrentSelection.Kind == ViewSelectionKind.Completed,
             () => CurrentSelection = ViewSelection.Active,
@@ -681,12 +645,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task ToggleEditAsync(TaskRowViewModel? row)
         => await new ToggleEditTaskViewModel(
-                new SaveEditTaskViewModel(_repository, _tagRepository))
+                new SaveEditTaskViewModel(_repository))
             .ExecuteAsync(
                 row,
                 _tasks,
                 ProjectChoices,
-                _tags.Select(item => item.Tag),
                 LoadTasksAsync);
 
     /// <summary>
@@ -708,7 +671,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task SaveEditAsync(TaskRowViewModel? row)
-        => await new SaveEditTaskViewModel(_repository, _tagRepository)
+        => await new SaveEditTaskViewModel(_repository)
             .ExecuteAsync(row, LoadTasksAsync);
 
 
@@ -954,50 +917,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
 
-    // ==================== 标签管理 ====================
-
-    /// <summary>新建标签。名称为空或重复时不写入数据库。</summary>
-    [RelayCommand]
-    private async Task CreateTagAsync()
-        => await new CreateTagViewModel(_tagRepository, _clock).ExecuteAsync(
-            NewTagName,
-            _tags.Select(item => item.Name),
-            _tags.Count,
-            () => NewTagName = string.Empty,
-            LoadTagsAsync);
-
-    /// <summary>进入标签重命名编辑态。</summary>
-    [RelayCommand]
-    private void BeginRenameTag(TagItemViewModel? tag) => tag?.BeginRename();
-
-    /// <summary>取消标签重命名。</summary>
-    [RelayCommand]
-    private void CancelRenameTag(TagItemViewModel? tag) => tag?.CancelRename();
-
-    /// <summary>提交标签重命名，并保留所有任务关联。</summary>
-    [RelayCommand]
-    private async Task CommitRenameTagAsync(TagItemViewModel? tag)
-        => await new CommitRenameTagViewModel(_tagRepository).ExecuteAsync(
-            tag,
-            _tags.Select(item => (item.Id, item.Name)),
-            LoadTasksAsync);
-
-    /// <summary>循环切换标签色。</summary>
-    [RelayCommand]
-    private async Task ChangeTagColorAsync(TagItemViewModel? tag)
-        => await new ChangeTagColorViewModel(_tagRepository).ExecuteAsync(
-            tag,
-            LoadTagsAsync,
-            LoadTasksAsync);
-
-    /// <summary>删除标签，同时清理所有任务关联。</summary>
-    [RelayCommand]
-    private async Task DeleteTagAsync(TagItemViewModel? tag)
-        => await new DeleteTagViewModel(_tagRepository).ExecuteAsync(
-            tag,
-            LoadTagsAsync,
-            LoadTasksAsync);
-
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。
     /// </summary>
@@ -1028,11 +947,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadTasksAsync());
 
     /// <summary>
-    /// 小窗可能在保存时新建项目/标签，须连同侧边栏一并刷新。
+    /// 小窗可能在保存时新建项目，须连同侧边栏一并刷新。
     /// </summary>
     private async Task RefreshAfterCaptureAsync()
     {
-        await LoadTagsAsync();
         await LoadProjectsAsync();
         await LoadTasksAsync();
     }

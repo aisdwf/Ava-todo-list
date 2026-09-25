@@ -12,7 +12,7 @@ using FlowTask.Desktop.ViewModels.Actions;
 namespace FlowTask.Desktop.ViewModels;
 
 /// <summary>
-/// 快捷小窗：热键显隐 + <c>@项目</c>/<c>#标签</c> 解析与补全（spec-quick-window-hotkey-capture）。
+/// 快捷小窗：热键显隐 + <c>@项目</c> 解析与补全（spec-quick-window-hotkey-capture）。
 /// </summary>
 public partial class QuickCaptureViewModel : ViewModelBase
 {
@@ -21,12 +21,10 @@ public partial class QuickCaptureViewModel : ViewModelBase
 
     private readonly ITaskRepository _taskRepository;
     private readonly IProjectRepository _projectRepository;
-    private readonly ITagRepository _tagRepository;
     private readonly IAppSettingsRepository _settingsRepository;
     private readonly IClock _clock;
 
     private List<Project> _projects = [];
-    private List<Tag> _tags = [];
 
     /// <summary>切换项目时抑制联动查询，避免 <see cref="PrepareAsync"/> 恢复上次项目时触发一次多余的重复加载。</summary>
     private bool _suppressProjectSelectionReload;
@@ -43,7 +41,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
     [ObservableProperty]
     private int _selectedCompletionIndex;
 
-    /// <summary>当前补全候选（项目或标签名，不含 sigil）。</summary>
+    /// <summary>当前补全候选（项目名，不含 <c>@</c>）。</summary>
     public ObservableCollection<string> CompletionItems { get; } = [];
 
     /// <summary>
@@ -77,25 +75,22 @@ public partial class QuickCaptureViewModel : ViewModelBase
     public QuickCaptureViewModel(
         ITaskRepository taskRepository,
         IProjectRepository projectRepository,
-        ITagRepository tagRepository,
         IAppSettingsRepository settingsRepository,
         IClock clock)
     {
         _taskRepository = taskRepository;
         _projectRepository = projectRepository;
-        _tagRepository = tagRepository;
         _settingsRepository = settingsRepository;
         _clock = clock;
     }
 
     /// <summary>
-    /// 打开浮窗前刷新项目/标签缓存，恢复上次选中项目并载入其任务列表。
+    /// 打开浮窗前刷新项目缓存，恢复上次选中项目并载入其任务列表。
     /// </summary>
     public async Task PrepareAsync()
     {
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
         _projects = await _projectRepository.GetActiveProjectsAsync();
-        _tags = await _tagRepository.GetAllAsync();
         RefreshCompletion();
 
         await RefreshProjectChoicesAsync();
@@ -166,7 +161,6 @@ public partial class QuickCaptureViewModel : ViewModelBase
         var projectId = SelectedProject?.Id ?? DefaultProject.Id;
         var items = await _taskRepository.GetTasksByProjectAsync(projectId);
 
-        var tagLookup = await _tagRepository.GetTagsForTasksAsync(items.Select(item => item.Id));
         var project = _projects.FirstOrDefault(p => p.Id == projectId);
 
         // D2：未完成在上（与主窗项目视图同序：优先级降序、到期日升序），
@@ -183,8 +177,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
         Tasks.Clear();
         foreach (var item in ordered)
         {
-            var tags = tagLookup.TryGetValue(item.Id, out var assigned) ? assigned : new List<Tag>();
-            Tasks.Add(new TaskRowViewModel(item, project, tags));
+            Tasks.Add(new TaskRowViewModel(item, project));
         }
 
         OnPropertyChanged(nameof(IsTaskListEmpty));
@@ -201,15 +194,14 @@ public partial class QuickCaptureViewModel : ViewModelBase
 
     /// <summary>
     /// 保存捕捉项并关闭浮窗。空白标题静默忽略。
-    /// 未知 <c>@</c>/<c>#</c> 在保存时创建实体（R-1.8）。
+    /// 未知 <c>@</c> 在保存时创建实体（R-1.8）。
     /// </summary>
     [RelayCommand]
     private async Task SaveAsync()
     {
         var parsed = CaptureInputParser.Parse(
             InputText,
-            _projects.Select(p => p.Name),
-            _tags.Select(t => t.Name));
+            _projects.Select(p => p.Name));
 
         if (!TaskTitle.IsValid(parsed.Title))
         {
@@ -217,14 +209,9 @@ public partial class QuickCaptureViewModel : ViewModelBase
         }
 
         var projectId = await ResolveOrCreateProjectAsync(parsed.ProjectName);
-        var tagIds = await ResolveOrCreateTagsAsync(parsed.TagNames);
 
         var task = TaskItemFactory.Create(_clock, parsed.Title, Priority, projectId);
         await _taskRepository.SaveTaskAsync(task);
-        if (tagIds.Count > 0)
-        {
-            await _tagRepository.ReplaceTaskTagsAsync(task.Id, tagIds);
-        }
 
         WeakReferenceMessenger.Default.Send(new TaskSavedMessage(task));
 
@@ -245,7 +232,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
         RequestClose?.Invoke();
     }
 
-    /// <summary>接受当前补全项，替换正在输入的 <c>@</c>/<c>#</c> token。</summary>
+    /// <summary>接受当前补全项，替换正在输入的 <c>@</c> token。</summary>
     [RelayCommand]
     private void AcceptCompletion()
     {
@@ -268,13 +255,13 @@ public partial class QuickCaptureViewModel : ViewModelBase
         }
 
         if (!CaptureInputParser.TryGetCompletionToken(
-                InputText, InputText.Length, out var sigil, out _, out var tokenStart))
+                InputText, InputText.Length, out _, out var tokenStart))
         {
             return;
         }
 
         var prefix = InputText[..tokenStart];
-        InputText = $"{prefix}{sigil}{choice} ";
+        InputText = $"{prefix}@{choice} ";
         IsCompletionOpen = false;
         CompletionItems.Clear();
         RequestSetCaret?.Invoke(InputText.Length);
@@ -337,40 +324,6 @@ public partial class QuickCaptureViewModel : ViewModelBase
         return project.Id;
     }
 
-    private async Task<List<string>> ResolveOrCreateTagsAsync(IReadOnlyList<string> tagNames)
-    {
-        var tagIds = new List<string>();
-        foreach (var tagName in tagNames)
-        {
-            var tag = _tags.FirstOrDefault(t =>
-                string.Equals(
-                    TagName.Normalize(t.Name),
-                    TagName.Normalize(tagName),
-                    StringComparison.OrdinalIgnoreCase));
-            if (tag is null)
-            {
-                if (!TagName.IsValid(tagName))
-                {
-                    continue;
-                }
-
-                tag = new Tag
-                {
-                    Name = TagName.Normalize(tagName),
-                    ColorHex = AppearanceCoordinator.PickPaletteColor(_tags.Count),
-                    SortOrder = _tags.Count,
-                    CreatedAt = _clock.UtcNow
-                };
-                await _tagRepository.SaveAsync(tag);
-                _tags.Add(tag);
-            }
-
-            tagIds.Add(tag.Id);
-        }
-
-        return tagIds;
-    }
-
     private void RefreshCompletion()
     {
         CompletionItems.Clear();
@@ -378,16 +331,13 @@ public partial class QuickCaptureViewModel : ViewModelBase
         SelectedCompletionIndex = 0;
 
         if (!CaptureInputParser.TryGetCompletionToken(
-                InputText, InputText.Length, out var sigil, out var prefix, out _))
+                InputText, InputText.Length, out var prefix, out _))
         {
             return;
         }
 
-        IEnumerable<string> source = sigil == '@'
-            ? _projects.Select(p => p.Name)
-            : _tags.Select(t => t.Name);
-
-        foreach (var name in source
+        foreach (var name in _projects
+                     .Select(p => p.Name)
                      .Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                      .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
                      .Take(8))

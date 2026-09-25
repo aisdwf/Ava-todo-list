@@ -43,12 +43,11 @@ public partial class App : Application
             // 项目仓储须与任务仓储指向同一数据库文件：
             // 删除项目要在单事务内同时改动 Projects 与 Tasks 两张表，跨连接无法保证原子性。
             IProjectRepository projectRepository = new SqliteProjectRepository();
-            ITagRepository tagRepository = new SqliteTagRepository(clock);
             IAppSettingsRepository settingsRepository = new SqliteAppSettingsRepository();
 
-            var mainVm = new MainViewModel(repository, projectRepository, tagRepository, clock, settingsRepository);
+            var mainVm = new MainViewModel(repository, projectRepository, clock, settingsRepository);
             var quickCaptureVm = new QuickCaptureViewModel(
-                repository, projectRepository, tagRepository, settingsRepository, clock);
+                repository, projectRepository, settingsRepository, clock);
 
             var mainWindow = new MainWindow(mainVm, quickCaptureVm);
             desktop.MainWindow = mainWindow;
@@ -56,7 +55,10 @@ public partial class App : Application
             // Windows：进程级热键（主窗非前台亦可）；失败则保留主窗内 KeyDown 回退
             _hotkeyService = new GlobalHotkeyService(() =>
                 Dispatcher.UIThread.Post(mainWindow.ToggleQuickCaptureFromHotkey));
-            _ = _hotkeyService.TryStart();
+
+            // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
+            // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
+            mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
 
             desktop.Exit += (_, _) =>
             {
