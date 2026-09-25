@@ -1,4 +1,5 @@
 using FlowTask.Core.Interfaces;
+using FlowTask.Core.Models;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -23,6 +24,12 @@ public sealed class ConfirmDeleteProjectViewModel
     {
         if (target is null)
         {
+            return;
+        }
+
+        if (target.Id == DefaultProject.Id)
+        {
+            clearPending();
             return;
         }
 
