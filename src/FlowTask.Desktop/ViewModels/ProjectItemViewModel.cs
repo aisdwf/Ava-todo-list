@@ -30,6 +30,15 @@ public partial class ProjectItemViewModel : ViewModelBase
     /// <summary>项目 Id，便于绑定与比较。</summary>
     public string Id => Project.Id;
 
+    /// <summary>是否为系统种子 Default。仓储禁止删除该行。</summary>
+    public bool IsDefault => Project.Id == DefaultProject.Id;
+
+    /// <summary>
+    /// 删除按钮是否可见。Default 若仍露出删除入口，确认后
+    /// <c>DeleteAsync</c> 会抛未处理异常，进程表现为闪退。
+    /// </summary>
+    public bool ShowDeleteAction => !IsDefault && !IsRenaming;
+
     /// <summary>项目名。</summary>
     /// <remarks>
     /// 经本属性而非直接读 <c>Project.Name</c>：重命名后需通知界面刷新，
@@ -111,4 +120,7 @@ public partial class ProjectItemViewModel : ViewModelBase
         Name = Project.Name;
         ColorHex = Project.ColorHex;
     }
+
+    partial void OnIsRenamingChanged(bool value)
+        => OnPropertyChanged(nameof(ShowDeleteAction));
 }

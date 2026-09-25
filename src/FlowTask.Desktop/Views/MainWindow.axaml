@@ -155,7 +155,7 @@
                                                         Classes="ProjectAction"
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RequestDeleteProjectCommand}"
                                                         CommandParameter="{Binding}"
-                                                        IsVisible="{Binding !IsRenaming}"
+                                                        IsVisible="{Binding ShowDeleteAction}"
                                                         ToolTip.Tip="删除项目（任务会保留）">
                                                     <TextBlock Text="🗑" FontSize="11"
                                                                Foreground="{DynamicResource TextTertiaryBrush}"

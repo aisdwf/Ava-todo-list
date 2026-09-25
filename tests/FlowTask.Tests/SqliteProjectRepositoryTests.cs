@@ -221,6 +221,20 @@ public class SqliteProjectRepositoryTests : IDisposable
         Assert.Null(await _projects.GetByIdAsync(project.Id));
     }
 
+    /// <summary>
+    /// Default 不可删除：仓储必须拒绝，而不是让异常在无人捕捉的命令路径上炸掉进程。
+    /// </summary>
+    [Fact]
+    public async Task Delete_ThrowsForDefaultProject()
+    {
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _projects.DeleteAsync(DefaultProject.Id));
+
+        Assert.NotNull(await _projects.GetByIdAsync(DefaultProject.Id));
+    }
+
     [Fact]
     public async Task CountTasks_ReflectsAssignedUndeletedTasks()
     {
