@@ -17,6 +17,12 @@ public partial class QuickCaptureWindow : Window
     public event Action? RequestToggleHotkey;
 
     /// <summary>
+    /// 查询进程级全局热键是否已生效；生效时本窗不再重复响应 Alt+Space，
+    /// 避免同一次按键被系统级热键与本窗 KeyDown 两条路径各触发一次 Toggle。
+    /// </summary>
+    private Func<bool>? _isSystemHotkeyActive;
+
+    /// <summary>
     /// 设计器与 XAML 预览专用构造函数。
     /// </summary>
     public QuickCaptureWindow()
@@ -28,8 +34,13 @@ public partial class QuickCaptureWindow : Window
     /// 构造快捷小窗。
     /// </summary>
     /// <param name="vm">快捷小窗视图模型。</param>
-    public QuickCaptureWindow(QuickCaptureViewModel vm) : this()
+    /// <param name="isSystemHotkeyActive">
+    /// 查询进程级全局热键当前是否已生效，生效时本窗跳过窗内 Alt+Space 处理。
+    /// 未提供时默认视为未生效（沿用窗内监听作为唯一路径）。
+    /// </param>
+    public QuickCaptureWindow(QuickCaptureViewModel vm, Func<bool>? isSystemHotkeyActive = null) : this()
     {
+        _isSystemHotkeyActive = isSystemHotkeyActive;
         DataContext = vm;
         vm.RequestClose += Hide;
         vm.RequestSetCaret += caret =>
@@ -84,9 +95,11 @@ public partial class QuickCaptureWindow : Window
             return;
         }
 
+        // 系统级热键已生效时窗内不再重复响应，否则同一次按键会触发两次 Toggle
         // 小窗前台：热键只通知主窗统一 Toggle，不在此 Hide（否则焦点回主窗会再开一次）
         // 修饰键判断按平台分流，与 MainWindow 保持一致，避免 Windows 上 Win 键误触
-        if (e.Key == Key.Space && MainWindow.IsQuickCaptureModifier(e.KeyModifiers))
+        if (_isSystemHotkeyActive?.Invoke() != true
+            && e.Key == Key.Space && MainWindow.IsQuickCaptureModifier(e.KeyModifiers))
         {
             RequestToggleHotkey?.Invoke();
             e.Handled = true;

@@ -187,3 +187,25 @@ dotnet test  FlowTask.sln --nologo -v q
 ## 6. Lessons Learned
 
 （仅在事件真实发生后追加；禁止预填。）
+
+### 2026-09-24 Bug 修复：Windows 双开小窗 + 两平台方形纯色边框
+
+**Attribution**：`code wrong`（重入未防护 + 事件路径未去重）；边框问题为 `design wrong`（依赖平台透明合成协商结果，未提供确定性兜底，与 `MainWindow` 用 `AppearanceCoordinator` 显式构造背景画刷的既有模式不一致）。
+
+**Bug A：Windows 上快捷键可能叫出第二个窗口**
+
+- 根因：Windows 同时存在两条独立监听 `Alt+Space` 的路径——进程级 `GlobalHotkeyService`（`RegisterHotKey`，任意前台窗口都会响应）与 `MainWindow.OnWindowKeyDown`（仅当主窗口有键盘焦点时响应）。同一次物理按键可能被两条路径先后触发 `ToggleQuickCaptureWindowAsync()`；该方法内部 `await PrepareAsync()` 让出 UI 线程，且原实现没有重入保护，第二次调用会在第一次的 `Show()`/`Hide()` 判定完成前抢先执行，表现为小窗被连续 `Show()` 两次或开关状态错乱。macOS 因为 `GlobalHotkeyService.TryStart()` 仅在 Windows 平台真正注册系统热键，只有窗内单一路径，预览环境复现不出来。
+- 修复：
+  1. `MainWindow.ToggleQuickCaptureWindowAsync` 加 `_isTogglingQuickCapture` 重入锁，同一时刻只跑一次 toggle 逻辑，多余调用直接忽略。
+  2. 新增 `MainWindow.SetSystemHotkeyActive(bool)`；`App.axaml.cs` 把 `GlobalHotkeyService.TryStart()` 的返回值传入。系统级热键注册成功后，`MainWindow.OnWindowKeyDown`、主题按钮上的 Tunnel 处理器、`QuickCaptureWindow.OnPreviewKeyDown` 里对应的窗内 `Alt+Space` 分支全部跳过，避免同一次按键被多路径重复触发；注册失败（含 macOS）时保留窗内监听作为唯一回退。
+- **验证边界（如实记录）**：本次改动在 macOS 上完成了编译（`dotnet build`）与既有单测（`dotnet test`，195 项全部通过）验证，但 Windows 上系统级热键与窗内路径并发触发的真实场景，macOS 环境无法复现，也没有 Windows 机器可用，**此项修复的人工验证需等 owner 在 Windows 上实测**。
+
+**Bug B：小窗外围一圈方形纯色边框（两平台均可见）**
+
+- 根因：`QuickCaptureWindow.axaml` 原设计用 `Background="Transparent"` + `TransparencyLevelHint="AcrylicBlur, Blur"`，寄望平台透明合成协商成功，让圆角胶囊 `Border` 外多留的 14px `Panel Margin`（专门给 `BoxShadow` 投影用）保持真正透明。一旦协商失败（Windows 多数环境默认关闭透明特效、远程桌面、部分显卡驱动；macOS 上 Avalonia 对 `Blur`/`AcrylicBlur` 系列材质的支持同样不稳定），Avalonia/OS 会用不透明默认色填满整个窗口矩形，这圈 14px 留白就在圆角胶囊外露出方形纯色边框。这与主窗口 `MainWindow` 的既有模式不一致：`MainWindow` 从不依赖透明合成协商结果，而是用 `AppearanceCoordinator.BuildWindowBackground` 显式构造确定的背景画刷。
+- 修复：`QuickCaptureWindow.axaml` 去掉 `Panel Margin="14"` 结构，让窗口矩形与圆角胶囊 `Border` 直接重合（`TransparencyLevelHint` 收窄为 `Transparent, None`），代价是舍弃了投影效果。
+- **验证边界（如实记录）**：本次改动只完成了 XAML 结构调整与编译验证，**未做任何视觉验证**——执行环境的模型不支持读取截图，且辅助功能权限未开放导致无法用 AppleScript 模拟按键触发小窗弹出后截图。当前判断（窗口矩形与胶囊重合可消除方形边框）基于对 Avalonia 透明合成失败行为的代码级推理，**尚未在任何真实平台上目测确认**，需 owner 在 macOS 与 Windows 上分别实测。若圆角处仍有可见的小三角残留区域，需要进一步处理（例如改用支持真正透明通道的合成路径，或用 clip 遮罩圆角外区域）。
+
+**教训**：
+- 涉及窗口透明合成/系统级热键这类平台行为差异较大的功能，视觉与交互层的验证不能仅凭代码推理替代——本次因执行环境限制（无法截图、无 Windows 机器）只能做到编译级验证，属于验证覆盖不完整的已知缺口，如实记录而非假装已验证。
+- 新增窗口级功能（如 `QuickCaptureWindow`）时应优先复用既有的确定性模式（`AppearanceCoordinator` 式显式背景画刷），而非引入新的、依赖平台协商结果的路径，减少两套背景处理逻辑并存带来的一致性风险。
