@@ -1,0 +1,1 @@
+Why: code wrong — cross-window complete toggle — checking a task wrote SQLite but never notified the other window. What: Send TaskSavedMessage from ToggleCompleteTaskViewModel.

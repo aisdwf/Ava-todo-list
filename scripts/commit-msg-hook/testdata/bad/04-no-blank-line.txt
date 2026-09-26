@@ -1,0 +1,3 @@
+feat: inherit selected project on task creation
+Why: design wrong — AddTaskViewModel never received the selected project id.
+What: Pass SelectedProject.Id into task creation.

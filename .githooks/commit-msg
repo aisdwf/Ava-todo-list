@@ -1,0 +1,125 @@
+#!/bin/sh
+# Enforce docs/rules/commit-conventions.md
+# Subject = conventional type + short summary
+# Body    = Why: / What:  (never on the first line)
+# Do not copy git-log subjects that start with "Why:".
+
+set -eu
+
+MSGFILE="${1:-}"
+if [ -z "$MSGFILE" ] || [ ! -f "$MSGFILE" ]; then
+  echo "commit-msg: missing commit message file" >&2
+  exit 1
+fi
+
+fail() {
+  echo "" >&2
+  echo "commit-msg: REJECTED" >&2
+  echo "" >&2
+  echo "$1" >&2
+  echo "" >&2
+  cat <<'EOF' >&2
+Required layout (docs/rules/commit-conventions.md):
+
+  <type>: <short summary>
+
+  Why: <design wrong | code wrong | test wrong> — <where> — <root cause>
+  What: <what actually changed>
+
+type = feat|fix|docs|chore|refactor|test|style|perf|ci|build
+
+Do NOT put Why:/What: on the first line.
+Do NOT copy git log --oneline subjects that start with "Why:".
+Those historical messages are non-compliant.
+
+Do NOT pass --no-verify. Fix the message.
+
+EOF
+  exit 1
+}
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+# Drop CR (Windows) and git comment lines.
+tr -d '\r' < "$MSGFILE" | while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    \#*) continue ;;
+  esac
+  printf '%s\n' "$line"
+done > "$tmp"
+
+if [ ! -s "$tmp" ]; then
+  fail "Commit message is empty."
+fi
+
+subject=$(sed -n '1p' "$tmp")
+
+case "$subject" in
+  Merge\ *) exit 0 ;;
+  Revert\ *) exit 0 ;;
+esac
+
+slen=${#subject}
+if [ "$slen" -gt 100 ]; then
+  fail "Subject is ${slen} characters (max 100). Why:/What: belong in the body, not the first line."
+fi
+if [ "$slen" -lt 12 ]; then
+  fail "Subject is too short (${slen} chars). Use '<type>: <summary>'."
+fi
+
+case "$subject" in
+  *[Ww]hy:*|*[Ww]hat:*)
+    fail "Subject contains Why: or What:. Put those in the body after a blank line. First line must be feat|fix|docs|...: <summary>."
+    ;;
+esac
+
+echo "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|style|perf|ci|build)(\([a-zA-Z0-9._/-]+\))?!?: [^[:space:]].+' || \
+  fail "Subject must start with feat|fix|docs|chore|refactor|test|style|perf|ci|build: then a summary. Got: $subject"
+
+nlines=$(wc -l < "$tmp" | tr -d ' ')
+if [ "$nlines" -lt 3 ]; then
+  fail "Missing body. After the subject and a blank line, add Why: and What:."
+fi
+
+line2=$(sed -n '2p' "$tmp")
+if [ -n "$line2" ]; then
+  fail "A blank line must separate the subject from the body. Do not put Why:/What: on the same line as the subject."
+fi
+
+body=$(sed -n '3,$p' "$tmp")
+if [ -z "$body" ]; then
+  fail "Missing body. After the subject and a blank line, add Why: and What:."
+fi
+
+echo "$body" | grep -Eq '^(Why|why):[[:space:]]+' || \
+  fail "Body must contain a line starting with 'Why: ' (English, space after the colon)."
+
+echo "$body" | grep -Eq '^(What|what):[[:space:]]+' || \
+  fail "Body must contain a line starting with 'What: ' (English, space after the colon)."
+
+echo "$body" | grep -Eqi '(design wrong|code wrong|test wrong)' || \
+  fail "Why: must explicitly name at least one of: design wrong, code wrong, test wrong."
+
+why_line=$(echo "$body" | sed -n '/^[Ww]hy:[[:space:]]/p' | sed -n '1p')
+why_text=$(echo "$why_line" | sed 's/^[Ww]hy:[[:space:]]*//')
+why_len=${#why_text}
+if [ "$why_len" -lt 24 ]; then
+  fail "Why: is too short. Include category, where, and root cause."
+fi
+
+what_line=$(echo "$body" | sed -n '/^[Ww]hat:[[:space:]]/p' | sed -n '1p')
+what_text=$(echo "$what_line" | sed 's/^[Ww]hat:[[:space:]]*//')
+what_lc=$(printf '%s' "$what_text" | tr '[:upper:]' '[:lower:]')
+case "$what_lc" in
+  ""|fix|update|temp|hotfix|fixed|updated)
+    fail "What: is too vague ('$what_text'). Describe the actual change."
+    ;;
+esac
+
+if echo "$body" | grep -q 'TEMP_PATCH:'; then
+  echo "$body" | grep -q 'Removal date:' || fail "TEMP_PATCH requires 'Removal date: YYYY-MM-DD'."
+  echo "$body" | grep -q 'Owner:' || fail "TEMP_PATCH requires 'Owner: <name>'."
+fi
+
+exit 0

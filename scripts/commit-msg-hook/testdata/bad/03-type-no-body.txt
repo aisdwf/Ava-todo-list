@@ -1,0 +1,1 @@
+feat: inherit selected project on task creation

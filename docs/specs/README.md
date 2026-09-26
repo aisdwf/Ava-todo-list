@@ -42,11 +42,10 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`quick-capture/spec-cross-window-complete-sync` 已 `[DONE]`（主窗与快捷小窗勾选实时同步；所有者预览通过）。
-此前合入 `dev` 的完成项：`spec-settings-theme-button-order`、`spec-project-managed-tasks`、`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
+**当前阶段：`docs-system/spec-commit-msg-layout` 已 `[DONE]`（提交第一行 type 摘要 + 正文 Why/What；commit-msg hook 拦截错误版式；所有者确认后合入 `dev`）。
+此前合入 `dev` 的完成项：`spec-cross-window-complete-sync`、`spec-settings-theme-button-order`、`spec-project-managed-tasks`、`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
 其余进行中的 SPEC：`spec-quick-window-hotkey-capture` /
-`spec-quick-window-single-project-list`、`spec-create-task-inherits-selected-project`、`spec-remove-tag-feature`。
-上一完成项为 `spec-cross-window-complete-sync`。**
+`spec-quick-window-single-project-list`、`spec-create-task-inherits-selected-project`、`spec-remove-tag-feature`。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -117,6 +116,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
 | [spec-cross-window-complete-sync](./quick-capture/spec-cross-window-complete-sync[DONE].md) | quick-capture | 主窗与快捷小窗勾选实时同步 | `done` | 所有者预览通过（2026-09-27）；`TaskSavedMessage` 单点广播；就地更新行上的 `IsCompleted` |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
+| [spec-commit-msg-layout](./docs-system/spec-commit-msg-layout[DONE].md) | docs-system | 提交第一行 type 摘要 + 正文 Why/What；commit-msg hook | `done` | 所有者确认（2026-09-27）；禁止抄 `git log` 里以 Why: 开头的 subject；安装脚本写入共享 hooks 目录 |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `done` | 外观/通用/关于；主题与材质四列色条；所有者预览通过（2026-09-26） |
 | [spec-appearance-persist](./visual-theme/spec-appearance-persist[DONE].md) | visual-theme | 外观主题 / 材质 / 昼夜跨启动持久化 | `done` | 核销 `TODO(persistence)`；键走既有 `AppSettings`；所有者预览通过（2026-09-26） |
 | [spec-unified-svg-icons](./visual-theme/spec-unified-svg-icons[DONE].md) | visual-theme | 操作图标统一为描边 SVG；移除更换颜色入口 | `done` | 保留项目 `ColorHex` 的色点与色条；图表与品牌图标不在范围；所有者已看预览包 |
