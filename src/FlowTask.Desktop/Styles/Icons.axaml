@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      操作图标的唯一几何源。全部为 24×24 描边路径，线宽与端点由 Path.StrokeIcon 统一。
+      为什么不用字体字符：☀/☾/⚙/🗑 各自落入不同字体回退，线宽无法对齐。
+    -->
+
+    <StreamGeometry x:Key="IconSun">M12,7 A5,5 0 1 1 11.99,7 M12,2 L12,4 M12,20 L12,22 M4.22,4.22 L5.64,5.64 M18.36,18.36 L19.78,19.78 M2,12 L4,12 M20,12 L22,12 M4.22,19.78 L5.64,18.36 M18.36,5.64 L19.78,4.22</StreamGeometry>
+
+    <StreamGeometry x:Key="IconMoon">M16,3.2 A8.5,8.5 0 1 0 20.8,14.2 A6.2,6.2 0 0 1 16,3.2</StreamGeometry>
+
+    <StreamGeometry x:Key="IconSettings">M12,15.5 A3.5,3.5 0 1 1 11.99,15.5 M19.4,15 A1.65,1.65 0 0 0 19.73,16.82 L19.79,16.88 A2,2 0 1 1 16.96,19.71 L16.9,19.65 A1.65,1.65 0 0 0 15.08,19.32 A1.65,1.65 0 0 0 14.08,20.83 L14.08,20.91 A2,2 0 0 1 10.08,20.91 L10.08,20.83 A1.65,1.65 0 0 0 9.08,19.32 A1.65,1.65 0 0 0 7.26,19.65 L7.2,19.71 A2,2 0 1 1 4.37,16.88 L4.43,16.82 A1.65,1.65 0 0 0 4.76,15 A1.65,1.65 0 0 0 3.25,14 L3.17,14 A2,2 0 0 1 3.17,10 L3.25,10 A1.65,1.65 0 0 0 4.76,9 A1.65,1.65 0 0 0 4.43,7.18 L4.37,7.12 A2,2 0 1 1 7.2,4.29 L7.26,4.35 A1.65,1.65 0 0 0 9.08,4.68 A1.65,1.65 0 0 0 10.08,3.17 L10.08,3.09 A2,2 0 0 1 14.08,3.09 L14.08,3.17 A1.65,1.65 0 0 0 15.08,4.68 A1.65,1.65 0 0 0 16.9,4.35 L16.96,4.29 A2,2 0 1 1 19.79,7.12 L19.73,7.18 A1.65,1.65 0 0 0 19.4,9 A1.65,1.65 0 0 0 20.91,10 L20.99,10 A2,2 0 0 1 20.99,14 L20.91,14 A1.65,1.65 0 0 0 19.4,15</StreamGeometry>
+
+    <StreamGeometry x:Key="IconArrowLeft">M19,12 L5,12 M12,19 L5,12 L12,5</StreamGeometry>
+
+    <StreamGeometry x:Key="IconTrash">M4,7 L20,7 M9,7 L9,4.5 A1,1 0 0 1 10,3.5 L14,3.5 A1,1 0 0 1 15,4.5 L15,7 M6.5,7 L7.4,19.2 A1.5,1.5 0 0 0 8.9,20.5 L15.1,20.5 A1.5,1.5 0 0 0 16.6,19.2 L17.5,7 M10,11 L10,16.5 M14,11 L14,16.5</StreamGeometry>
+
+    <StreamGeometry x:Key="IconClose">M6,6 L18,18 M18,6 L6,18</StreamGeometry>
+
+    <StreamGeometry x:Key="IconPlus">M12,5 L12,19 M5,12 L19,12</StreamGeometry>
+
+    <StreamGeometry x:Key="IconSpark">M12,3 L13.6,8.6 L19.2,10.2 L13.6,11.8 L12,17.4 L10.4,11.8 L4.8,10.2 L10.4,8.6 Z</StreamGeometry>
+
+    <StreamGeometry x:Key="IconCheck">M5,12.5 L10,17.5 L19,7</StreamGeometry>
+
+</ResourceDictionary>

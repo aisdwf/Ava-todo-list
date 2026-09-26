@@ -82,20 +82,25 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - Provide the owner a clear verification entry for manual review.
 - Passing build + tests proves the code matches the SPEC's own design. It does **not** prove the feature is usable — that is the owner's manual verification, not the agent's.
 
-### Step 5 — Docs review → `[DONE]`
+### Step 5 — Docs review → `[DONE]` (on the task branch)
 
+- Close the SPEC on the same `feature/*` or `bugfix/*` branch as the code.
+  Do not leave it `[IN-PROGRESS]` and close it later on `dev`.
 - Sync docs with code (constitution: co-maintain).
 - Redirect superseded docs.
 - When acceptance and checklist are complete, set header status to `[DONE]` (or the appropriate terminal tag) **and rename** to `spec-<feature>[DONE].md` (or matching terminal tag).
 - Update `docs/specs/README.md` in the same change.
+- See `docs/rules/rule-spec-complete-before-merge.md`.
 
-### Step 6 — Commit only after owner verification
+### Step 6 — Commit only after owner verification; then merge
 
 - **Do not** commit until the owner has manually verified.
 - Agent self-checks are necessary but **not** sufficient.
 - The owner decides commit timing; do not decide unilaterally that "this phase is ready to commit."
 - Code commits must follow `commit-conventions.md` (`Why:` / `What:` in English).
 - One commit = one independently-reviewable change. Do not bundle unrelated changes into a single commit.
+- After preview passes: commit SPEC-closed-as-`[DONE]` together with the code
+  on the task branch, **then** merge that branch into `dev`.
 
 ---
 
@@ -141,6 +146,7 @@ These are **hard rules**, not style preferences:
 ## Related
 
 - SPEC mechanics: `docs/rules/docs-conventions.md`
+- Finish SPEC + code on the task branch before merging `dev`: `docs/rules/rule-spec-complete-before-merge.md`
 - Type boundary (design vs spec): `docs/rules/rule-doc-boundary.md`
 - Commit attribution: `docs/rules/commit-conventions.md`
 - Human methodology: `docs/ai-workflow/02-SPEC驱动工作流.md` (private, gitignored)

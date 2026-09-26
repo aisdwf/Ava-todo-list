@@ -62,7 +62,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedSettingsNavItem))]
-    private SettingsSection _selectedSettingsSection = SettingsSection.ThemePreset;
+    private SettingsSection _selectedSettingsSection = SettingsSection.Appearance;
 
     /// <summary>
     /// 左侧导航 <c>ListBox</c> 的 <c>SelectedItem</c> 绑定桥接：
@@ -113,8 +113,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
     /// </summary>
     /// <remarks>
-    /// 目前 <see cref="AppearanceCoordinator.ThemePresets"/> 只回填了现有强调色作为过渡，
-    /// 真实的 Anthropic / 暗夜 / 海风等预设色值尚未采集（见该 SPEC 的 Risks and open questions）。
+    /// <see cref="AppearanceCoordinator.ThemePresets"/> 使用参考站点采集的命名色板。
     /// </remarks>
     [ObservableProperty]
     private ThemePreset _selectedThemePreset = AppearanceCoordinator.ThemePresets[0];
@@ -262,16 +261,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 固定列表，顺序即当前卷动流的既有顺序（外观主题 → 强调色 → 窗口材质 →
-    /// 默认到期偏移 → 标签管理 → 关于），未引入新的信息架构判断
-    /// （spec-settings-master-detail-and-theme-presets §Constraints [推断]）。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
-        new SettingsNavItem(SettingsSection.ThemePreset, "外观主题", "选择一套命名主题预设。"),
-        new SettingsNavItem(SettingsSection.Accent, "强调色", "点缀色实时应用于按钮与高光。"),
-        new SettingsNavItem(SettingsSection.Material, "窗口材质", "桌面原生视觉质感。"),
-        new SettingsNavItem(SettingsSection.DueDateOffset, "默认到期偏移", "「启用默认到期」的天数。"),
+        new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
+        new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -337,7 +333,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
 
-        AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
+        AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
+        ThemeApplied?.Invoke();
         await LoadProjectsAsync();
         await LoadTasksAsync();
     }
@@ -798,13 +795,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             SelectedProject?.Id,
             title => CurrentCategoryTitle = title);
 
-    /// <summary>
-    /// 变更项目颜色。
-    /// </summary>
-    [RelayCommand]
-    private async Task ChangeProjectColorAsync(ProjectItemViewModel? project)
-        => await new ChangeProjectColorViewModel(_projectRepository).ExecuteAsync(project, LoadTasksAsync);
-
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
     /// <remarks>
     /// <b>为什么无需显式的 <c>wasSelected</c> 分支</b>：<see cref="LoadProjectsAsync"/>
@@ -897,9 +887,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 展开或收起外观设置视图。
     /// </summary>
     /// <remarks>
-    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项——
-    /// 与「返回清单」按钮的语义对称：外观偏好子标题永远描述"当前在设置页的哪里"，
-    /// 不需要跨会话记忆导航位置（spec-settings-master-detail-and-theme-presets）。
+    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项。
+    /// 返回只在左侧选项栏顶部，不需要跨会话记忆导航位置
+    /// （spec-settings-master-detail-and-theme-presets）。
     /// </remarks>
     [RelayCommand]
     private void ToggleSettings()
@@ -907,7 +897,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         IsSettingsOpen = !IsSettingsOpen;
         if (IsSettingsOpen)
         {
-            SelectedSettingsSection = SettingsSection.ThemePreset;
+            SelectedSettingsSection = SettingsSection.Appearance;
         }
     }
 
@@ -928,9 +918,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
 
     /// <summary>
-    /// 命名主题预设选中变更时立即应用（当前等价于应用其内嵌强调色）。
+    /// 命名主题预设选中后写入色板，并重建窗口底色。底色是代码里的笔刷实例，不跟主题字典自动刷新。
     /// </summary>
-    partial void OnSelectedThemePresetChanged(ThemePreset value) => AppearanceCoordinator.ApplyThemePreset(value.Id);
+    partial void OnSelectedThemePresetChanged(ThemePreset value)
+    {
+        AppearanceCoordinator.ApplyThemePreset(value.Id);
+        ThemeApplied?.Invoke();
+    }
 
     /// <summary>
     /// 手动刷新任务流。

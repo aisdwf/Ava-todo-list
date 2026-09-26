@@ -10,17 +10,11 @@ namespace FlowTask.Desktop.ViewModels;
 /// </remarks>
 public enum SettingsSection
 {
-    /// <summary>外观主题（命名主题预设）。</summary>
-    ThemePreset,
+    /// <summary>外观：命名主题与窗口材质。</summary>
+    Appearance,
 
-    /// <summary>强调色。</summary>
-    Accent,
-
-    /// <summary>窗口材质。</summary>
-    Material,
-
-    /// <summary>默认到期偏移。</summary>
-    DueDateOffset,
+    /// <summary>通用：功能相关设置，目前仅默认到期偏移。</summary>
+    General,
 
     /// <summary>关于。</summary>
     About

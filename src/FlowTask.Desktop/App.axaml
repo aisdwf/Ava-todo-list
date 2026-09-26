@@ -36,6 +36,7 @@
             <!-- 与主题无关的尺度令牌：无需按变体切换，走常规合并即可 -->
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://FlowTask.Desktop/Styles/Tokens.Shared.axaml" />
+                <ResourceInclude Source="avares://FlowTask.Desktop/Styles/Icons.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

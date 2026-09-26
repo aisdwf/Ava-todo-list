@@ -327,6 +327,7 @@ These thresholds (14 / 30 days) are this project's canonical values. Changing th
 - No automated doc-index generator exists for this .NET project (see `AGENTS.md` Commands table).
 - `docs/specs/README.md` is therefore **hand-maintained**, not machine-generated.
 - Any SPEC add, rename, area move, or status change **must** update `docs/specs/README.md` in the same change: the status-tag legend, the area/index table, and the "handoff entry point" section.
+- Close and reindex the SPEC on the task branch before merging into `dev` (see `rule-spec-complete-before-merge.md`).
 - Do not let the index drift from the physical files. A stale index is treated the same as a stale SPEC: report it, do not silently leave it.
 - If a docs-index command is added later, this section must be rewritten to point to it and hand-editing must stop.
 

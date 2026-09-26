@@ -14,7 +14,7 @@
     -->
 
     <Style Selector="Window">
-        <Setter Property="FontFamily" Value="Inter, Segoe UI Variable, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
         <Setter Property="TransparencyBackgroundFallback" Value="{DynamicResource WindowSurfaceBrush}" />
     </Style>
 
@@ -142,6 +142,24 @@
         <Setter Property="CornerRadius" Value="16" />
     </Style>
 
+    <!-- 描边图标：几何在 Icons.axaml，线宽在此，避免每个按钮各写一套笔画 -->
+    <Style Selector="Path.StrokeIcon">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="StrokeThickness" Value="1.75" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeJoin" Value="Round" />
+    </Style>
+    <Style Selector="Path.StrokeIcon.Muted">
+        <Setter Property="Stroke" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="Path.StrokeIcon.Accent">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
     <!-- ================= 主行动按钮 ================= -->
     <Style Selector="Button.PrimaryAction">
         <Setter Property="Cursor" Value="Hand" />
@@ -217,6 +235,57 @@
         <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- 设置页色条：扁圆角色块 + 名称，选中角标勾。主题与材质共用。 -->
+    <Style Selector="ListBox.ColorChips">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+    <Style Selector="ListBox.ColorChips ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,16,20" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Top" />
+                    <Border x:Name="ChipCheck"
+                            Width="18" Height="18"
+                            CornerRadius="9"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,6,8,0"
+                            Background="{DynamicResource AccentBrush}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Viewbox Width="10" Height="10">
+                            <Path Classes="StrokeIcon"
+                                  Data="{StaticResource IconCheck}"
+                                  Stroke="{DynamicResource OnAccentBrush}" />
+                        </Viewbox>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.ColorChips ListBoxItem:pointerover">
+        <Setter Property="Opacity" Value="0.88" />
+    </Style>
+    <Style Selector="ListBox.ColorChips ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.ColorChips ListBoxItem:selected /template/ Border#ChipCheck">
+        <Setter Property="Opacity" Value="1" />
     </Style>
 
     <!-- ================= 设置页左侧导航 (spec-settings-master-detail-and-theme-presets) =================

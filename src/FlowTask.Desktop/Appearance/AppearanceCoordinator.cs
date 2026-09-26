@@ -24,6 +24,20 @@ public static class AppearanceCoordinator
     /// <summary>窗体底色令牌键。</summary>
     private const string WindowSurfaceColorKey = "WindowSurfaceColor";
 
+    /// <summary>应用字体令牌键，定义在 Tokens.Shared.axaml。</summary>
+    private const string AppFontFamilyKey = "AppFontFamily";
+
+    /// <summary>站点默认无衬线栈，与 Tokens.Shared 的初始值一致。</summary>
+    private const string SansFontFamily =
+        "Inter, Segoe UI Variable, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif";
+
+    /// <summary>
+    /// Anthropic 的代表字体。拉丁文用 Lora，中文落到思源宋体 / 宋体。
+    /// 与 dogapi / linkapi 的 <c>--font-serif</c> 同一条回退链。
+    /// </summary>
+    private const string AnthropicFontFamily =
+        "Lora, Source Serif 4, Noto Serif SC, Source Han Serif SC, Songti SC, SimSun, Georgia, Times New Roman, serif";
+
     // 强调色派生笔刷的不透明度，与 Tokens.Dark/Light.axaml 中的初始声明保持一致
     private const double SubtleOpacityDark = 0.18;
     private const double GlowOpacityDark = 0.34;
@@ -43,17 +57,15 @@ public static class AppearanceCoordinator
     };
 
     /// <summary>
-    /// 命名主题预设（spec-settings-master-detail-and-theme-presets）。
+    /// 命名主题预设。色值来自 dogapi.cc 与 linkapi.ai 同一套 New API 主题样式表
+    /// （构建标识 2k6e8r7p），不是由强调色列表派生。
     /// </summary>
     /// <remarks>
-    /// 目前**仅承载架构**，不包含 Anthropic / 暗夜 / 海风等命名预设的真实色值——
-    /// 这些色值需先从 dogapi.cc / linkapi.ai 的风格设置面板采集，采集完成前
-    /// 此列表只回填现有 4 个强调色作为过渡，避免设置页出现空列表。
-    /// 新增预设只需在此追加条目，不需要改动任何 XAML 结构（Acceptance criteria）。
+    /// 除 Anthropic 外，各预设只覆写强调色，表面、文本、边框与状态色继承站点默认浅色/深色。
+    /// 浅色样式表没有单独的 <c>--sidebar</c> 十六进制值，侧栏底用已采集的 <c>--muted</c>（#F5F5F5）。
+    /// 「超大字体简易」未收入：该预设的差异是字号，而本应用不改排版尺度。
     /// </remarks>
-    public static readonly IReadOnlyList<ThemePreset> ThemePresets = AccentPresets
-        .Select(accent => new ThemePreset(accent.Id, accent.DisplayName, accent, SurfaceOverride: null))
-        .ToArray();
+    public static readonly IReadOnlyList<ThemePreset> ThemePresets = BuildReferenceThemePresets();
 
     /// <summary>
     /// 可选窗口材质预设。<c>Hint</c> 为 Avalonia 透明度等级候选链，
@@ -185,14 +197,164 @@ public static class AppearanceCoordinator
         => ThemePresets.FirstOrDefault(p => p.Id == presetId) ?? ThemePresets[0];
 
     /// <summary>
-    /// 应用命名主题预设：目前等价于应用其内嵌的强调色（架构预留 <see cref="ThemePreset.SurfaceOverride"/>，
-    /// 待真实预设色值采集后再启用表面基调覆写）。
+    /// 应用命名主题预设：把该预设的表面、文本、边框、状态色和强调色写入两套主题字典。
     /// </summary>
+    /// <remarks>
+    /// 不能转调 <see cref="ApplyAccent"/>。主题强调色不在 <see cref="AccentPresets"/> 里，
+    /// 按 Id 查找会回退成科技蓝，表面色也不会被写上。
+    /// </remarks>
     public static void ApplyThemePreset(string presetId)
     {
         var preset = FindThemePreset(presetId);
-        ApplyAccent(preset.Accent.Id);
+        ApplyPalette(ThemeVariant.Dark, preset.Dark, SubtleOpacityDark, GlowOpacityDark);
+        ApplyPalette(ThemeVariant.Light, preset.Light, SubtleOpacityLight, GlowOpacityLight);
+        ApplySidebarWash(preset);
+        ApplyFont(preset.Id);
     }
+
+    /// <summary>
+    /// 默认主题保持原来的淡侧栏。其余主题让侧栏底色朝强调色偏一点，
+    /// Anthropic 直接用站点采集的侧栏色。
+    /// </summary>
+    private static void ApplySidebarWash(ThemePreset preset)
+    {
+        if (preset.Id == "default")
+        {
+            WriteThemeResource(ThemeVariant.Light, "SidebarWashBrush", new SolidColorBrush(Color.Parse(preset.Light.HairlineHex)));
+            WriteThemeResource(ThemeVariant.Dark, "SidebarWashBrush", new SolidColorBrush(Color.Parse(preset.Dark.HairlineHex)));
+            return;
+        }
+
+        if (preset.Id == "anthropic")
+        {
+            WriteThemeResource(ThemeVariant.Light, "SidebarWashBrush", new SolidColorBrush(Color.Parse(preset.Light.SidebarHex)));
+            WriteThemeResource(ThemeVariant.Dark, "SidebarWashBrush", new SolidColorBrush(Color.Parse(preset.Dark.SidebarHex)));
+            return;
+        }
+
+        // 浅色多掺一点才看得出，深色底本身很暗，掺多了会变成一块纯强调色。
+        WriteThemeResource(ThemeVariant.Light, "SidebarWashBrush", new SolidColorBrush(MixToward(Color.Parse("#F5F5F5"), Color.Parse(preset.Light.AccentHex), 0.22)));
+        WriteThemeResource(ThemeVariant.Dark, "SidebarWashBrush", new SolidColorBrush(MixToward(Color.Parse("#1C1C1C"), Color.Parse(preset.Dark.AccentHex), 0.34)));
+    }
+
+    private static Color MixToward(Color basis, Color accent, double amount)
+    {
+        byte Channel(byte from, byte to) => (byte)Math.Round(from + (to - from) * amount);
+        return Color.FromRgb(Channel(basis.R, accent.R), Channel(basis.G, accent.G), Channel(basis.B, accent.B));
+    }
+
+    /// <summary>
+    /// 只有 Anthropic 在参考站点里绑定衬线字体，其余预设保持无衬线。
+    /// </summary>
+    private static void ApplyFont(string presetId)
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+
+        var family = presetId == "anthropic" ? AnthropicFontFamily : SansFontFamily;
+        Application.Current.Resources[AppFontFamilyKey] = new FontFamily(family);
+    }
+
+    private static void ApplyPalette(ThemeVariant variant, ThemeVariantPalette palette, double subtle, double glow)
+    {
+        var accent = Color.Parse(palette.AccentHex);
+        var window = Color.Parse(palette.WindowHex);
+        var text = Color.Parse(palette.TextPrimaryHex);
+        var mutedText = Color.Parse(palette.TextSecondaryHex);
+        var high = Color.Parse(palette.PriorityHighHex);
+        var medium = Color.Parse(palette.PriorityMediumHex);
+        var low = Color.Parse(palette.PriorityLowHex);
+
+        WriteThemeResource(variant, WindowSurfaceColorKey, window);
+        WriteThemeResource(variant, "WindowSurfaceBrush", new SolidColorBrush(window));
+        WriteThemeResource(variant, "SidebarSurfaceBrush", new SolidColorBrush(Color.Parse(palette.SidebarHex)));
+        WriteThemeResource(variant, "CardSurfaceBrush", new SolidColorBrush(Color.Parse(palette.CardHex)));
+        WriteThemeResource(variant, "CardSurfaceHoverBrush", new SolidColorBrush(Color.Parse(palette.CardHoverHex)));
+        WriteThemeResource(variant, "HairlineBrush", new SolidColorBrush(Color.Parse(palette.HairlineHex)));
+        WriteThemeResource(variant, "HairlineStrongBrush", new SolidColorBrush(Color.Parse(palette.HairlineHex)));
+        WriteThemeResource(variant, "TextPrimaryBrush", new SolidColorBrush(text));
+        WriteThemeResource(variant, "TextSecondaryBrush", new SolidColorBrush(mutedText));
+        WriteThemeResource(variant, "TextTertiaryBrush", new SolidColorBrush(mutedText));
+        WriteThemeResource(variant, "TextDisabledBrush", new SolidColorBrush(mutedText));
+        WriteThemeResource(variant, "OnAccentBrush", new SolidColorBrush(Color.Parse(palette.OnAccentHex)));
+        WriteThemeResource(variant, "PriorityHighBrush", new SolidColorBrush(high));
+        WriteThemeResource(variant, "PriorityMediumBrush", new SolidColorBrush(medium));
+        WriteThemeResource(variant, "PriorityLowBrush", new SolidColorBrush(low));
+        WriteThemeResource(variant, "PriorityHighSurfaceBrush", new SolidColorBrush(high, subtle));
+        WriteThemeResource(variant, "PriorityMediumSurfaceBrush", new SolidColorBrush(medium, subtle));
+        WriteThemeResource(variant, "PriorityLowSurfaceBrush", new SolidColorBrush(low, subtle));
+        WriteThemeResource(variant, "TextControlForeground", new SolidColorBrush(text));
+        WriteThemeResource(variant, "TextControlForegroundPointerOver", new SolidColorBrush(text));
+        WriteThemeResource(variant, "TextControlForegroundFocused", new SolidColorBrush(text));
+        WriteThemeResource(variant, "TextControlPlaceholderForeground", new SolidColorBrush(mutedText));
+        WriteThemeResource(variant, "TextControlPlaceholderForegroundPointerOver", new SolidColorBrush(mutedText));
+        WriteThemeResource(variant, "TextControlPlaceholderForegroundFocused", new SolidColorBrush(mutedText));
+
+        WriteThemeResource(variant, AccentColorKey, accent);
+        WriteThemeResource(variant, "AccentBrush", new SolidColorBrush(accent));
+        WriteThemeResource(variant, "AccentSubtleBrush", new SolidColorBrush(accent, subtle));
+        WriteThemeResource(variant, "AccentGlowBrush", new SolidColorBrush(accent, glow));
+        WriteThemeResource(variant, "TextControlSelectionHighlightColor", new SolidColorBrush(accent));
+    }
+
+    /// <summary>
+    /// 站点默认浅色/深色是其余预设的表面底。只改强调色的预设在此底上替换主色。
+    /// </summary>
+    private static IReadOnlyList<ThemePreset> BuildReferenceThemePresets()
+    {
+        var light = new ThemeVariantPalette(
+            "#FFFFFF", "#F5F5F5", "#FFFFFF", "#F5F5F5", "#E8E8E8",
+            "#0A0A0A", "#606060", "#3EA4EC", "#FFFFFF",
+            "#E40014", "#CD8900", "#009767");
+        var dark = new ThemeVariantPalette(
+            "#1E1E1E", "#1C1C1C", "#2A2A2A", "#2F2F2F", "#1AFFFFFF",
+            "#F3F3F3", "#B7B7B7", "#0E72BC", "#FFFFFF",
+            "#FF6568", "#F99C00", "#00BB7F");
+
+        return new[]
+        {
+            Preset("default", "默认", light, dark),
+            Preset("anthropic", "Anthropic",
+                new ThemeVariantPalette(
+                    "#FAFAF7", "#F2F0EA", "#EFEDE7", "#EDEBE6", "#DEDCD6",
+                    "#191715", "#686662", "#E37756", "#FDFCF8",
+                    "#C53732", "#ECA851", "#6D8752"),
+                new ThemeVariantPalette(
+                    "#1B1918", "#191715", "#242221", "#2C2A28", "#1AFFFFFF",
+                    "#F4F3F0", "#B3B1AD", "#EB8561", "#13110F",
+                    "#FF6367", "#ECA851", "#82AD6A")),
+            AccentPreset("underground", "暗夜", light, dark, "#49785B", "#FFFFFF", "#58946D", "#030713"),
+            AccentPreset("rose-garden", "玫瑰花园", light, dark, "#E30054", "#FFFFFF", "#FB2F6C", "#FFFFFF"),
+            AccentPreset("lake-view", "湖光", light, dark, "#00D294", "#000000", "#00D294", "#000000"),
+            AccentPreset("sunset-glow", "日落霞光", light, dark, "#CB3435", "#FFFFFF", "#E55354", "#FFFFFF"),
+            AccentPreset("forest-whisper", "森林低语", light, dark, "#007D70", "#FFFFFF", "#009683", "#FFFFFF"),
+            AccentPreset("ocean-breeze", "海风", light, dark, "#2563EB", "#FFFFFF", "#3B82F6", "#FFFFFF"),
+            AccentPreset("lavender-dream", "薰衣草梦", light, dark, "#9453C9", "#FFFFFF", "#A76AD9", "#FFFFFF")
+        };
+    }
+
+    private static ThemePreset Preset(string id, string name, ThemeVariantPalette light, ThemeVariantPalette dark)
+    {
+        var accent = new AppearanceOption(id, name, dark.AccentHex, light.AccentHex);
+        return new ThemePreset(id, name, accent, new ThemeSurfaceOverride(dark.WindowHex, light.WindowHex), dark, light);
+    }
+
+    private static ThemePreset AccentPreset(
+        string id,
+        string name,
+        ThemeVariantPalette lightBasis,
+        ThemeVariantPalette darkBasis,
+        string lightAccent,
+        string lightOnAccent,
+        string darkAccent,
+        string darkOnAccent)
+        => Preset(
+            id,
+            name,
+            lightBasis with { AccentHex = lightAccent, OnAccentHex = lightOnAccent },
+            darkBasis with { AccentHex = darkAccent, OnAccentHex = darkOnAccent });
 
     /// <summary>
     /// 按已有条目数循环取调色板中的下一默认色（DarkHex）。
@@ -210,21 +372,6 @@ public static class AppearanceCoordinator
         }
 
         return palette[index].DarkHex;
-    }
-
-    /// <summary>
-    /// 在调色板中将当前 DarkHex 轮转到下一色；未知色值从首项之后开始。
-    /// </summary>
-    public static string CyclePaletteColor(string? currentDarkHex)
-    {
-        var palette = AccentPresets;
-        var currentIndex = palette
-            .Select((option, index) => (option, index))
-            .FirstOrDefault(pair => string.Equals(
-                pair.option.DarkHex, currentDarkHex, StringComparison.OrdinalIgnoreCase))
-            .index;
-
-        return palette[(currentIndex + 1) % palette.Count].DarkHex;
     }
 
     /// <summary>
@@ -313,28 +460,73 @@ public sealed record AppearanceOption(string Id, string DisplayName, string Dark
 /// </summary>
 /// <param name="Id">稳定标识，用于持久化与命令参数；与内嵌 <see cref="Accent"/> 的 Id 一致。</param>
 /// <param name="DisplayName">界面展示名称，例如 "Anthropic"、"暗夜"、"海风"。</param>
-/// <param name="Accent">该主题预设采用的强调色，当前直接复用 <see cref="AppearanceCoordinator.AccentPresets"/> 中的条目。</param>
-/// <param name="SurfaceOverride">
-/// 表面基调覆写（窗体底色、卡片底色等），当前恒为 <c>null</c>——
-/// Anthropic / 暗夜 / 海风等真实预设的表面配色需先从参考站点采集后才能填入，
-/// 本次只交付可承载该字段的结构，不虚构色值（rule-no-invented-user-behavior）。
-/// </param>
+/// <param name="Accent">该主题的强调色。不加入 <see cref="AppearanceCoordinator.AccentPresets"/>，避免和「强调色」里的四色混成一份列表。</param>
+/// <param name="SurfaceOverride">窗体底色。与 <see cref="Dark"/> / <see cref="Light"/> 的窗体色相同，供水波纹与材质读取。</param>
+/// <param name="Dark">深色变体的完整色板。</param>
+/// <param name="Light">浅色变体的完整色板。</param>
 public sealed record ThemePreset(
     string Id,
     string DisplayName,
     AppearanceOption Accent,
-    ThemeSurfaceOverride? SurfaceOverride)
+    ThemeSurfaceOverride? SurfaceOverride,
+    ThemeVariantPalette Dark,
+    ThemeVariantPalette Light)
 {
     /// <summary>设置面板中的色样笔刷，直接复用强调色的色样。</summary>
     public IBrush Swatch => Accent.Swatch;
+
+    private IBrush? _preview;
+
+    /// <summary>
+    /// 色条：卡片底过渡到强调色，对应设置页扁圆角色块，而不是三段预览卡。
+    /// </summary>
+    public IBrush Preview => _preview ??= new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Color.Parse(Light.CardHex), 0),
+            new GradientStop(Color.Parse(Light.AccentHex), 1)
+        }
+    };
 }
 
 /// <summary>
-/// 主题预设可选的表面基调覆写（架构预留，当前无预设填充此结构）。
+/// 主题预设可选的表面基调覆写。
 /// </summary>
 /// <param name="DarkSurfaceHex">深色主题下的窗体底色覆写。</param>
 /// <param name="LightSurfaceHex">浅色主题下的窗体底色覆写。</param>
 public sealed record ThemeSurfaceOverride(string DarkSurfaceHex, string LightSurfaceHex);
+
+/// <summary>
+/// 一套主题变体里会写进令牌字典的颜色。十六进制使用 Avalonia 顺序（含透明通道时为 #AARRGGBB）。
+/// </summary>
+/// <param name="WindowHex">窗体底，对应站点 <c>--background</c>。</param>
+/// <param name="SidebarHex">侧栏底，对应 <c>--sidebar</c>；浅色默认用 <c>--muted</c>。</param>
+/// <param name="CardHex">卡片底，对应 <c>--card</c>。</param>
+/// <param name="CardHoverHex">卡片悬停底，对应 <c>--muted</c>。</param>
+/// <param name="HairlineHex">分隔线，对应 <c>--border</c>。</param>
+/// <param name="TextPrimaryHex">主文本，对应 <c>--foreground</c>。</param>
+/// <param name="TextSecondaryHex">次级文本，对应 <c>--muted-foreground</c>。</param>
+/// <param name="AccentHex">强调色，对应 <c>--primary</c>。</param>
+/// <param name="OnAccentHex">强调色上的文字，对应 <c>--primary-foreground</c>。</param>
+/// <param name="PriorityHighHex">高优先级，对应 <c>--destructive</c>。</param>
+/// <param name="PriorityMediumHex">中优先级，对应 <c>--warning</c>。</param>
+/// <param name="PriorityLowHex">低优先级，对应 <c>--success</c>。</param>
+public sealed record ThemeVariantPalette(
+    string WindowHex,
+    string SidebarHex,
+    string CardHex,
+    string CardHoverHex,
+    string HairlineHex,
+    string TextPrimaryHex,
+    string TextSecondaryHex,
+    string AccentHex,
+    string OnAccentHex,
+    string PriorityHighHex,
+    string PriorityMediumHex,
+    string PriorityLowHex);
 
 /// <summary>
 /// 窗口材质预设定义。
@@ -353,6 +545,32 @@ public sealed record MaterialOption(
     IReadOnlyList<WindowTransparencyLevel> Hint,
     double SurfaceOpacity)
 {
+    private IBrush? _swatch;
+
     /// <summary>该档位是否为完全不透明的纯色底。</summary>
     public bool IsOpaque => SurfaceOpacity >= 1.0;
+
+    /// <summary>
+    /// 设置页色条：用渐变模拟雾面 / 更透 / 更糊 / 实地，不另做窗口缩略图。
+    /// </summary>
+    public IBrush Swatch => _swatch ??= CreateSwatch();
+
+    private IBrush CreateSwatch() => Id switch
+    {
+        "Mica" => Gradient("#EDEBE6", "#C8C4BB"),
+        "Acrylic" => Gradient("#F3F6F8", "#9BB4C4"),
+        "Blur" => Gradient("#DCE8F2", "#7A90A4"),
+        _ => new SolidColorBrush(Color.Parse("#2A2A2C"))
+    };
+
+    private static IBrush Gradient(string fromHex, string toHex) => new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Color.Parse(fromHex), 0),
+            new GradientStop(Color.Parse(toHex), 1)
+        }
+    };
 }

@@ -22,9 +22,11 @@
             <!-- 侧边栏使用极弱叠加色而非不透明底：透明材质档位下不透明面板会
                  遮盖平台合成的模糊效果，使材质切换在视觉上毫无差别 -->
             <Border Grid.Column="0"
-                    Background="{DynamicResource HairlineBrush}"
+                    Background="{DynamicResource SidebarWashBrush}"
                     Padding="{DynamicResource SidebarPadding}">
-                <Grid RowDefinitions="Auto,*,Auto">
+                <Grid>
+                <!-- 任务导航：设置页打开时让位给选项栏 -->
+                <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding !IsSettingsOpen}">
 
                     <!-- 品牌区 -->
                     <StackPanel Grid.Row="0" Margin="14,28,0,40" Spacing="6">
@@ -100,7 +102,7 @@
                                                 Classes.Selected="{Binding IsSelected}"
                                                 DoubleTapped="OnProjectRowDoubleTapped"
                                                 Tapped="OnProjectRowTapped">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
 
                                                 <Ellipse Grid.Column="0"
                                                          Classes="ProjectDot"
@@ -142,24 +144,13 @@
                                                 <Button Grid.Column="3"
                                                         Classes="ProjectAction"
                                                         Margin="4,0,0,0"
-                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ChangeProjectColorCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        IsVisible="{Binding !IsRenaming}"
-                                                        ToolTip.Tip="更换颜色">
-                                                    <TextBlock Text="◐" FontSize="12"
-                                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Button>
-
-                                                <Button Grid.Column="4"
-                                                        Classes="ProjectAction"
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RequestDeleteProjectCommand}"
                                                         CommandParameter="{Binding}"
-                                                        IsVisible="{Binding !IsRenaming}"
+                                                        IsVisible="{Binding ShowDeleteAction}"
                                                         ToolTip.Tip="删除项目（任务会保留）">
-                                                    <TextBlock Text="🗑" FontSize="11"
-                                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <Viewbox Width="14" Height="14">
+                                                        <Path Classes="StrokeIcon Muted" Data="{StaticResource IconTrash}" />
+                                                    </Viewbox>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -173,8 +164,14 @@
                                 Margin="0,10,0,0"
                                 Command="{Binding ToggleCreateProjectCommand}"
                                 IsVisible="{Binding !IsCreatingProject}">
-                            <TextBlock Text="＋ 新建项目" FontSize="13"
-                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                    <Path Classes="StrokeIcon Muted" Data="{StaticResource IconPlus}" />
+                                </Viewbox>
+                                <TextBlock Text="新建项目" FontSize="13"
+                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                         </Button>
 
                         <TextBox Classes="FieldInput"
@@ -208,6 +205,33 @@
                         </Grid>
                     </Button>
                 </Grid>
+
+                <!-- 设置选项栏：占满原左侧栏，最顶部为返回 (spec-settings-master-detail-and-theme-presets) -->
+                <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsSettingsOpen}">
+                    <Button Classes="NavPill"
+                            Margin="0,8,0,10"
+                            Command="{Binding ToggleSettingsCommand}"
+                            ToolTip.Tip="返回任务清单">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="← 返回" FontSize="13.5" FontWeight="SemiBold" />
+                            <TextBlock Text="回到任务清单" Classes="CaptionText" />
+                        </StackPanel>
+                    </Button>
+                    <ListBox Grid.Row="1"
+                             Classes="SettingsNav"
+                             ItemsSource="{Binding SettingsNavItems}"
+                             SelectedItem="{Binding SelectedSettingsNavItem, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:SettingsNavItem">
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13.5" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Description}" Classes="CaptionText" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+                </Grid>
             </Border>
 
             <!-- ==================== 右侧 Hero 级内容区 ==================== -->
@@ -225,23 +249,20 @@
                                    Classes="HeroTitle" />
                     </StackPanel>
 
-                    <!-- 设置页头：左上角返回入口 + 页面标题 (spec-settings-master-detail-and-theme-presets) -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center"
+                    <!-- 设置页头：标题随当前选项变化，与下方内容区同一项 -->
+                    <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding IsSettingsOpen}">
-                        <Button Classes="IconCircle"
-                                Command="{Binding ToggleSettingsCommand}"
-                                ToolTip.Tip="返回任务清单">
-                            <TextBlock Text="←" FontSize="17"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Button>
-                        <StackPanel Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="APPEARANCE"
-                                       Classes="MicroLabel"
-                                       Foreground="{DynamicResource AccentBrush}" />
-                            <TextBlock Text="外观偏好"
-                                       Classes="HeroTitle" />
-                        </StackPanel>
+                        <TextBlock Text="{Binding SelectedSettingsNavItem.DisplayName}"
+                                   Classes="HeroTitle" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="主题会更换底色、文本、边框和强调色；材质即时生效。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Appearance}" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="与功能相关的设置。目前可改「启用默认到期」的天数。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="版本与技术信息。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}" />
                     </StackPanel>
 
                     <!-- 右上角一对药丸按钮 (spec-editorial-and-ripple-theme §2) -->
@@ -249,22 +270,25 @@
                         <Button x:Name="ThemeToggleButton"
                                 Classes="IconCircle"
                                 ToolTip.Tip="切换昼夜主题">
-                            <TextBlock FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <!-- 深色时显示太阳（提示可切亮），浅色时显示月亮 -->
-                                    <Binding Path="IsDarkTheme" Converter="{x:Static conv:ThemeIconConverter.Instance}" />
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <!-- 深色时显示太阳（提示可切亮），浅色时显示月亮；二者同一描边 -->
+                            <Panel>
+                                <Viewbox Width="18" Height="18" IsVisible="{Binding IsDarkTheme}">
+                                    <Path Classes="StrokeIcon" Data="{StaticResource IconSun}" />
+                                </Viewbox>
+                                <Viewbox Width="18" Height="18" IsVisible="{Binding !IsDarkTheme}">
+                                    <Path Classes="StrokeIcon" Data="{StaticResource IconMoon}" />
+                                </Viewbox>
+                            </Panel>
                         </Button>
 
-                        <!-- 设置页内已有左上角返回入口，齿轮按钮此时隐藏避免入口冗余 [推断] -->
+                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
                         <Button Classes="IconCircle"
                                 Command="{Binding ToggleSettingsCommand}"
                                 ToolTip.Tip="外观设置"
                                 IsVisible="{Binding !IsSettingsOpen}">
-                            <TextBlock Text="⚙" FontSize="17"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Viewbox Width="18" Height="18">
+                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
+                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -470,9 +494,9 @@
                                                         CommandParameter="{Binding Task}"
                                                         VerticalAlignment="Center"
                                                         ToolTip.Tip="删除">
-                                                    <TextBlock Text="✕" FontSize="12"
-                                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <Viewbox Width="14" Height="14">
+                                                        <Path Classes="StrokeIcon Muted" Data="{StaticResource IconClose}" />
+                                                    </Viewbox>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -537,135 +561,75 @@
                         </ScrollViewer>
                     </Grid>
 
-                    <!-- ========== 视图 B: 外观设置 —— 主从式独立页面 (spec-settings-master-detail-and-theme-presets) ==========
-                         左侧窄栏：设置项列表；右侧宽栏：当前选中项对应内容。
-                         左上角返回入口已迁移至页头 (Grid.Row=0)，此处不再重复放置。 -->
-                    <Grid IsVisible="{Binding IsSettingsOpen}"
-                          ColumnDefinitions="216,*">
-
-                        <!-- 左侧：设置项列表 -->
-                        <ListBox Grid.Column="0"
-                                 Classes="SettingsNav"
-                                 ItemsSource="{Binding SettingsNavItems}"
-                                 SelectedItem="{Binding SelectedSettingsNavItem, Mode=TwoWay}"
-                                 Margin="0,0,16,0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate DataType="vm:SettingsNavItem">
-                                    <StackPanel Spacing="3">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="13.5" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Description}" Classes="CaptionText" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-
-                        <!-- 右侧：当前选中设置项对应内容 -->
-                        <ScrollViewer Grid.Column="1"
-                                      HorizontalScrollBarVisibility="Disabled"
+                    <!-- ========== 视图 B: 外观设置内容 (spec-settings-master-detail-and-theme-presets) ==========
+                         选项栏与返回在窗口左侧；此处只渲染当前选中项。 -->
+                    <Grid IsVisible="{Binding IsSettingsOpen}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                       Padding="0,0,12,32">
-                            <StackPanel Spacing="20" MaxWidth="640" HorizontalAlignment="Left">
+                            <StackPanel Spacing="28">
 
-                                <!-- 外观主题：命名主题预设 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=ThemePreset}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="外观主题" Classes="SectionTitle" />
-                                        <TextBlock Classes="CaptionText"
-                                                   Text="命名主题预设。Anthropic / 暗夜 / 海风等预设的实际配色仍在采集中，当前列表暂以强调色回填。" />
+                                <StackPanel Spacing="28"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Appearance}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="外观主题" Classes="FieldLabel" />
+                                        <ListBox Classes="ColorChips"
+                                                 ItemsSource="{Binding ThemePresets}"
+                                                 SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="appearance:ThemePreset">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Height="52"
+                                                                CornerRadius="12"
+                                                                ClipToBounds="True"
+                                                                Background="{Binding Preview}" />
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="12.5"
+                                                                   FontWeight="Medium"
+                                                                   HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
                                     </StackPanel>
-                                    <ListBox Classes="ChoiceGrid"
-                                             ItemsSource="{Binding ThemePresets}"
-                                             SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="3" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:ThemePreset">
-                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center"
-                                                             Fill="{Binding Swatch}" />
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
+
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="窗口材质" Classes="FieldLabel" />
+                                        <ListBox Classes="ColorChips"
+                                                 ItemsSource="{Binding MaterialPresets}"
+                                                 SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="appearance:MaterialOption">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Height="52"
+                                                                CornerRadius="12"
+                                                                ClipToBounds="True"
+                                                                Background="{Binding Swatch}" />
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="12.5"
+                                                                   FontWeight="Medium"
+                                                                   HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
                                 </StackPanel>
 
-                                <!-- 强调色 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Accent}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="强调色" Classes="SectionTitle" />
-                                        <TextBlock Text="点缀色会实时应用于按钮、选中态与交互高光。"
-                                                   Classes="CaptionText" />
-                                    </StackPanel>
-                                    <ListBox Classes="ChoiceGrid"
-                                             ItemsSource="{Binding AccentPresets}"
-                                             SelectedItem="{Binding SelectedAccent, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="3" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:AppearanceOption">
-                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                                    <!-- 色样取预设色值，与令牌同源 -->
-                                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center"
-                                                             Fill="{Binding Swatch}" />
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </StackPanel>
-
-                                <!-- 窗口材质：数据驱动，选项来自 AppearanceCoordinator 权威定义 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Material}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="窗口材质" Classes="SectionTitle" />
-                                        <TextBlock Text="选择桌面原生视觉质感，即时生效。"
-                                                   Classes="CaptionText" />
-                                    </StackPanel>
-                                    <!--
-                                      用 ListBox 而非 Button 阵列：选中态是列表控件的原生语义，
-                                      交由 SelectedItem 双向绑定即可，无需为"哪一项当前生效"
-                                      另造一套跨作用域比较逻辑。
-                                    -->
-                                    <ListBox Classes="ChoiceGrid"
-                                             ItemsSource="{Binding MaterialPresets}"
-                                             SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="2" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:MaterialOption">
-                                                <StackPanel Spacing="5">
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               HorizontalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Description}" Classes="CaptionText"
-                                                               HorizontalAlignment="Center" TextAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </StackPanel>
-
-                                <!-- 默认到期偏移 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=DueDateOffset}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="默认到期偏移" Classes="SectionTitle" />
-                                        <TextBlock Text="「启用默认到期」= 今天 + N 天。范围 1–30，默认 1。"
-                                                   Classes="CaptionText" />
-                                    </StackPanel>
+                                <StackPanel Spacing="10"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}">
+                                    <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
                                     <Grid ColumnDefinitions="*,Auto">
                                         <NumericUpDown Grid.Column="0"
                                                        Minimum="1"
@@ -681,19 +645,13 @@
                                     </Grid>
                                 </StackPanel>
 
-                                <!-- 关于 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="关于" Classes="SectionTitle" />
-                                        <TextBlock Text="FlowTask Desktop" FontSize="14" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="aisdwf · .NET 8 &amp; Avalonia 11" Classes="CaptionText" />
-                                    </StackPanel>
-                                    <Button Classes="PrimaryAction"
+                                <StackPanel Spacing="10"
+                                            MaxWidth="640"
                                             HorizontalAlignment="Left"
-                                            Command="{Binding ToggleSettingsCommand}"
-                                            Content="返回清单" />
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}">
+                                    <TextBlock Text="FlowTask Desktop" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="aisdwf · .NET 8 &amp; Avalonia 11" Classes="CaptionText" />
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
