@@ -113,8 +113,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
     /// </summary>
     /// <remarks>
-    /// 目前 <see cref="AppearanceCoordinator.ThemePresets"/> 只回填了现有强调色作为过渡，
-    /// 真实的 Anthropic / 暗夜 / 海风等预设色值尚未采集（见该 SPEC 的 Risks and open questions）。
+    /// <see cref="AppearanceCoordinator.ThemePresets"/> 使用参考站点采集的命名色板。
     /// </remarks>
     [ObservableProperty]
     private ThemePreset _selectedThemePreset = AppearanceCoordinator.ThemePresets[0];
@@ -337,7 +336,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
 
-        AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
+        AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
+        ThemeApplied?.Invoke();
         await LoadProjectsAsync();
         await LoadTasksAsync();
     }
@@ -928,9 +928,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
 
     /// <summary>
-    /// 命名主题预设选中变更时立即应用（当前等价于应用其内嵌强调色）。
+    /// 命名主题预设选中后写入色板，并重建窗口底色。底色是代码里的笔刷实例，不跟主题字典自动刷新。
     /// </summary>
-    partial void OnSelectedThemePresetChanged(ThemePreset value) => AppearanceCoordinator.ApplyThemePreset(value.Id);
+    partial void OnSelectedThemePresetChanged(ThemePreset value)
+    {
+        AppearanceCoordinator.ApplyThemePreset(value.Id);
+        ThemeApplied?.Invoke();
+    }
 
     /// <summary>
     /// 手动刷新任务流。

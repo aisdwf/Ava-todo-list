@@ -147,14 +147,12 @@
 - [ ] **需用户手动验证**：窗口材质选择器保持独立，选中后行为与改动前一致
   （即时应用材质背景）。
 - [x] 强调色/主题预设选择器的数据源可承载"任意数量的命名预设"（架构验证：
-  `AppearanceCoordinator.ThemePresets` 由 `AccentPresets.Select(...)` 派生，
-  新增预设只需在权威列表追加条目，XAML 的 `ListBox.ItemsSource` 绑定
-  与 `ItemTemplate` 均不依赖固定数量）。
-- [x] Anthropic/暗夜/海风等具体预设的色值**明确记录为未完成**——
-  `ThemePresets` 当前只回填 4 个强调色作为过渡，代码注释与本 SPEC 均
-  显式声明未采集真实预设色值，未伪造完成。
-- [x] `dotnet build` 通过（`FlowTask.sln`，0 Warning / 0 Error）；
-  `dotnet test` 188 通过 / 0 失败，与改动前基线一致，未退化。
+  `ThemePresets` 是权威列表，XAML 的 `ListBox.ItemsSource` 绑定与 `ItemTemplate`
+  均不依赖固定数量）。当前为 9 套参考站点色板，不再由 4 个强调色派生。
+- [x] Anthropic/暗夜/海风等预设色值已从 dogapi.cc 与 linkapi.ai 的样式表采集
+  （同一构建 `2k6e8r7p`），写入 `ThemePresets`。除 Anthropic 外，表面色继承站点默认浅色/深色。
+  「超大字体简易」未收入。字体、圆角和布局未改。
+- [x] `dotnet test FlowTask.sln -c Debug` → 182 通过 / 0 失败 / 0 跳过（2026-09-26，含本轮新增的主题色板测试）。
 - [x] 字体尺寸未整体放大——本次改动未触及 `Tokens.Shared.axaml`，
   新增的 `ListBox.SettingsNav` 样式沿用现有 `FontSize="13"`/`"13.5"` 量级，
   与 `NavPill`/`ChoiceGrid` 现有尺度一致，未引入更大字号。
@@ -322,14 +320,9 @@
   导航切换动效、字体大小实际视觉效果等），需要额外一轮修正提交，
   而不是本次提交即视为最终态。
 
-- **Owner**: aisdwf（需用户裁决）
-  **Blocker**: Anthropic/暗夜/海风等命名主题预设的具体色值无法由本次执行者
-  验证获取——`dogapi.cc/dashboard/overview` 返回 451，`linkapi.ai` 需登录，
-  GitHub 对 `new-api` 前端源码的代码搜索需登录。
-  **待办**：需要一个具备浏览器操作能力（browser-use / computer-use）的
-  agent 实际登录/访问这两个站点，截图或摘录其"调色盘"面板中的预设列表与
-  对应色值，再回填本 SPEC 或发起后续小 SPEC。**本 SPEC 不会在缺少该输入的
-  情况下自行编造色值。**
+- **已核销（2026-09-26）**：Anthropic/暗夜/海风等色值已从 dogapi.cc 与 linkapi.ai
+  的公开样式表采集（同一构建 `2k6e8r7p`），写入 `ThemePresets`。
+  若用户对照站点后认为视觉差距仍然大，再用识图补采面板上样式表没覆盖到的部分。
 
 - **Owner**: aisdwf
   **Blocker**: 主题/强调色/材质选择当前不持久化（重启应用回退默认值），
@@ -341,6 +334,16 @@
   是否需要图标）目前是 `[推断]`（延续现有顺序），需用户在计划阶段确认或调整。
 
 ---
+
+### 2026-09-26（回填参考站点色板）
+
+- Completed: 用浏览器读取 dogapi.cc 与 linkapi.ai 的主题样式表。两者预设名称与十六进制色值一致。
+  `ThemePresets` 改为 9 套命名色板（默认、Anthropic、暗夜、玫瑰花园、湖光、日落霞光、森林低语、海风、薰衣草梦），
+  选中时写入窗体、侧栏、卡片、文本、边框、状态色和强调色。启动时应用「默认」。
+- Decisions: 用户确认「保留站点的大多数风格内容」。未改字号、圆角和页面布局。
+  浅色样式表没有单独的 `--sidebar` 十六进制值，侧栏底使用已采集的 `--muted` `#F5F5F5`。
+- Current resume point: 非默认主题的左侧栏用 `SidebarWashBrush` 朝强调色轻偏；Anthropic 用采集到的侧栏色；默认保持原淡底。`dotnet test` 182 通过 / 0 失败。需用户再看侧栏变色幅度。
+- Subagent/task references: 无。
 
 ## Lessons learned
 

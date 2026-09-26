@@ -16,6 +16,7 @@
     <Color x:Key="WindowSurfaceColor">#202022</Color>
     <SolidColorBrush x:Key="WindowSurfaceBrush" Color="#202022" />
     <SolidColorBrush x:Key="SidebarSurfaceBrush" Color="#1A1A1C" />
+    <SolidColorBrush x:Key="SidebarWashBrush" Color="#1AFFFFFF" />
     <SolidColorBrush x:Key="CardSurfaceBrush" Color="#28282C" />
     <SolidColorBrush x:Key="CardSurfaceHoverBrush" Color="#303036" />
 
