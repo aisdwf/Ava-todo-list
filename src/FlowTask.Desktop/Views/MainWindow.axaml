@@ -402,7 +402,7 @@
 
                                                 <CheckBox Grid.Column="0"
                                                           Classes="RingCheck"
-                                                          IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                          IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,18,0"
                                                           Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
@@ -440,7 +440,7 @@
                                                         HorizontalContentAlignment="Left"
                                                         ToolTip.Tip="点击展开编辑">
                                                     <TextBlock Classes="TaskTitle"
-                                                               Classes.Completed="{Binding Task.IsCompleted}"
+                                                               Classes.Completed="{Binding IsCompleted}"
                                                                Text="{Binding Task.Title}"
                                                                VerticalAlignment="Center" />
                                                 </Button>

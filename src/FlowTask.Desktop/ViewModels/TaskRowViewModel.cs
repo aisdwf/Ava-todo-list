@@ -55,6 +55,12 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <summary>被包装的任务实体。</summary>
     public TaskItem Task { get; }
 
+    /// <summary>
+    /// 完成态的可绑定投影。实体本身不发通知，勾选圈必须绑这里。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCompleted;
+
     /// <summary>是否展开编辑面板。</summary>
     [ObservableProperty]
     private bool _isEditing;
@@ -108,7 +114,19 @@ public partial class TaskRowViewModel : ViewModelBase
     public TaskRowViewModel(TaskItem task, Project? project)
     {
         Task = task;
+        IsCompleted = task.IsCompleted;
         ApplyProject(project);
+    }
+
+    partial void OnIsCompletedChanged(bool value) => Task.IsCompleted = value;
+
+    /// <summary>
+    /// 用仓储读回的完成态更新本行。保留同一行实例，供已渲染的勾选圈接收通知。
+    /// </summary>
+    public void ApplyPersistedCompletion(bool isCompleted, DateTime? completedAt)
+    {
+        Task.CompletedAt = completedAt;
+        IsCompleted = isCompleted;
     }
 
     /// <summary>

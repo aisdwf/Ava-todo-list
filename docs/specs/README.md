@@ -42,11 +42,11 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`main-window/spec-settings-theme-button-order` 已 `[DONE]`（主窗口齿轮在左、昼夜在右；打开设置后昼夜不占齿轮原位；所有者预览通过）。
-此前合入 `dev` 的完成项：`spec-project-managed-tasks`、`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
+**当前阶段：`quick-capture/spec-cross-window-complete-sync` 已 `[DONE]`（主窗与快捷小窗勾选实时同步；所有者预览通过）。
+此前合入 `dev` 的完成项：`spec-settings-theme-button-order`、`spec-project-managed-tasks`、`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
 其余进行中的 SPEC：`spec-quick-window-hotkey-capture` /
 `spec-quick-window-single-project-list`、`spec-create-task-inherits-selected-project`、`spec-remove-tag-feature`。
-上一完成项为 `spec-settings-theme-button-order`。**
+上一完成项为 `spec-cross-window-complete-sync`。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -115,6 +115,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | main-window | MainViewModel TR-1 命令拆分（操作类抽取） | `done` | 人工验证通过；薄命令保留 XAML 绑定；`MainViewModel` 1183→912 行 |
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 近似全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` | **第 1 份**；未知不创建；无 @ → Default |
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
+| [spec-cross-window-complete-sync](./quick-capture/spec-cross-window-complete-sync[DONE].md) | quick-capture | 主窗与快捷小窗勾选实时同步 | `done` | 所有者预览通过（2026-09-27）；`TaskSavedMessage` 单点广播；就地更新行上的 `IsCompleted` |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `done` | 外观/通用/关于；主题与材质四列色条；所有者预览通过（2026-09-26） |
 | [spec-appearance-persist](./visual-theme/spec-appearance-persist[DONE].md) | visual-theme | 外观主题 / 材质 / 昼夜跨启动持久化 | `done` | 核销 `TODO(persistence)`；键走既有 `AppSettings`；所有者预览通过（2026-09-26） |

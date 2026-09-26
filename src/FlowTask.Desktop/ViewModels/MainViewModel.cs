@@ -40,6 +40,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IClock _clock;
     private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
     private bool _suppressAppearancePersist;
+    private bool _suppressTaskSavedReload;
 
     [ObservableProperty]
     private bool _isDarkTheme = true;
@@ -48,6 +49,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 最近一次外观偏好写入。属性变更回调不能是 async，调用方与测试等待本任务确认已落盘。
     /// </summary>
     public Task AppearancePersistTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// 最近一次由 <see cref="TaskSavedMessage"/> 触发的任务流重载。
+    /// 对端勾选后测试等待本任务，避免用延时猜测 UI 刷新（Article 9）。
+    /// </summary>
+    public Task TaskListRefreshTask { get; private set; } = Task.CompletedTask;
 
     /// <summary>
     /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="ViewSelection"/> 的取值位。
@@ -296,7 +303,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
-        // 弱引用消息总线：快捷小窗写入后通知主窗口刷新，双方互不持有强引用 (rule-code-standards §2.1)
+        // 弱引用消息总线：任一窗口写入后通知对端从 SQLite 重载，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
 
@@ -601,7 +608,18 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="item">目标任务；勾选框已通过双向绑定更新其 IsCompleted。</param>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
-        => await new ToggleCompleteTaskViewModel(_repository, _clock).ExecuteAsync(item, LoadTasksAsync);
+    {
+        _suppressTaskSavedReload = true;
+        try
+        {
+            await new ToggleCompleteTaskViewModel(_repository, _clock)
+                .ExecuteAsync(item, LoadTasksAsync);
+        }
+        finally
+        {
+            _suppressTaskSavedReload = false;
+        }
+    }
 
     /// <summary>
     /// 物理删除任务。
@@ -999,7 +1017,37 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = RefreshAfterCaptureAsync());
+    {
+        if (_suppressTaskSavedReload)
+        {
+            return;
+        }
+
+        TaskListRefreshTask = UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id));
+    }
+
+    /// <summary>
+    /// 从 SQLite 读回该任务并就地写到当前列表里已有的行。
+    /// 新行（小窗新建）才走整表重载。
+    /// </summary>
+    private async Task SyncFromStoreAsync(string taskId)
+    {
+        var persisted = await _repository.GetByIdAsync(taskId);
+        if (persisted is null)
+        {
+            await RefreshAfterCaptureAsync();
+            return;
+        }
+
+        if (!TaskRowListSync.TryApply(_tasks, persisted))
+        {
+            await RefreshAfterCaptureAsync();
+            return;
+        }
+
+        TaskRowListSync.Reorder(_tasks);
+        await RefreshCountsAsync();
+    }
 
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
