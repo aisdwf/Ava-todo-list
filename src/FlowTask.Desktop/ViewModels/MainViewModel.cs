@@ -798,13 +798,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             SelectedProject?.Id,
             title => CurrentCategoryTitle = title);
 
-    /// <summary>
-    /// 变更项目颜色。
-    /// </summary>
-    [RelayCommand]
-    private async Task ChangeProjectColorAsync(ProjectItemViewModel? project)
-        => await new ChangeProjectColorViewModel(_projectRepository).ExecuteAsync(project, LoadTasksAsync);
-
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
     /// <remarks>
     /// <b>为什么无需显式的 <c>wasSelected</c> 分支</b>：<see cref="LoadProjectsAsync"/>

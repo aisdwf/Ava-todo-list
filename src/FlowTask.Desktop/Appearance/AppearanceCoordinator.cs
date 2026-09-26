@@ -375,21 +375,6 @@ public static class AppearanceCoordinator
     }
 
     /// <summary>
-    /// 在调色板中将当前 DarkHex 轮转到下一色；未知色值从首项之后开始。
-    /// </summary>
-    public static string CyclePaletteColor(string? currentDarkHex)
-    {
-        var palette = AccentPresets;
-        var currentIndex = palette
-            .Select((option, index) => (option, index))
-            .FirstOrDefault(pair => string.Equals(
-                pair.option.DarkHex, currentDarkHex, StringComparison.OrdinalIgnoreCase))
-            .index;
-
-        return palette[(currentIndex + 1) % palette.Count].DarkHex;
-    }
-
-    /// <summary>
     /// 读取当前生效主题下的窗体底色，供水波纹转场取得准确的目标色。
     /// </summary>
     /// <remarks>

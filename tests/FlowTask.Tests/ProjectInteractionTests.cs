@@ -691,23 +691,6 @@ public class ProjectInteractionTests : IDisposable
         Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
     }
 
-    // ==================== 改色 ====================
-
-    [AvaloniaFact]
-    public async Task ChangeProjectColor_RotatesToDifferentColor()
-    {
-        var vm = await CreateInitializedAsync();
-        vm.NewProjectName = "改色项目";
-        await vm.CreateProjectCommand.ExecuteAsync(null);
-        var project = SoleUserProject(vm);
-        var before = project.ColorHex;
-
-        await vm.ChangeProjectColorCommand.ExecuteAsync(project);
-
-        Assert.NotEqual(before, project.ColorHex);
-        Assert.Equal(project.ColorHex, (await _projectRepo.GetByIdAsync(project.Id))!.ColorHex);
-    }
-
     // ==================== 空参数容错 ====================
 
     [AvaloniaFact]
@@ -719,7 +702,6 @@ public class ProjectInteractionTests : IDisposable
         vm.BeginRenameProjectCommand.Execute(null);
         vm.CancelRenameProjectCommand.Execute(null);
         await vm.CommitRenameProjectCommand.ExecuteAsync(null);
-        await vm.ChangeProjectColorCommand.ExecuteAsync(null);
         await vm.ArchiveProjectCommand.ExecuteAsync(null);
         await vm.RequestDeleteProjectCommand.ExecuteAsync(null);
         await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
