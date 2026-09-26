@@ -42,13 +42,13 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`visual-theme/spec-settings-master-detail-and-theme-presets` 已完成（设置全屏三项导航、命名主题、色条布局；所有者预览通过）。其余进行中的 SPEC 为：
-三份 quick-capture 相关 SPEC（`spec-quick-window-hotkey-capture` /
+**当前阶段：`main-window/spec-create-project-click-outside-confirm` 已完成（新建项目点外部确认 + 非法名短暂提示；所有者预览通过并合入 `dev`）。
+其余进行中的 SPEC 为：三份 quick-capture 相关 SPEC（`spec-quick-window-hotkey-capture` /
 `task-domain/spec-task-complete-before-archive` / `spec-quick-window-single-project-list`，
 均源自 `feature/quick-window-standalone` 分支，机器验证 195 测试已通过，
-统一等待用户在 Windows 端做一次性人工验收，见各 SPEC §4 人工验证表）。
-上一完成项为 `packaging/spec-windows-single-file-release`（Windows win-x64 单文件发布
-+ GitHub Actions Release 流水线；`v0.1.0` 已发布，zip + 裸 exe 双资产；人工验证通过）。**
+统一等待用户在 Windows 端做一次性人工验收）；
+`spec-create-task-inherits-selected-project` 与 `spec-remove-tag-feature` 亦为 in-progress。
+上一完成项另有 `visual-theme/spec-settings-master-detail-and-theme-presets`。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -121,6 +121,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-unified-svg-icons](./visual-theme/spec-unified-svg-icons[DONE].md) | visual-theme | 操作图标统一为描边 SVG；移除更换颜色入口 | `done` | 保留项目 `ColorHex` 的色点与色条；图表与品牌图标不在范围；所有者已看预览包 |
 | [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[DONE].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `done` | 新建 `packaging` area；44 文件→1 exe；`v0.1.0` 已正式发布，zip + 裸 exe 双资产；人工验证通过 |
 | [spec-create-task-inherits-selected-project](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) | main-window | 新建任务继承当前选中项目 | `in-progress` | 用户已确认开工 |
+| [spec-create-project-click-outside-confirm](./main-window/spec-create-project-click-outside-confirm[DONE].md) | main-window | 新建项目点外部确认 + 非法名短暂提示 | `done` | 对齐改名的窗口级 PointerPressed；非法名用 `ProjectName.Validate` 短暂提示；所有者预览通过（2026-09-26） |
 | [spec-remove-tag-feature](./task-domain/spec-remove-tag-feature[IN-PROGRESS].md) | task-domain | 完全移除标签功能 | `in-progress` | 用户已确认开工；推翻 `spec-tag-entity` 既有裁决，联动修订 `spec-quick-window-hotkey-capture[IN-PROGRESS]` 与 `REQUIREMENTS.md` |
 
 ### 待办事项索引（跨 SPEC 汇总）

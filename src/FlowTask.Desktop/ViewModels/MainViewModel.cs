@@ -715,6 +715,20 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private string _newProjectName = string.Empty;
 
+    /// <summary>
+    /// 新建项目名称非法时的提示文案；空字符串表示无提示。
+    /// </summary>
+    /// <remarks>
+    /// 文案来自 <see cref="ProjectName.Validate"/>，禁止在此另写一份。
+    /// 输入变化时立即清除；窗口侧再按短暂展示时长自动清空。
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCreateProjectError))]
+    private string _createProjectError = string.Empty;
+
+    /// <summary>是否正在显示新建项目校验提示。</summary>
+    public bool HasCreateProjectError => !string.IsNullOrEmpty(CreateProjectError);
+
     /// <summary>新建项目输入区是否展开。</summary>
     /// <remarks>
     /// 依渐进披露原则（design-domain-contract §1 原则 3），新建入口默认收起，
@@ -735,27 +749,60 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private void ToggleCreateProject()
     {
-        IsCreatingProject = !IsCreatingProject;
-        if (!IsCreatingProject)
+        if (IsCreatingProject)
         {
-            NewProjectName = string.Empty;
+            CollapseCreateProject();
+            return;
         }
+
+        IsCreatingProject = true;
     }
 
     /// <summary>
-    /// 创建项目。名称非法时静默忽略，与任务创建的交互预期一致。
+    /// 创建项目。名称非法时展示 <see cref="ProjectName.Validate"/> 文案，不落库。
     /// </summary>
     [RelayCommand]
     private async Task CreateProjectAsync()
         => await new CreateProjectViewModel(_projectRepository, _clock).ExecuteAsync(
             NewProjectName,
             _projects.Count,
-            () =>
-            {
-                NewProjectName = string.Empty;
-                IsCreatingProject = false;
-            },
-            LoadProjectsAsync);
+            CollapseCreateProject,
+            LoadProjectsAsync,
+            error => CreateProjectError = error);
+
+    /// <summary>
+    /// 离开新建输入框时提交：空白收起；非空走创建（非法则提示并保持输入区）。
+    /// </summary>
+    [RelayCommand]
+    private async Task ConfirmCreateProjectOnLeaveAsync()
+    {
+        if (!IsCreatingProject)
+        {
+            return;
+        }
+
+        await new CreateProjectViewModel(_projectRepository, _clock).ExecuteOnLeaveAsync(
+            NewProjectName,
+            _projects.Count,
+            CollapseCreateProject,
+            LoadProjectsAsync,
+            error => CreateProjectError = error);
+    }
+
+    private void CollapseCreateProject()
+    {
+        IsCreatingProject = false;
+        NewProjectName = string.Empty;
+        CreateProjectError = string.Empty;
+    }
+
+    partial void OnNewProjectNameChanged(string value)
+    {
+        if (HasCreateProjectError)
+        {
+            CreateProjectError = string.Empty;
+        }
+    }
 
     /// <summary>
     /// 将选中状态同步到各项目行，供侧边栏高亮绑定。
