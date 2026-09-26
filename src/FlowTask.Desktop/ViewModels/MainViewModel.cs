@@ -187,7 +187,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>未设关闭默认时，主窗 X 弹出的选择层是否可见。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
     private bool _isClosePromptOpen;
+
+    /// <summary>
+    /// 是否有必须先处理的全窗覆盖层。为 true 时主内容关闭命中，
+    /// 避免遮罩外的 <c>:pointerover</c> 高亮穿透到任务行 / 侧栏。
+    /// </summary>
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen;
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -206,6 +213,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>是否打开到期日编辑弹出层。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
     private bool _isDueDatePopupOpen;
 
     /// <summary>正在编辑的任务行（用于弹出层定位）；<c>null</c> 表示未在弹出编辑。</summary>

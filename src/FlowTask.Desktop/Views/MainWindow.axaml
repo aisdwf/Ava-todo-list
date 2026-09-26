@@ -15,7 +15,8 @@
         ExtendClientAreaChromeHints="PreferSystemChrome">
 
     <Grid>
-        <Grid ColumnDefinitions="272,*">
+        <Grid ColumnDefinitions="272,*"
+              IsHitTestVisible="{Binding !IsBlockingOverlayOpen}">
 
             <!-- ==================== 左侧极简导航 (design-visual-language §2.2) ====================
                  无右侧分割线：Editorial 风格以底色差异而非描边划分区域。 -->
@@ -675,12 +676,19 @@
 
 
         <!-- 到期日编辑弹出层 -->
+        <!-- 遮罩必须自带铺满的命中面：宿主 Grid 无 Background 不参与命中；
+             空 Fluent Button 的背景画在按内容尺寸的 ContentPresenter 上，
+             指针会穿透到后面的 TaskRow / NavPill，触发异常 :pointerover。 -->
         <Grid IsVisible="{Binding IsDueDatePopupOpen}" ZIndex="100">
             <Button HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    Opacity="0.45"
-                    Background="#000000"
-                    Command="{Binding CloseDueDatePopupCommand}" />
+                    Command="{Binding CloseDueDatePopupCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
             <Border Classes="SettingsCard"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -723,9 +731,13 @@
         <Grid IsVisible="{Binding IsClosePromptOpen}" ZIndex="110">
             <Button HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    Opacity="0.45"
-                    Background="#000000"
-                    Command="{Binding DismissClosePromptCommand}" />
+                    Command="{Binding DismissClosePromptCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
             <Border Classes="SettingsCard"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"

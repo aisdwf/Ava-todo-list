@@ -799,4 +799,23 @@ public class MainViewModelTests : IDisposable
         Assert.Equal(CloseActionKind.MinimizeToTray, vm.ClosePromptChoice);
         Assert.False(vm.RememberCloseAction);
     }
+
+    [AvaloniaFact]
+    public void BlockingOverlay_TracksClosePromptAndDueDatePopup()
+    {
+        var vm = CreateViewModel();
+        Assert.False(vm.IsBlockingOverlayOpen);
+
+        vm.OpenClosePrompt();
+        Assert.True(vm.IsBlockingOverlayOpen);
+
+        vm.DismissClosePromptCommand.Execute(null);
+        Assert.False(vm.IsBlockingOverlayOpen);
+
+        vm.IsDueDatePopupOpen = true;
+        Assert.True(vm.IsBlockingOverlayOpen);
+
+        vm.IsDueDatePopupOpen = false;
+        Assert.False(vm.IsBlockingOverlayOpen);
+    }
 }
