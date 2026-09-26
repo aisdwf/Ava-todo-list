@@ -897,9 +897,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 展开或收起外观设置视图。
     /// </summary>
     /// <remarks>
-    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项——
-    /// 与「返回清单」按钮的语义对称：外观偏好子标题永远描述"当前在设置页的哪里"，
-    /// 不需要跨会话记忆导航位置（spec-settings-master-detail-and-theme-presets）。
+    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项。
+    /// 返回只在左侧选项栏顶部，不需要跨会话记忆导航位置
+    /// （spec-settings-master-detail-and-theme-presets）。
     /// </remarks>
     [RelayCommand]
     private void ToggleSettings()
