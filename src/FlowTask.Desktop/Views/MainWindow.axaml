@@ -609,24 +609,53 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <StackPanel Spacing="10"
+                                <StackPanel Spacing="28"
                                             MaxWidth="640"
                                             HorizontalAlignment="Left"
                                             IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}">
-                                    <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <NumericUpDown Grid.Column="0"
-                                                       Minimum="1"
-                                                       Maximum="30"
-                                                       Increment="1"
-                                                       Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
-                                        <Button Grid.Column="1"
-                                                Classes="PrimaryAction"
-                                                Margin="10,0,0,0"
-                                                Content="保存"
-                                                Command="{Binding SaveDefaultDueOffsetCommand}"
-                                                CommandParameter="{Binding DefaultDueOffsetDays}" />
-                                    </Grid>
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <NumericUpDown Grid.Column="0"
+                                                           Minimum="1"
+                                                           Maximum="30"
+                                                           Increment="1"
+                                                           Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
+                                            <Button Grid.Column="1"
+                                                    Classes="PrimaryAction"
+                                                    Margin="10,0,0,0"
+                                                    Content="保存"
+                                                    Command="{Binding SaveDefaultDueOffsetCommand}"
+                                                    CommandParameter="{Binding DefaultDueOffsetDays}" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="关闭窗口" Classes="FieldLabel" />
+                                        <RadioButton GroupName="CloseWindowAction"
+                                                     IsChecked="{Binding CloseAction, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=MinimizeToTray, Mode=TwoWay}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="最小化到系统托盘"
+                                                           VerticalAlignment="Center" />
+                                                <Border CornerRadius="4"
+                                                        Padding="6,2"
+                                                        Background="{DynamicResource AccentSubtleBrush}"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="推荐"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource AccentBrush}" />
+                                                </Border>
+                                            </StackPanel>
+                                        </RadioButton>
+                                        <RadioButton GroupName="CloseWindowAction"
+                                                     Content="彻底退出"
+                                                     IsChecked="{Binding CloseAction, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Exit, Mode=TwoWay}" />
+                                    </StackPanel>
+
+                                    <Button Content="彻底退出"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,12,0,0"
+                                            Command="{Binding ExitApplicationCommand}" />
                                 </StackPanel>
 
                                 <StackPanel Spacing="10"
@@ -685,6 +714,42 @@
                         <Button Classes="PrimaryAction"
                                 Content="完成"
                                 Command="{Binding CommitDueDatePopupCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 未设关闭默认时的选择层（spec-close-to-tray）：不另开 Window，避免再占一条生命周期 -->
+        <Grid IsVisible="{Binding IsClosePromptOpen}" ZIndex="110">
+            <Button HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Opacity="0.45"
+                    Background="#000000"
+                    Command="{Binding DismissClosePromptCommand}" />
+            <Border Classes="SettingsCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MinWidth="360"
+                    Padding="24"
+                    Background="{DynamicResource SurfaceBrush}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="关闭窗口" Classes="SectionTitle" />
+                    <StackPanel Spacing="8">
+                        <RadioButton GroupName="ClosePromptChoice"
+                                     Content="最小化到托盘"
+                                     IsChecked="{Binding ClosePromptChoice, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=MinimizeToTray, Mode=TwoWay}" />
+                        <RadioButton GroupName="ClosePromptChoice"
+                                     Content="直接退出"
+                                     IsChecked="{Binding ClosePromptChoice, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Exit, Mode=TwoWay}" />
+                    </StackPanel>
+                    <CheckBox Content="设为默认"
+                              IsChecked="{Binding RememberCloseAction, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="取消"
+                                Command="{Binding DismissClosePromptCommand}" />
+                        <Button Classes="PrimaryAction"
+                                Content="确认"
+                                Command="{Binding ConfirmClosePromptCommand}" />
                     </StackPanel>
                 </StackPanel>
             </Border>

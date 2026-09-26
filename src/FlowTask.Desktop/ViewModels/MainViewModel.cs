@@ -7,6 +7,7 @@ using FlowTask.Core.Interfaces;
 using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
@@ -40,6 +41,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IClock _clock;
     private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
     private bool _suppressAppearancePersist;
+    private bool _suppressCloseActionPersist;
     private bool _suppressTaskSavedReload;
 
     [ObservableProperty]
@@ -165,6 +167,36 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>默认到期偏移天数（来自设置）。</summary>
     [ObservableProperty]
     private int _defaultDueOffsetDays = DueDateOffset.DefaultDays;
+
+    /// <summary>
+    /// 主窗关闭默认策略；<c>null</c> 表示未设默认，点 X 须询问（spec-close-to-tray）。
+    /// </summary>
+    [ObservableProperty]
+    private CloseActionKind? _closeAction;
+
+    /// <summary>关闭选择层里「设为默认」勾选，不跨会话记忆。</summary>
+    [ObservableProperty]
+    private bool _rememberCloseAction;
+
+    /// <summary>
+    /// 选择层当前圆点选项。与已持久化的 <see cref="CloseAction"/> 分开：
+    /// 未勾选设为默认时，确认只执行这一次，不改通用设置。
+    /// </summary>
+    [ObservableProperty]
+    private CloseActionKind _closePromptChoice = CloseActionKind.MinimizeToTray;
+
+    /// <summary>未设关闭默认时，主窗 X 弹出的选择层是否可见。</summary>
+    [ObservableProperty]
+    private bool _isClosePromptOpen;
+
+    /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
+    public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>请求把主窗藏进托盘。窗口句柄归视图层。</summary>
+    public event Action? RequestHideToTray;
+
+    /// <summary>请求彻底退出。与托盘「退出」、通用页按钮同一条路径。</summary>
+    public event Action? RequestExitApplication;
 
     /// <summary>创建区中的到期日编辑器。</summary>
     public DueDateEditorViewModel NewDueDateEditor { get; private set; } = null!;
@@ -318,6 +350,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         await _settingsRepository.InitializeAsync();
         DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
         await LoadAppearanceAsync();
+        await LoadCloseActionAsync();
 
         // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
@@ -356,6 +389,24 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         AppearanceCoordinator.ApplyTheme(IsDarkTheme);
         AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
         ThemeApplied?.Invoke();
+    }
+
+    /// <summary>
+    /// 从 AppSettings 恢复关闭策略。缺键或坏值保持 <c>null</c>（每次询问）。
+    /// </summary>
+    public async Task LoadCloseActionAsync()
+    {
+        await _settingsRepository.InitializeAsync();
+        var raw = await _settingsRepository.GetAsync(CloseBehaviorCoordinator.SettingsKey);
+        _suppressCloseActionPersist = true;
+        try
+        {
+            CloseAction = CloseBehaviorCoordinator.Parse(raw);
+        }
+        finally
+        {
+            _suppressCloseActionPersist = false;
+        }
     }
 
     /// <summary>
@@ -601,6 +652,56 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         await _settingsRepository.SetDefaultDueOffsetDaysAsync(days);
     }
+
+    /// <summary>
+    /// 打开关闭选择层：圆点预选「最小化到托盘」（与设置页推荐一致），勾选清空。
+    /// </summary>
+    public void OpenClosePrompt()
+    {
+        ClosePromptChoice = CloseActionKind.MinimizeToTray;
+        RememberCloseAction = false;
+        IsClosePromptOpen = true;
+    }
+
+    /// <summary>
+    /// 关闭选择层不执行关闭，主窗保持可见。
+    /// </summary>
+    [RelayCommand]
+    private void DismissClosePrompt()
+    {
+        IsClosePromptOpen = false;
+        RememberCloseAction = false;
+    }
+
+    /// <summary>
+    /// 按选择层当前圆点执行关闭；勾选设为默认时写入同一策略键。
+    /// </summary>
+    [RelayCommand]
+    private void ConfirmClosePrompt()
+    {
+        if (RememberCloseAction)
+        {
+            CloseAction = ClosePromptChoice;
+        }
+
+        IsClosePromptOpen = false;
+        RememberCloseAction = false;
+
+        if (ClosePromptChoice == CloseActionKind.Exit)
+        {
+            RequestExitApplication?.Invoke();
+        }
+        else
+        {
+            RequestHideToTray?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// 通用页底部与托盘菜单共用的彻底退出，不经过「关窗＝托盘」路径。
+    /// </summary>
+    [RelayCommand]
+    private void ExitApplication() => RequestExitApplication?.Invoke();
 
     /// <summary>
     /// 切换任务完成状态。
@@ -989,6 +1090,18 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         AppearancePersistTask = PersistAppearanceAsync();
+    }
+
+    partial void OnCloseActionChanged(CloseActionKind? value)
+    {
+        if (_suppressCloseActionPersist || value is not { } kind)
+        {
+            return;
+        }
+
+        CloseActionPersistTask = _settingsRepository.SetAsync(
+            CloseBehaviorCoordinator.SettingsKey,
+            CloseBehaviorCoordinator.ToStorage(kind));
     }
 
     private async Task PersistAppearanceAsync()

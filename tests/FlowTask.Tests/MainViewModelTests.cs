@@ -1,5 +1,6 @@
 using FlowTask.Core.Enums;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
 using Avalonia.Headless.XUnit;
@@ -706,5 +707,96 @@ public class MainViewModelTests : IDisposable
         Assert.Equal("default", vm.SelectedThemePreset.Id);
         Assert.Equal("Mica", vm.SelectedMaterial.Id);
         Assert.True(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_MissingCloseAction_RemainsUnset()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_RestoresPersistedCloseAction()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(CloseBehaviorCoordinator.SettingsKey, CloseBehaviorCoordinator.TrayStorage);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(CloseActionKind.MinimizeToTray, vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task CloseActionChange_RoundTripsAcrossViewModelInstances()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.CloseAction = CloseActionKind.Exit;
+        await vm.CloseActionPersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+        Assert.Equal(CloseActionKind.Exit, restored.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_UnknownCloseAction_TreatedAsUnset()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(CloseBehaviorCoordinator.SettingsKey, "ask-every-time");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmClosePrompt_WithoutRemember_DoesNotPersist()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        var hidden = false;
+        vm.RequestHideToTray += () => hidden = true;
+
+        vm.OpenClosePrompt();
+        vm.RememberCloseAction = false;
+        vm.ConfirmClosePromptCommand.Execute(null);
+
+        Assert.True(hidden);
+        Assert.False(vm.IsClosePromptOpen);
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmClosePrompt_WithRemember_PersistsSelectedChoice()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.OpenClosePrompt();
+        vm.ClosePromptChoice = CloseActionKind.Exit;
+        vm.RememberCloseAction = true;
+        vm.ConfirmClosePromptCommand.Execute(null);
+        await vm.CloseActionPersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+        Assert.Equal(CloseActionKind.Exit, restored.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public void OpenClosePrompt_PreselectsRecommendedTray()
+    {
+        var vm = CreateViewModel();
+        vm.ClosePromptChoice = CloseActionKind.Exit;
+        vm.OpenClosePrompt();
+
+        Assert.True(vm.IsClosePromptOpen);
+        Assert.Equal(CloseActionKind.MinimizeToTray, vm.ClosePromptChoice);
+        Assert.False(vm.RememberCloseAction);
     }
 }
