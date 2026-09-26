@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using System;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop;
 
@@ -12,6 +13,7 @@ sealed class Program
     public static void Main(string[] args)
     {
         Console.WriteLine("[FlowTask] Starting application...");
+        using var instance = SingleInstanceGuard.AcquireOrReplacePrevious();
         try
         {
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

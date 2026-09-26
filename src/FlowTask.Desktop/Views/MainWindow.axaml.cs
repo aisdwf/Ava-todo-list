@@ -13,6 +13,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 
 namespace FlowTask.Desktop.Views;
@@ -51,6 +52,12 @@ public partial class MainWindow : Window
     /// <see cref="ToggleQuickCaptureWindowAsync"/> 重入锁，防止同一时刻有多次 Toggle 逻辑并发执行。
     /// </summary>
     private bool _isTogglingQuickCapture;
+
+    /// <summary>小窗当前是否可见，供托盘右键菜单切换文案。</summary>
+    public bool IsQuickCaptureVisible => _quickCaptureWindow?.IsVisible == true;
+
+    /// <summary>小窗显隐变化，托盘菜单据此改「显示/隐藏小窗」。</summary>
+    public event Action? QuickCaptureVisibilityChanged;
 
     /// <summary>
     /// 转场进行中标志，防止连续点击导致多个动画叠加、遮罩残留。
@@ -117,6 +124,8 @@ public partial class MainWindow : Window
 
         vm.PropertyChanged += OnMainViewModelPropertyChanged;
 
+        Closing += OnMainWindowClosing;
+
         Opened += async (_, _) =>
         {
             // 先读库再刷窗，否则首帧会用字段默认值（深色 / 默认主题 / Mica）闪一下。
@@ -132,6 +141,39 @@ public partial class MainWindow : Window
     /// </summary>
     /// <param name="active">系统级热键是否注册成功。</param>
     public void SetSystemHotkeyActive(bool active) => _systemHotkeyActive = active;
+
+    private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (App.CurrentApp?.IsExiting == true)
+        {
+            return;
+        }
+
+        // 先 Cancel，再 Post 执行 Hide/Shutdown/弹层，避免在 Closing 栈上重入 Shutdown。
+        e.Cancel = true;
+        if (DataContext is not MainViewModel vm || vm.IsClosePromptOpen)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => ApplyClosePolicy(vm));
+    }
+
+    private static void ApplyClosePolicy(MainViewModel vm)
+    {
+        switch (vm.CloseAction)
+        {
+            case CloseActionKind.MinimizeToTray:
+                App.CurrentApp?.HideMainToTray();
+                break;
+            case CloseActionKind.Exit:
+                App.CurrentApp?.RequestExit();
+                break;
+            default:
+                vm.OpenClosePrompt();
+                break;
+        }
+    }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
@@ -290,11 +332,18 @@ public partial class MainWindow : Window
                 // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
                 _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
-                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
+                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟。
+                // 彻底退出时必须放行，否则进程被钉死在无主窗状态（spec-close-to-tray）。
                 _quickCaptureWindow.Closing += (_, e) =>
                 {
+                    if (App.CurrentApp?.IsExiting == true)
+                    {
+                        return;
+                    }
+
                     e.Cancel = true;
                     _quickCaptureWindow?.Hide();
+                    QuickCaptureVisibilityChanged?.Invoke();
                 };
             }
 
@@ -303,6 +352,7 @@ public partial class MainWindow : Window
                 // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
                 _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
                 _quickCaptureWindow.Hide();
+                QuickCaptureVisibilityChanged?.Invoke();
                 return;
             }
 
@@ -314,6 +364,7 @@ public partial class MainWindow : Window
             await _quickCaptureVm.PrepareAsync();
             _quickCaptureWindow.Show();
             _quickCaptureWindow.Activate();
+            QuickCaptureVisibilityChanged?.Invoke();
         }
         finally
         {
