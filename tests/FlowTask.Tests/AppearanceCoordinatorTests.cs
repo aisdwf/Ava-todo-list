@@ -86,6 +86,48 @@ public class AppearanceCoordinatorTests
     }
 
     /// <summary>
+    /// 命名主题必须带上参考站点采集的色板，选中后表面色和强调色一起变。
+    /// </summary>
+    [AvaloniaFact]
+    public void ApplyThemePreset_WritesReferencePalette()
+    {
+        var resources = Application.Current!.Resources;
+        var anthropic = AppearanceCoordinator.FindThemePreset("anthropic");
+        var breeze = AppearanceCoordinator.FindThemePreset("ocean-breeze");
+
+        Assert.Equal("Anthropic", anthropic.DisplayName);
+        Assert.Equal("海风", breeze.DisplayName);
+        Assert.Equal("#E37756", anthropic.Light.AccentHex);
+        Assert.Equal("#FAFAF7", anthropic.Light.WindowHex);
+        Assert.Equal("#2563EB", breeze.Light.AccentHex);
+        Assert.Equal("#FFFFFF", breeze.Light.WindowHex);
+
+        try
+        {
+            AppearanceCoordinator.ApplyThemePreset("anthropic");
+            AssertBrushColor(resources, "AccentBrush", ThemeVariant.Light, Color.Parse("#E37756"));
+            AssertBrushColor(resources, "WindowSurfaceBrush", ThemeVariant.Light, Color.Parse("#FAFAF7"));
+            AssertBrushColor(resources, "CardSurfaceBrush", ThemeVariant.Dark, Color.Parse("#242221"));
+            AssertBrushColor(resources, "TextPrimaryBrush", ThemeVariant.Dark, Color.Parse("#F4F3F0"));
+
+            var anthropicFont = Assert.IsType<FontFamily>(Application.Current!.Resources["AppFontFamily"]);
+            Assert.Contains("Lora", anthropicFont.ToString(), StringComparison.Ordinal);
+            AssertBrushColor(resources, "SidebarWashBrush", ThemeVariant.Light, Color.Parse("#F2F0EA"));
+
+            AppearanceCoordinator.ApplyThemePreset("ocean-breeze");
+            var breezeWash = GetBrush(resources, "SidebarWashBrush", ThemeVariant.Light);
+            Assert.NotEqual(Color.Parse("#E8E8E8"), breezeWash.Color);
+            Assert.NotEqual(Color.Parse("#2563EB"), breezeWash.Color);
+        }
+        finally
+        {
+            AppearanceCoordinator.ApplyThemePreset("default");
+            var restored = Assert.IsType<FontFamily>(Application.Current!.Resources["AppFontFamily"]);
+            Assert.Contains("Inter", restored.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
     /// 未知预设标识必须回退而非抛出，避免持久化数据损坏导致启动失败。
     /// </summary>
     [AvaloniaFact]
@@ -93,6 +135,7 @@ public class AppearanceCoordinatorTests
     {
         Assert.Equal(AppearanceCoordinator.AccentPresets[0].Id, AppearanceCoordinator.FindAccent("nope").Id);
         Assert.Equal(AppearanceCoordinator.MaterialPresets[0].Id, AppearanceCoordinator.FindMaterial("nope").Id);
+        Assert.Equal(AppearanceCoordinator.ThemePresets[0].Id, AppearanceCoordinator.FindThemePreset("nope").Id);
     }
 
     /// <summary>

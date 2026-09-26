@@ -11,6 +11,8 @@
     <Color x:Key="WindowSurfaceColor">#F7F7F5</Color>
     <SolidColorBrush x:Key="WindowSurfaceBrush" Color="#F7F7F5" />
     <SolidColorBrush x:Key="SidebarSurfaceBrush" Color="#EFEFEC" />
+    <!-- 左侧栏实际底色。默认与 Hairline 相同；非默认主题在运行时被轻染色。 -->
+    <SolidColorBrush x:Key="SidebarWashBrush" Color="#E8E8E8" />
     <SolidColorBrush x:Key="CardSurfaceBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="CardSurfaceHoverBrush" Color="#FAFAF8" />
 

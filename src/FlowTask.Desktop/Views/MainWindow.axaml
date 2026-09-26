@@ -22,7 +22,7 @@
             <!-- 侧边栏使用极弱叠加色而非不透明底：透明材质档位下不透明面板会
                  遮盖平台合成的模糊效果，使材质切换在视觉上毫无差别 -->
             <Border Grid.Column="0"
-                    Background="{DynamicResource HairlineBrush}"
+                    Background="{DynamicResource SidebarWashBrush}"
                     Padding="{DynamicResource SidebarPadding}">
                 <Grid RowDefinitions="Auto,*,Auto">
 
@@ -571,23 +571,27 @@
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="外观主题" Classes="SectionTitle" />
                                         <TextBlock Classes="CaptionText"
-                                                   Text="命名主题预设。Anthropic / 暗夜 / 海风等预设的实际配色仍在采集中，当前列表暂以强调色回填。" />
+                                                   Text="选择一套主题。会更换底色、文本、边框和强调色；Anthropic 同时改用衬线字体。" />
                                     </StackPanel>
-                                    <ListBox Classes="ChoiceGrid"
+                                    <ListBox Classes="ThemeCards"
                                              ItemsSource="{Binding ThemePresets}"
                                              SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <UniformGrid Columns="3" />
+                                                <UniformGrid Columns="2" />
                                             </ItemsPanelTemplate>
                                         </ListBox.ItemsPanel>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate DataType="appearance:ThemePreset">
-                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center"
-                                                             Fill="{Binding Swatch}" />
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
+                                                <StackPanel Spacing="10">
+                                                    <Border Height="72"
+                                                            CornerRadius="8"
+                                                            ClipToBounds="True"
+                                                            Background="{Binding Preview}" />
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontSize="13.5"
+                                                               FontWeight="Medium"
+                                                               HorizontalAlignment="Center" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
