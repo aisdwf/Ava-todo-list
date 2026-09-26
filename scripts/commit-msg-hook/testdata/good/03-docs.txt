@@ -1,0 +1,4 @@
+docs: record commit-msg subject vs body layout
+
+Why: design wrong — the rule card never separated the git subject from Why/What, so agents stuffed both into the first line.
+What: Document the two-part layout and add a commit-msg hook.

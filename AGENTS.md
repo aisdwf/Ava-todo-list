@@ -42,7 +42,10 @@ This entry file alone is **not** sufficient to act on.
 
 ### Gate 5 — Root cause in every code commit
 
-- Every code commit **must** contain English `Why:` (design wrong / code wrong / test wrong) and `What:`.
+- **Subject** (first line): `feat|fix|docs|chore|refactor|test|style|perf|ci|build: <short summary>`.
+- **Body** (after a blank line): English `Why:` (design wrong / code wrong / test wrong) and `What:`.
+- **Do not** put `Why:` / `What:` on the first line. **Do not** copy `git log --oneline` subjects that start with `Why:` — those commits are non-compliant.
+- The `commit-msg` hook rejects the wrong layout. **Do not** use `--no-verify`. If the hook is missing, run `powershell -File scripts/install-git-hooks.ps1` before committing.
 - One commit = one independently-reviewable change. Do not bundle unrelated changes.
 - See `docs/rules/commit-conventions.md`.
 
@@ -56,6 +59,8 @@ This entry file alone is **not** sufficient to act on.
 | Test | `dotnet test FlowTask.sln --nologo -v q` |
 | Run (manual verification only, not a functional check) | `./run.sh` |
 | Docs index | *(none — `docs/specs/README.md` is hand-maintained; see `docs/rules/docs-conventions.md`)* |
+| Install git hooks | `powershell -File scripts/install-git-hooks.ps1` |
+| Test commit-msg hook | `powershell -File scripts/commit-msg-hook/test-commit-msg.ps1` |
 
 Baseline: build 0 warnings / 0 errors; tests 163 passing. Do not regress below this baseline.
 
@@ -68,11 +73,12 @@ Baseline: build 0 warnings / 0 errors; tests 163 passing. Do not regress below t
 | [AI_CONSTITUTION.md](./AI_CONSTITUTION.md) | Supreme non-negotiable principles |
 | [docs/rules/workflow-methodology.md](./docs/rules/workflow-methodology.md) | Task types, complex Steps 0–6, execution rhythm, error handling |
 | [docs/rules/docs-conventions.md](./docs/rules/docs-conventions.md) | SPEC location (area folders), naming, status tags, freshness |
-| [docs/rules/commit-conventions.md](./docs/rules/commit-conventions.md) | Mandatory `Why:` / `What:` and TEMP_PATCH |
+| [docs/rules/commit-conventions.md](./docs/rules/commit-conventions.md) | Subject type + body `Why:` / `What:`; TEMP_PATCH; commit-msg hook |
 | [docs/rules/project-rules.md](./docs/rules/project-rules.md) | FlowTask-specific business/technical/architecture rules |
 | [docs/rules/technical-rules.md](./docs/rules/technical-rules.md) | Mandatory technical/architecture decomposition rules (e.g. ViewModel command decomposition) |
 | [docs/rules/rule-spec-review-gate.md](./docs/rules/rule-spec-review-gate.md) | Incident record: SPEC review gate was skipped twice, causing full rework |
 | [docs/rules/rule-spec-complete-before-merge.md](./docs/rules/rule-spec-complete-before-merge.md) | Incident record: SPEC + code must be finished on the task branch before merging `dev` |
+| [docs/rules/rule-commit-msg-layout.md](./docs/rules/rule-commit-msg-layout.md) | Incident record: Why/What stuffed into the git subject; hook is the gate |
 | [docs/rules/rule-no-invented-user-behavior.md](./docs/rules/rule-no-invented-user-behavior.md) | Incident record: interaction decisions invented without user evidence |
 | [docs/rules/rule-doc-boundary.md](./docs/rules/rule-doc-boundary.md) | design vs spec type boundary and naming rules |
 | [docs/rules/rule-code-standards.md](./docs/rules/rule-code-standards.md) | C# 12 / Avalonia 11 coding and comment standards |

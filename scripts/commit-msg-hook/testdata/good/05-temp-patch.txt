@@ -1,0 +1,7 @@
+fix: skip flaky tray hide on remote desktop
+
+Why: code wrong — close-to-tray races when the desktop compositor is remote.
+What: Skip the hide animation on remote desktop sessions until the compositor path is fixed.
+TEMP_PATCH: compositor race on RDP
+Removal date: 2026-10-27
+Owner: aisdwf

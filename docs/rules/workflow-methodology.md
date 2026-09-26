@@ -97,7 +97,7 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - **Do not** commit until the owner has manually verified.
 - Agent self-checks are necessary but **not** sufficient.
 - The owner decides commit timing; do not decide unilaterally that "this phase is ready to commit."
-- Code commits must follow `commit-conventions.md` (`Why:` / `What:` in English).
+- Code commits must follow `commit-conventions.md`: type subject on the first line; English `Why:` / `What:` in the body. Do not copy `git log` subjects that start with `Why:`. The `commit-msg` hook rejects the wrong layout; do not use `--no-verify`.
 - One commit = one independently-reviewable change. Do not bundle unrelated changes into a single commit.
 - After preview passes: commit SPEC-closed-as-`[DONE]` together with the code
   on the task branch, **then** merge that branch into `dev`.

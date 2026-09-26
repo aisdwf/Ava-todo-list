@@ -1,0 +1,4 @@
+feat(settings): collapse accent into the theme page
+
+Why: design wrong — settings split accent, theme, and material into separate panes.
+What: Collapse settings to Appearance, General, and About.

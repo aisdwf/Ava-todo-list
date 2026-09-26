@@ -1,0 +1,4 @@
+fix: hide delete on the Default project
+
+Why: code wrong — Default row still exposed delete; ConfirmDelete called SqliteProjectRepository.DeleteAsync, which throws for DefaultProject.Id.
+What: Hide Default delete, no-op Request/Confirm, and add tests that it does not throw.

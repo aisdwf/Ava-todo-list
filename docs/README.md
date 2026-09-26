@@ -55,7 +55,7 @@ This document serves as the master navigation map for developers and AI agents.
 | :--- | :--- |
 | [`workflow-methodology.md`](./rules/workflow-methodology.md) | 任务分类、Complex Step 0-6、执行节奏硬规则、错误处理对照表 |
 | [`docs-conventions.md`](./rules/docs-conventions.md) | SPEC 目录（area 子目录）、命名、状态机、新鲜度阈值的唯一权威 |
-| [`commit-conventions.md`](./rules/commit-conventions.md) | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` 约定 |
+| [`commit-conventions.md`](./rules/commit-conventions.md) | 第一行 type 摘要、正文 `Why:`/`What:`、归因分类、`TEMP_PATCH`、commit-msg hook |
 | [`project-rules.md`](./rules/project-rules.md) | FlowTask 项目专属业务/技术/架构规则（宪法 Article 7） |
 | [`technical-rules.md`](./rules/technical-rules.md) | 强制性技术/架构分解规则（如 ViewModel 命令拆分） |
 
@@ -86,13 +86,15 @@ This document serves as the master navigation map for developers and AI agents.
 | [`README.md`](./rules/README.md) | 规则库索引、**改动前 30 秒防呆清单** | — |
 | `workflow-methodology.md` | 任务分类、Complex Step 0-6、执行节奏硬规则、错误处理对照表 | BLOCK |
 | `docs-conventions.md` | SPEC 目录（area 子目录）/命名/状态机/新鲜度阈值的唯一权威 | BLOCK |
-| `commit-conventions.md` | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` | BLOCK |
+| `commit-conventions.md` | 第一行 type 摘要、正文 `Why:`/`What:`、`TEMP_PATCH`、commit-msg hook | BLOCK |
 | `project-rules.md` | FlowTask 项目专属业务/技术/架构规则 | — |
 | `rule-code-standards.md` | C# 12 / Avalonia 11 编码与注释规范 | BLOCK |
 | `technical-rules.md` | 强制性技术/架构分解规则（如 ViewModel 命令拆分） | BLOCK |
 | `rule-spec-review-gate.md` | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（事故记录） | BLOCK |
 | `rule-no-invented-user-behavior.md` | 交互设计严禁凭推理产出用户行为假设（事故记录） | BLOCK |
 | `rule-doc-boundary.md` | 文档类型边界（design vs spec）与命名规范（事故记录） | BLOCK |
+| `rule-spec-complete-before-merge.md` | SPEC + 代码必须在任务分支上完成后再合入 `dev` | BLOCK |
+| `rule-commit-msg-layout.md` | 第一行 type 摘要，Why/What 只写正文；禁止抄错误 git log（事故记录） | BLOCK |
 
 ### 2.4 `specs/` (功能规格与工作记忆，按 area 子目录组织)
 
@@ -112,6 +114,7 @@ This document serves as the master navigation map for developers and AI agents.
 | `spec-quick-window-hotkey-capture[IN-PROGRESS].md` | quick-capture | 全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` |
 | `spec-quick-window-single-project-list[DRAFT].md` | quick-capture | 小窗单项目列表 + 勾选 | `draft` |
 | `spec-doc-restructure[DONE].md` | docs-system | 文档体系重构：类型边界归位 + 编号清理 | `done` |
+| `spec-commit-msg-layout[DONE].md` | docs-system | 提交说明第一行 type 摘要 + 正文 Why/What；commit-msg hook | `done` |
 
 ### 2.5 `adr/` (架构决策记录)
 

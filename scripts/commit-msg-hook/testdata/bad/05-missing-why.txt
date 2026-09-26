@@ -1,0 +1,3 @@
+fix: hide delete on the Default project
+
+What: Hide Default delete and add regression tests.

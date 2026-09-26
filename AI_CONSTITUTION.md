@@ -28,16 +28,20 @@ If the answer is uncertain, stop. Do not proceed until certainty is achieved.
   - Code changes MUST be accompanied by documentation that explains the why — the root cause or design rationale.
   - Every git commit affecting production behavior must include a clear explanation: was the original design wrong? was the code wrong? was testing insufficient?
   - A hotfix without a root cause explanation is a violation — even under time pressure, the explanation must be written.
-- **Required in every code-change commit message**:
-  - `why: <design flaw / implementation bug / test gap>`
-  - `what: <what changed>`
+- **Required layout for every non-merge commit**:
+  - Subject (first line only): `feat|fix|docs|chore|refactor|test|style|perf|ci|build: <short summary>`
+  - Body (after a blank line):
+    - `Why: <design wrong | code wrong | test wrong> — <where> — <root cause>`
+    - `What: <what changed>`
   - Before committing, answer: *design wrong? code wrong? test wrong?* — all three are valid answers.
 - **Prohibited**:
+  - Putting `Why:` / `What:` on the git subject, or copying `git log` subjects that start with `Why:`.
   - `"fix bug"` without explaining why the bug existed.
   - `"hotfix"` without a post-fix root cause analysis committed alongside.
+  - `git commit --no-verify` to skip the commit-msg hook.
   - Documentation that describes the current state without explaining how it got there.
   - Updating a doc to paper over a known inconsistency instead of fixing it first.
-- **Enforcement**: Git `commit-msg` hook rejects commits missing `why:` and `what:` blocks or containing generic uninformative placeholders.
+- **Enforcement**: Versioned `.githooks/commit-msg` (install with `powershell -File scripts/install-git-hooks.ps1`) rejects a missing type subject, `Why:`/`What:` on the first line, missing body blocks, missing attribution category, or a vague `What:`.
 
 ---
 
