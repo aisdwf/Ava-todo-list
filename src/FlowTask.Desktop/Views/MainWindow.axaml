@@ -255,17 +255,11 @@
                         <TextBlock Text="{Binding SelectedSettingsNavItem.DisplayName}"
                                    Classes="HeroTitle" />
                         <TextBlock Classes="CaptionText"
-                                   Text="选择一套主题。会更换底色、文本、边框和强调色；Anthropic 同时改用衬线字体。"
-                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=ThemePreset}" />
+                                   Text="主题会更换底色、文本、边框和强调色；材质即时生效。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Appearance}" />
                         <TextBlock Classes="CaptionText"
-                                   Text="点缀色会实时应用于按钮、选中态与交互高光。"
-                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Accent}" />
-                        <TextBlock Classes="CaptionText"
-                                   Text="选择桌面原生视觉质感，即时生效。"
-                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Material}" />
-                        <TextBlock Classes="CaptionText"
-                                   Text="「启用默认到期」= 今天 + N 天。范围 1–30，默认 1。"
-                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=DueDateOffset}" />
+                                   Text="与功能相关的设置。目前可改「启用默认到期」的天数。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}" />
                         <TextBlock Classes="CaptionText"
                                    Text="版本与技术信息。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}" />
@@ -572,93 +566,70 @@
                     <Grid IsVisible="{Binding IsSettingsOpen}">
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                       Padding="0,0,12,32">
-                            <StackPanel Spacing="20" MaxWidth="640" HorizontalAlignment="Left">
+                            <StackPanel Spacing="28">
 
-                                <!-- 外观主题：命名主题预设 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=ThemePreset}">
-                                    <ListBox Classes="ThemeCards"
-                                             ItemsSource="{Binding ThemePresets}"
-                                             SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="2" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:ThemePreset">
-                                                <StackPanel Spacing="10">
-                                                    <Border Height="72"
-                                                            CornerRadius="8"
-                                                            ClipToBounds="True"
-                                                            Background="{Binding Preview}" />
-                                                    <TextBlock Text="{Binding DisplayName}"
-                                                               FontSize="13.5"
-                                                               FontWeight="Medium"
-                                                               HorizontalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
+                                <StackPanel Spacing="28"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Appearance}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="外观主题" Classes="FieldLabel" />
+                                        <ListBox Classes="ColorChips"
+                                                 ItemsSource="{Binding ThemePresets}"
+                                                 SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="appearance:ThemePreset">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Height="52"
+                                                                CornerRadius="12"
+                                                                ClipToBounds="True"
+                                                                Background="{Binding Preview}" />
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="12.5"
+                                                                   FontWeight="Medium"
+                                                                   HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="窗口材质" Classes="FieldLabel" />
+                                        <ListBox Classes="ColorChips"
+                                                 ItemsSource="{Binding MaterialPresets}"
+                                                 SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="appearance:MaterialOption">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Height="52"
+                                                                CornerRadius="12"
+                                                                ClipToBounds="True"
+                                                                Background="{Binding Swatch}" />
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="12.5"
+                                                                   FontWeight="Medium"
+                                                                   HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
                                 </StackPanel>
 
-                                <!-- 强调色 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Accent}">
-                                    <ListBox Classes="ChoiceGrid"
-                                             ItemsSource="{Binding AccentPresets}"
-                                             SelectedItem="{Binding SelectedAccent, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="3" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:AppearanceOption">
-                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                                    <!-- 色样取预设色值，与令牌同源 -->
-                                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center"
-                                                             Fill="{Binding Swatch}" />
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </StackPanel>
-
-                                <!-- 窗口材质：数据驱动，选项来自 AppearanceCoordinator 权威定义 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Material}">
-                                    <!--
-                                      用 ListBox 而非 Button 阵列：选中态是列表控件的原生语义，
-                                      交由 SelectedItem 双向绑定即可，无需为"哪一项当前生效"
-                                      另造一套跨作用域比较逻辑。
-                                    -->
-                                    <ListBox Classes="ChoiceGrid"
-                                             ItemsSource="{Binding MaterialPresets}"
-                                             SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="2" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:MaterialOption">
-                                                <StackPanel Spacing="5">
-                                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                               HorizontalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Description}" Classes="CaptionText"
-                                                               HorizontalAlignment="Center" TextAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </StackPanel>
-
-                                <!-- 默认到期偏移 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=DueDateOffset}">
+                                <StackPanel Spacing="10"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}">
+                                    <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
                                     <Grid ColumnDefinitions="*,Auto">
                                         <NumericUpDown Grid.Column="0"
                                                        Minimum="1"
@@ -674,8 +645,9 @@
                                     </Grid>
                                 </StackPanel>
 
-                                <!-- 关于 -->
-                                <StackPanel Spacing="18"
+                                <StackPanel Spacing="10"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
                                             IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}">
                                     <TextBlock Text="FlowTask Desktop" FontSize="14" FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextPrimaryBrush}" />

@@ -62,7 +62,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedSettingsNavItem))]
-    private SettingsSection _selectedSettingsSection = SettingsSection.ThemePreset;
+    private SettingsSection _selectedSettingsSection = SettingsSection.Appearance;
 
     /// <summary>
     /// 左侧导航 <c>ListBox</c> 的 <c>SelectedItem</c> 绑定桥接：
@@ -261,16 +261,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 固定列表，顺序即当前卷动流的既有顺序（外观主题 → 强调色 → 窗口材质 →
-    /// 默认到期偏移 → 标签管理 → 关于），未引入新的信息架构判断
-    /// （spec-settings-master-detail-and-theme-presets §Constraints [推断]）。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
-        new SettingsNavItem(SettingsSection.ThemePreset, "外观主题", "选择一套命名主题预设。"),
-        new SettingsNavItem(SettingsSection.Accent, "强调色", "点缀色实时应用于按钮与高光。"),
-        new SettingsNavItem(SettingsSection.Material, "窗口材质", "桌面原生视觉质感。"),
-        new SettingsNavItem(SettingsSection.DueDateOffset, "默认到期偏移", "「启用默认到期」的天数。"),
+        new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
+        new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -900,7 +897,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         IsSettingsOpen = !IsSettingsOpen;
         if (IsSettingsOpen)
         {
-            SelectedSettingsSection = SettingsSection.ThemePreset;
+            SelectedSettingsSection = SettingsSection.Appearance;
         }
     }
 

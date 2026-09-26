@@ -22,4 +22,6 @@
 
     <StreamGeometry x:Key="IconSpark">M12,3 L13.6,8.6 L19.2,10.2 L13.6,11.8 L12,17.4 L10.4,11.8 L4.8,10.2 L10.4,8.6 Z</StreamGeometry>
 
+    <StreamGeometry x:Key="IconCheck">M5,12.5 L10,17.5 L19,7</StreamGeometry>
+
 </ResourceDictionary>
