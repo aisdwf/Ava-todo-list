@@ -1,4 +1,5 @@
 using FlowTask.Core.Enums;
+using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
 using Avalonia.Headless.XUnit;
@@ -657,5 +658,67 @@ public class MainViewModelTests : IDisposable
         Assert.True(vm.IsDarkTheme);
 
         Assert.Equal(2, notified);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_RestoresPersistedAppearance()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+        Assert.Equal("Solid", vm.SelectedMaterial.Id);
+        Assert.False(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task AppearanceChanges_RoundTripAcrossViewModelInstances()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.SelectedThemePreset = vm.ThemePresets.First(p => p.Id == "anthropic");
+        vm.SelectedMaterial = vm.MaterialPresets.First(p => p.Id == "Acrylic");
+        vm.ApplyTheme(false);
+        await vm.AppearancePersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+
+        Assert.Equal("anthropic", restored.SelectedThemePreset.Id);
+        Assert.Equal("Acrylic", restored.SelectedMaterial.Id);
+        Assert.False(restored.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_UnknownAppearanceIds_FallBackToFirstPreset()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "not-a-theme");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "not-a-material");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "maybe");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(AppearanceCoordinator.ThemePresets[0].Id, vm.SelectedThemePreset.Id);
+        Assert.Equal(AppearanceCoordinator.MaterialPresets[0].Id, vm.SelectedMaterial.Id);
+        Assert.True(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_MissingAppearanceKeys_KeepsCompiledDefaults()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal("default", vm.SelectedThemePreset.Id);
+        Assert.Equal("Mica", vm.SelectedMaterial.Id);
+        Assert.True(vm.IsDarkTheme);
     }
 }
