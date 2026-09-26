@@ -40,6 +40,7 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 
 ### Step 1 — SPEC `[DRAFT]`
 
+- Write the SPEC on the `dev` worktree. Feature and bugfix branches do not own SPEC files.
 - `docs/rules/docs-conventions.md` is the single authority for SPEC location, filename, body format, lifecycle tags, transitions, and stale thresholds. Do not redefine them here or in task-local instructions.
 - Search `docs/specs/<area>/` for an existing `[IN-PROGRESS]` or `[DRAFT]` SPEC covering the same area.
 - **Prefer contributing** to that SPEC; do not fork a parallel working memory.
@@ -82,20 +83,25 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - Provide the owner a clear verification entry for manual review.
 - Passing build + tests proves the code matches the SPEC's own design. It does **not** prove the feature is usable — that is the owner's manual verification, not the agent's.
 
-### Step 5 — Docs review → `[DONE]`
+### Step 5 — Docs review → `[DONE]` (on `dev` only)
 
+- SPEC create / rename / status / `docs/specs/README.md` happen on the `dev`
+  worktree. Do not close a SPEC on a feature or bugfix branch.
 - Sync docs with code (constitution: co-maintain).
 - Redirect superseded docs.
 - When acceptance and checklist are complete, set header status to `[DONE]` (or the appropriate terminal tag) **and rename** to `spec-<feature>[DONE].md` (or matching terminal tag).
 - Update `docs/specs/README.md` in the same change.
+- See `docs/rules/rule-spec-on-dev-before-merge.md`.
 
-### Step 6 — Commit only after owner verification
+### Step 6 — Commit only after owner verification; merge after SPEC is closed
 
 - **Do not** commit until the owner has manually verified.
 - Agent self-checks are necessary but **not** sufficient.
 - The owner decides commit timing; do not decide unilaterally that "this phase is ready to commit."
 - Code commits must follow `commit-conventions.md` (`Why:` / `What:` in English).
 - One commit = one independently-reviewable change. Do not bundle unrelated changes into a single commit.
+- Close the SPEC on `dev` **before** merging the feature/bugfix branch into `dev`.
+  Do not merge a stale SPEC index from a branch forked off `main`.
 
 ---
 
@@ -141,6 +147,7 @@ These are **hard rules**, not style preferences:
 ## Related
 
 - SPEC mechanics: `docs/rules/docs-conventions.md`
+- SPEC lifecycle on `dev` before merge: `docs/rules/rule-spec-on-dev-before-merge.md`
 - Type boundary (design vs spec): `docs/rules/rule-doc-boundary.md`
 - Commit attribution: `docs/rules/commit-conventions.md`
 - Human methodology: `docs/ai-workflow/02-SPEC驱动工作流.md` (private, gitignored)

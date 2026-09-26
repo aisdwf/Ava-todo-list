@@ -23,7 +23,7 @@ Before acting, read:
 1. `docs/rules/workflow-methodology.md`
 2. `AI_CONSTITUTION.md`
 3. `docs/rules/docs-conventions.md` and `docs/rules/commit-conventions.md`
-4. `docs/rules/project-rules.md`, `docs/rules/technical-rules.md`, and the relevant incident-driven cards under `docs/rules/rule-*.md`
+4. `docs/rules/project-rules.md`, `docs/rules/technical-rules.md`, and the relevant incident-driven cards under `docs/rules/rule-*.md` (including `rule-spec-on-dev-before-merge.md` before any merge into `dev`)
 
 This entry file alone is **not** sufficient to act on.
 
@@ -72,6 +72,7 @@ Baseline: build 0 warnings / 0 errors; tests 163 passing. Do not regress below t
 | [docs/rules/project-rules.md](./docs/rules/project-rules.md) | FlowTask-specific business/technical/architecture rules |
 | [docs/rules/technical-rules.md](./docs/rules/technical-rules.md) | Mandatory technical/architecture decomposition rules (e.g. ViewModel command decomposition) |
 | [docs/rules/rule-spec-review-gate.md](./docs/rules/rule-spec-review-gate.md) | Incident record: SPEC review gate was skipped twice, causing full rework |
+| [docs/rules/rule-spec-on-dev-before-merge.md](./docs/rules/rule-spec-on-dev-before-merge.md) | Incident record: SPEC must be closed on `dev` before merging a feature branch |
 | [docs/rules/rule-no-invented-user-behavior.md](./docs/rules/rule-no-invented-user-behavior.md) | Incident record: interaction decisions invented without user evidence |
 | [docs/rules/rule-doc-boundary.md](./docs/rules/rule-doc-boundary.md) | design vs spec type boundary and naming rules |
 | [docs/rules/rule-code-standards.md](./docs/rules/rule-code-standards.md) | C# 12 / Avalonia 11 coding and comment standards |
