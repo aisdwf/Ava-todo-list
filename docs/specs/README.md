@@ -18,12 +18,12 @@ powershell -File scripts/build-spec-index.ps1
 | :--- | ---: |
 | `draft` | 0 |
 | `in-progress` | 4 |
-| `done` | 18 |
+| `done` | 19 |
 | `done-refactored` | 0 |
 | `superseded` | 2 |
 | `archived` | 0 |
 | `obsolete` | 1 |
-| 合计 | 25 |
+| 合计 | 26 |
 
 ## Area
 
@@ -31,7 +31,7 @@ powershell -File scripts/build-spec-index.ps1
 | :--- | ---: |
 | [`docs-system/`](./docs-system/) | 2 |
 | [`infrastructure/`](./infrastructure/) | 1 |
-| [`main-window/`](./main-window/) | 7 |
+| [`main-window/`](./main-window/) | 8 |
 | [`packaging/`](./packaging/) | 1 |
 | [`quick-capture/`](./quick-capture/) | 3 |
 | [`task-domain/`](./task-domain/) | 6 |
@@ -69,6 +69,7 @@ powershell -File scripts/build-spec-index.ps1
 | [spec-close-to-tray](./main-window/spec-close-to-tray[DONE].md) | 主窗关闭策略 + 系统托盘保活 | `done` |
 | [spec-create-project-click-outside-confirm](./main-window/spec-create-project-click-outside-confirm[DONE].md) | 新建项目点外部确认 | `done` |
 | [spec-create-task-inherits-selected-project](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) | 新建任务继承当前选中项目 | `in-progress` |
+| [spec-modal-overlay-block-hover](./main-window/spec-modal-overlay-block-hover[DONE].md) | 全局覆盖层挡住背景悬停高亮 | `done` |
 | [spec-settings-theme-button-order](./main-window/spec-settings-theme-button-order[DONE].md) | 主窗口设置与昼夜按钮对调 | `done` |
 | [spec-sidebar-selection-consolidation](./main-window/spec-sidebar-selection-consolidation[DONE].md) | 侧边栏选中机制收敛（结构整改） | `done` |
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | MainViewModel TR-1 命令拆分 | `done` |
