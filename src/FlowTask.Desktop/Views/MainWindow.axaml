@@ -245,8 +245,18 @@
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}" />
                     </StackPanel>
 
-                    <!-- 右上角一对药丸按钮 (spec-editorial-and-ripple-theme §2) -->
+                    <!-- 右上角一对药丸按钮：齿轮在左、昼夜在右。齿轮隐藏后昼夜仍停在最右侧，不占齿轮原位。 -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
+                        <Button Classes="IconCircle"
+                                Command="{Binding ToggleSettingsCommand}"
+                                ToolTip.Tip="外观设置"
+                                IsVisible="{Binding !IsSettingsOpen}">
+                            <Viewbox Width="18" Height="18">
+                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
+                            </Viewbox>
+                        </Button>
+
                         <Button x:Name="ThemeToggleButton"
                                 Classes="IconCircle"
                                 ToolTip.Tip="切换昼夜主题">
@@ -259,16 +269,6 @@
                                     <Path Classes="StrokeIcon" Data="{StaticResource IconMoon}" />
                                 </Viewbox>
                             </Panel>
-                        </Button>
-
-                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
-                        <Button Classes="IconCircle"
-                                Command="{Binding ToggleSettingsCommand}"
-                                ToolTip.Tip="外观设置"
-                                IsVisible="{Binding !IsSettingsOpen}">
-                            <Viewbox Width="18" Height="18">
-                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
-                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>

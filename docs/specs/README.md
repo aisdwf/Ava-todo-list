@@ -42,12 +42,11 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`task-domain/spec-project-managed-tasks` 已 `[DONE]`（全任务看板 + 单项目自主管理；全局任务归档废除；所有者预览通过）。
-`spec-task-complete-before-archive` 已 `[SUPERSEDED]`。
-此前合入 `dev` 的完成项：`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
+**当前阶段：`main-window/spec-settings-theme-button-order` 已 `[DONE]`（主窗口齿轮在左、昼夜在右；打开设置后昼夜不占齿轮原位；所有者预览通过）。
+此前合入 `dev` 的完成项：`spec-project-managed-tasks`、`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
 其余进行中的 SPEC：`spec-quick-window-hotkey-capture` /
 `spec-quick-window-single-project-list`、`spec-create-task-inherits-selected-project`、`spec-remove-tag-feature`。
-上一完成项为 `spec-project-managed-tasks`。**
+上一完成项为 `spec-settings-theme-button-order`。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -123,6 +122,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[DONE].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `done` | 新建 `packaging` area；44 文件→1 exe；`v0.1.0` 已正式发布，zip + 裸 exe 双资产；人工验证通过 |
 | [spec-create-task-inherits-selected-project](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) | main-window | 新建任务继承当前选中项目 | `in-progress` | 用户已确认开工 |
 | [spec-create-project-click-outside-confirm](./main-window/spec-create-project-click-outside-confirm[DONE].md) | main-window | 新建项目点外部确认 + 非法名短暂提示 | `done` | 对齐改名的窗口级 PointerPressed；非法名用 `ProjectName.Validate` 短暂提示；所有者预览通过（2026-09-26） |
+| [spec-settings-theme-button-order](./main-window/spec-settings-theme-button-order[DONE].md) | main-window | 主窗口齿轮在左、昼夜在右 | `done` | 打开设置后昼夜仍锚定最右侧；所有者要求直接在 `dev` 完成；预览通过（2026-09-27） |
 | [spec-remove-tag-feature](./task-domain/spec-remove-tag-feature[IN-PROGRESS].md) | task-domain | 完全移除标签功能 | `in-progress` | 用户已确认开工；推翻 `spec-tag-entity` 既有裁决，联动修订 `spec-quick-window-hotkey-capture[IN-PROGRESS]` 与 `REQUIREMENTS.md` |
 
 ### 待办事项索引（跨 SPEC 汇总）
