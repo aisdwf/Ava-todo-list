@@ -122,7 +122,7 @@ public class QuickCaptureViewModelTests : IDisposable
 
         await vm.ToggleTaskCompleteCommand.ExecuteAsync(row.Task);
 
-        // 完成 ≠ 归档（spec-task-complete-before-archive）：勾选后任务仍在小窗列表中
+        // 勾选后任务仍在小窗列表中（完成套件：不离开列表）
         Assert.Single(vm.Tasks);
         Assert.True(vm.Tasks[0].Task.IsCompleted);
     }

@@ -76,22 +76,12 @@ public class TaskItem
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
-    /// 是否已归档。
+    /// 已停用的任务归档标记。列保留（sqlite-net 不物理删列），查询与写入路径不再使用。
+    /// 见 spec-project-managed-tasks。
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>完成 ≠ 归档</b>（spec-task-complete-before-archive）：<see cref="IsCompleted"/>
-    /// 只表示用户勾选完成，任务仍留在活动列表（划线低饱和）；
-    /// 只有显式的归档动作才会把它移入「已完成归档」视图。
-    /// </para>
-    /// <para>
-    /// 不变量：<c>IsArchived == true</c> 之前必须 <c>IsCompleted == true</c>
-    /// （未完成任务不可归档，由 <c>ArchiveAllCompletedAsync</c> 保证）。
-    /// </para>
-    /// </remarks>
     public bool IsArchived { get; set; }
 
-    /// <summary>归档时刻（UTC）；未归档时为 <c>null</c>。</summary>
+    /// <summary>已停用。随 <see cref="IsArchived"/> 一同不再读写。</summary>
     public DateTime? ArchivedAt { get; set; }
 
     public bool IsDeleted { get; set; }

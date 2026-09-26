@@ -1,7 +1,7 @@
 namespace FlowTask.Desktop.ViewModels.Actions;
 
 /// <summary>
-/// 切换 VIEWS 筛选；同值不重载（TR-1）。
+/// 切换到全部任务看板；同值不重载（TR-1）。
 /// </summary>
 public sealed class ChangeFilterViewModel
 {
@@ -12,14 +12,10 @@ public sealed class ChangeFilterViewModel
         Action<ViewSelection> applySelection,
         Action reloadTasksFireAndForget)
     {
+        _ = filter;
         closeSettings();
 
-        var target = filter switch
-        {
-            TaskFilter.Completed => ViewSelection.Completed,
-            _ => ViewSelection.Active
-        };
-
+        var target = ViewSelection.Active;
         if (current == target)
         {
             return;

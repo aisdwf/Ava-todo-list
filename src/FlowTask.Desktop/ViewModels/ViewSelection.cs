@@ -5,11 +5,8 @@ namespace FlowTask.Desktop.ViewModels;
 /// </summary>
 public enum ViewSelectionKind
 {
-    /// <summary>全部活跃任务。</summary>
+    /// <summary>全部任务看板。</summary>
     Active,
-
-    /// <summary>已完成归档。</summary>
-    Completed,
 
     /// <summary>某个具体项目。</summary>
     Project
@@ -31,7 +28,7 @@ public enum ViewSelectionKind
 /// 用一个 <c>record struct</c> 把「查看什么」表达为单一取值，
 /// 使「同时只能选中一个」成为类型层面的保证：
 /// <see cref="Kind"/> 为 <see cref="ViewSelectionKind.Project"/> 时
-/// 天然排除了同时是 VIEWS 三项之一的可能，无需手工清零对侧状态。
+/// 天然排除了同时是 VIEWS 入口的可能，无需手工清零对侧状态。
 /// </para>
 /// <para>
 /// 记录类型的默认结构相等性恰好是这里需要的语义：
@@ -54,11 +51,8 @@ public readonly record struct ViewSelection
     /// <summary>选中的项目 Id；仅 <see cref="Kind"/> 为 <see cref="ViewSelectionKind.Project"/> 时有值。</summary>
     public string? ProjectId { get; }
 
-    /// <summary>全部活跃任务视图。</summary>
+    /// <summary>全部任务看板。</summary>
     public static ViewSelection Active { get; } = new(ViewSelectionKind.Active, null);
-
-    /// <summary>已完成归档视图。</summary>
-    public static ViewSelection Completed { get; } = new(ViewSelectionKind.Completed, null);
 
     /// <summary>构造指向某个项目的选择。</summary>
     /// <param name="projectId">目标项目 Id，不得为空。</param>

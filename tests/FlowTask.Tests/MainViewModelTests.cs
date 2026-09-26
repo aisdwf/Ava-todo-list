@@ -102,6 +102,7 @@ public class MainViewModelTests : IDisposable
         await vm.DeleteTaskCommand.ExecuteAsync(target);
 
         Assert.Empty(vm.Tasks);
+        Assert.Null(await _repo.GetByIdAsync(target.Id));
     }
 
     [AvaloniaFact]
@@ -116,10 +117,10 @@ public class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// 回归防护：ActiveCount / CompletedCount 此前从未被赋值，侧边栏徽标恒显 0。
+    /// 看板计数含已完成任务；勾选不把任务送出列表。
     /// </summary>
     [AvaloniaFact]
-    public async Task Counts_ReflectActiveAndCompletedTotals()
+    public async Task Counts_IncludeCompletedOnAllTasksBoard()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -130,24 +131,14 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         Assert.Equal(2, vm.ActiveCount);
-        Assert.Equal(0, vm.CompletedCount);
-        Assert.Equal(0, vm.PendingArchiveCount);
 
         var first = vm.Tasks[0].Task;
         first.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(first);
 
-        // 完成 ≠ 归档（spec-task-complete-before-archive）：勾选完成后任务仍留在活动列表，
-        // ActiveCount 不变；CompletedCount（=已归档数）在显式归档前也不变
         Assert.Equal(2, vm.ActiveCount);
-        Assert.Equal(0, vm.CompletedCount);
-        Assert.Equal(1, vm.PendingArchiveCount);
-
-        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, vm.ActiveCount);
-        Assert.Equal(1, vm.CompletedCount);
-        Assert.Equal(0, vm.PendingArchiveCount);
+        Assert.Equal(2, vm.Tasks.Count);
+        Assert.True(vm.Tasks.Last().Task.IsCompleted);
     }
 
     [AvaloniaFact]
@@ -170,7 +161,7 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task CompletedFilter_ShowsOnlyArchivedTasks()
+    public async Task CompletedTask_StaysInListAndCanBeDeleted()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -184,18 +175,14 @@ public class MainViewModelTests : IDisposable
         done.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(done);
 
-        // 完成 ≠ 归档：只勾选完成时，「已完成归档」视图仍应为空
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        await vm.LoadTasksCommand.ExecuteAsync(null);
-        Assert.Empty(vm.Tasks);
+        Assert.Equal(2, vm.Tasks.Count);
+        Assert.Equal("未办", vm.Tasks[0].Task.Title);
+        Assert.Equal("已办", vm.Tasks[1].Task.Title);
 
-        // 显式归档后才出现在「已完成归档」视图
-        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        await vm.LoadTasksCommand.ExecuteAsync(null);
-
+        await vm.DeleteTaskCommand.ExecuteAsync(done);
         Assert.Single(vm.Tasks);
-        Assert.Equal("已办", vm.Tasks[0].Task.Title);
+        Assert.Equal("未办", vm.Tasks[0].Task.Title);
+        Assert.Null(await _repo.GetByIdAsync(done.Id));
     }
 
     [AvaloniaFact]
@@ -203,11 +190,10 @@ public class MainViewModelTests : IDisposable
     {
         var vm = CreateViewModel();
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
-        Assert.True(vm.IsCompletedFilterSelected);
-        Assert.False(vm.IsActiveFilterSelected);
-        Assert.Equal("已完成归档", vm.CurrentCategoryTitle);
+        Assert.True(vm.IsActiveFilterSelected);
+        Assert.Equal("全部任务", vm.CurrentCategoryTitle);
     }
 
     /// <summary>
@@ -220,10 +206,10 @@ public class MainViewModelTests : IDisposable
     {
         var vm = CreateViewModel();
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
-        Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);
-        Assert.False(vm.IsActiveFilterSelected);
+        Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
+        Assert.True(vm.IsActiveFilterSelected);
     }
 
     /// <summary>
@@ -253,10 +239,10 @@ public class MainViewModelTests : IDisposable
         var vm = CreateViewModel();
         vm.ToggleSettingsCommand.Execute(null);
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
         Assert.False(vm.IsSettingsOpen);
-        Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);
+        Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
     }
 
     [AvaloniaFact]

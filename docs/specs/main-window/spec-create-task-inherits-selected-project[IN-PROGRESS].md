@@ -69,7 +69,7 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
 | 当前选中态（`CurrentSelection.Kind`） | 新建任务的 `ProjectId` |
 | :--- | :--- |
 | `Project`（选中具体项目） | 该项目的 `Id` |
-| `Active` / `Completed`（全部任务 / 已完成归档视图） | `null`（维持现状，不推断） |
+| `Active`（全部任务看板） | `null`（维持现状，不推断） |
 
 ### 2.2 影响范围（已核实）
 

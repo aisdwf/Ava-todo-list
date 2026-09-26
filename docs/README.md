@@ -105,7 +105,8 @@ This document serves as the master navigation map for developers and AI agents.
 | `spec-task-contract-and-clock[DONE].md` | task-domain | 任务数据契约扩展、IClock 时区整改、编辑闭环 | `done` |
 | `spec-tag-entity[DONE].md` | task-domain | 标签实体化与设置页管理（含数据迁移） | `done` |
 | `spec-due-date-calendar[DONE].md` | task-domain | 到期日三来源录入、日历、偏移设置 | `done` |
-| `spec-task-complete-before-archive[DRAFT].md` | task-domain | 完成≠归档；手动归档；勾选容错 | `draft` |
+| `spec-task-complete-before-archive[SUPERSEDED].md` | task-domain | 完成≠归档（已被 spec-project-managed-tasks 取代） | `superseded` |
+| `spec-project-managed-tasks[DONE].md` | task-domain | 全任务看板 + 单项目自主管理 | `done` |
 | `spec-classification-ui[DONE].md` | main-window | 项目侧边栏、任务行分类呈现、校验值对象 | `done`（交互设计已被实测证伪） |
 | `spec-sidebar-selection-consolidation[DONE].md` | main-window | 侧边栏选中机制收敛（纯结构整改） | `done` |
 | `spec-quick-window-hotkey-capture[IN-PROGRESS].md` | quick-capture | 全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` |

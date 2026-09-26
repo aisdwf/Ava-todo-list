@@ -167,7 +167,6 @@ public class ProjectInteractionTests : IDisposable
         await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         Assert.False(vm.IsActiveFilterSelected);
-        Assert.False(vm.IsCompletedFilterSelected);
         Assert.NotNull(vm.SelectedProject);
     }
 
@@ -183,7 +182,7 @@ public class ProjectInteractionTests : IDisposable
         await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
         Assert.NotNull(vm.SelectedProject);
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
         Assert.Null(vm.SelectedProject);
     }
@@ -273,9 +272,6 @@ public class ProjectInteractionTests : IDisposable
 
         AssertExactlyOneActive(vm); // 初始：全部任务
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        AssertExactlyOneActive(vm);
-
         await vm.SelectProjectCommand.ExecuteAsync(project);
         AssertExactlyOneActive(vm);
 
@@ -287,7 +283,6 @@ public class ProjectInteractionTests : IDisposable
             var activeCount = new[]
             {
                 vm.IsActiveFilterSelected,
-                vm.IsCompletedFilterSelected,
                 vm.SelectedProject is not null
             }.Count(flag => flag);
 

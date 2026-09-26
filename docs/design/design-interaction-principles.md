@@ -195,7 +195,7 @@
 
 ### 7.1 结构
 
-侧边栏承载：全部任务、已归档、各具体项目、以及设置区。
+侧边栏承载：全部任务看板、各具体项目、以及设置区。
 
 **设置区含多个具体选项，不止外观**（用户明示
 「添加了设置功能当然不会只针对外观」）：外观、标签管理、项目管理（含归档）。
@@ -215,21 +215,20 @@
 
 ### 7.3 完成任务后必须可追溯
 
-**用户明示**：「我点了某个任务完成，瞬间就去了已归档，找都找不到。
+**用户明示（历史）**：「我点了某个任务完成，瞬间就去了已归档，找都找不到。
 这也是 design 上的失误。」
 
-**用户补充（2026-09-16）**：勾选后不应立刻消失，应先呈现归档视图同款的
-划线低饱和「已完成」态；**归档须用户手动触发**
-（例如「完整归档项目」类操作），以便误触时可就地取消勾选回退。
+**用户推翻（2026-09-26）**：全局任务归档在项目分类模式下没有意义；
+已完成由项目自行管理（打勾置底、划线、降低视觉权重）；彻底删除只走行内 `X`。
 
 原则：
 
-1. **完成 ≠ 归档**（需求 R-4.1～R-4.3）；
-2. 完成操作必须给出**明确反馈**，任务在归档前仍留在活动列表；
-3. 取消勾选即可回退，无需进入归档视图。
+1. 勾选完成只降权，**不离开当前列表**（需求 R-4.1～R-4.4）；
+2. 完成操作必须给出**明确反馈**（划线 + 低饱和 + 置底）；
+3. 取消勾选即可回退；删除只走 `X`，物理删除。
 
-具体字段与归档入口见
-[spec-task-complete-before-archive](../specs/task-domain/spec-task-complete-before-archive[DRAFT].md)。
+具体排序与删除见
+[spec-project-managed-tasks](../specs/task-domain/spec-project-managed-tasks[DONE].md)。
 
 ### 7.4 零分类状态必须是完整体验
 
@@ -267,8 +266,8 @@
 
 > 实施拆分见：
 > [spec-quick-window-hotkey-capture](../specs/quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) ·
-> [spec-task-complete-before-archive](../specs/task-domain/spec-task-complete-before-archive[DRAFT].md) ·
-> [spec-quick-window-single-project-list](../specs/quick-capture/spec-quick-window-single-project-list[DRAFT].md)。
+> [spec-project-managed-tasks](../specs/task-domain/spec-project-managed-tasks[DONE].md) ·
+> [spec-quick-window-single-project-list](../specs/quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md)。
 
 ---
 

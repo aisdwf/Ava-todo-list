@@ -64,18 +64,17 @@ public class SqliteTaskRepositoryTests : IDisposable
     }
 
     /// <summary>
-    /// 完成 ≠ 归档（spec-task-complete-before-archive）：已完成但未归档的任务
-    /// 仍应出现在活动列表中；只有已归档或已删除的任务才被排除。
+    /// 已完成任务仍出现在看板；历史 <c>IsArchived</c> 不再把它们藏起来；软删行仍排除。
     /// </summary>
     [Fact]
-    public async Task GetAllActiveTasksAsync_ShouldIncludeCompletedButExcludeArchivedAndDeleted()
+    public async Task GetAllActiveTasksAsync_IncludesCompletedAndPreviouslyArchived_ExcludesDeleted()
     {
         var task1 = NewTask("Active 1");
-        var task2 = NewTask("Completed not archived");
+        var task2 = NewTask("Completed");
         task2.IsCompleted = true;
         var task3 = NewTask("Deleted");
         task3.IsDeleted = true;
-        var task4 = NewTask("Archived");
+        var task4 = NewTask("Previously archived");
         task4.IsCompleted = true;
         task4.IsArchived = true;
 
@@ -85,85 +84,40 @@ public class SqliteTaskRepositoryTests : IDisposable
         await _repo.SaveTaskAsync(task4);
 
         var activeTasks = await _repo.GetAllActiveTasksAsync();
-        Assert.Equal(2, activeTasks.Count);
+        Assert.Equal(3, activeTasks.Count);
         Assert.Contains(activeTasks, t => t.Title == "Active 1");
-        Assert.Contains(activeTasks, t => t.Title == "Completed not archived");
+        Assert.Contains(activeTasks, t => t.Title == "Completed");
+        Assert.Contains(activeTasks, t => t.Title == "Previously archived");
+        Assert.DoesNotContain(activeTasks, t => t.Title == "Deleted");
     }
 
     [Fact]
-    public async Task SoftDeleteAsync_ShouldMarkAsDeleted()
+    public async Task PermanentDeleteAsync_RemovesRow()
     {
         var task = NewTask("Delete me");
         await _repo.SaveTaskAsync(task);
 
-        await _repo.SoftDeleteAsync(task.Id);
+        await _repo.PermanentDeleteAsync(task.Id);
 
         var activeTasks = await _repo.GetAllActiveTasksAsync();
         Assert.Empty(activeTasks);
-
-        var item = await _repo.GetByIdAsync(task.Id);
-        Assert.NotNull(item);
-        Assert.True(item.IsDeleted);
+        Assert.Null(await _repo.GetByIdAsync(task.Id));
     }
 
     [Fact]
-    public async Task ArchiveAllCompletedAsync_OnlyArchivesCompletedNotYetArchived()
+    public async Task GetAllActiveTasksAsync_SortsIncompleteThenCompleted()
     {
-        var completedNotArchived = NewTask("Completed not archived");
-        completedNotArchived.IsCompleted = true;
-        var notCompleted = NewTask("Not completed");
-        var alreadyArchived = NewTask("Already archived");
-        alreadyArchived.IsCompleted = true;
-        alreadyArchived.IsArchived = true;
+        var low = NewTask("low", TaskPriority.Low);
+        var high = NewTask("high", TaskPriority.High);
+        var done = NewTask("done", TaskPriority.High);
+        done.IsCompleted = true;
+        done.CompletedAt = _clock.UtcNow;
 
-        await _repo.SaveTaskAsync(completedNotArchived);
-        await _repo.SaveTaskAsync(notCompleted);
-        await _repo.SaveTaskAsync(alreadyArchived);
+        await _repo.SaveTaskAsync(low);
+        await _repo.SaveTaskAsync(high);
+        await _repo.SaveTaskAsync(done);
 
-        var affected = await _repo.ArchiveAllCompletedAsync();
-        Assert.Equal(1, affected);
-
-        var reloaded = await _repo.GetByIdAsync(completedNotArchived.Id);
-        Assert.NotNull(reloaded);
-        Assert.True(reloaded.IsArchived);
-        Assert.NotNull(reloaded.ArchivedAt);
-
-        var stillActive = await _repo.GetByIdAsync(notCompleted.Id);
-        Assert.NotNull(stillActive);
-        Assert.False(stillActive.IsArchived);
-
-        var activeTasks = await _repo.GetAllActiveTasksAsync();
-        Assert.DoesNotContain(activeTasks, t => t.Id == completedNotArchived.Id);
-        Assert.Contains(activeTasks, t => t.Id == notCompleted.Id);
-
-        var archivedView = await _repo.GetCompletedTasksAsync();
-        Assert.Contains(archivedView, t => t.Id == completedNotArchived.Id);
-        Assert.Contains(archivedView, t => t.Id == alreadyArchived.Id);
-    }
-
-    /// <summary>
-    /// D4：升级前既有的 <c>IsCompleted=true</c> 历史行（新列 <c>IsArchived</c> 默认 false）
-    /// 必须在首次 <c>InitializeAsync</c> 后被自动标记为已归档，避免突然挤回活动列表。
-    /// </summary>
-    [Fact]
-    public async Task InitializeAsync_MigratesHistoricalCompletedRowsToArchived()
-    {
-        var historical = NewTask("Historical completed");
-        await _repo.SaveTaskAsync(historical);
-
-        // 模拟旧版本产生的数据：IsCompleted=true 但 IsArchived 仍为默认值 false，
-        // 直接改字段绕过仓储的 InitializeAsync 迁移逻辑，还原「升级前」状态
-        historical.IsCompleted = true;
-        await _repo.SaveTaskAsync(historical);
-
-        // 新建一个指向同一数据库文件的仓储实例，模拟应用重启触发的 InitializeAsync
-        var restarted = new SqliteTaskRepository(_clock, _dbPath);
-        var activeAfterRestart = await restarted.GetAllActiveTasksAsync();
-        Assert.DoesNotContain(activeAfterRestart, t => t.Id == historical.Id);
-
-        var archivedAfterRestart = await restarted.GetCompletedTasksAsync();
-        var migrated = Assert.Single(archivedAfterRestart, t => t.Id == historical.Id);
-        Assert.True(migrated.IsArchived);
-        Assert.Equal(migrated.CreatedAt, migrated.ArchivedAt);
+        var titles = (await _repo.GetAllActiveTasksAsync()).Select(t => t.Title).ToArray();
+        Assert.Equal(new[] { "high", "low", "done" }, titles);
     }
 }
