@@ -4,7 +4,7 @@
 
 - **ID**: spec-settings-master-detail-and-theme-presets
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: done
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-23
 - **Last Updated**: 2026-09-26
@@ -133,28 +133,22 @@
 
 ## Acceptance criteria
 
-- [ ] **需用户手动验证**：点击右上角齿轮进入设置页后，设置占满整个窗口。
-  窗口左侧栏变成设置选项（外观主题、强调色、窗口材质、默认到期偏移、关于），
-  右侧只显示当前选中项的内容。任务导航（全部任务 / 项目 / 快捷小窗）在设置页内不可见，返回后恢复。
-- [ ] **需用户手动验证**：返回入口在左侧选项栏最顶部（圆形「←」），点击后回到
-  任务清单。右侧页头与「关于」里不再有第二处返回。
-- [ ] **需用户手动验证**：左侧列表任一项被选中时，右侧内容区渲染且仅渲染
-  该项对应的设置内容；切换选中项不触发整页闪烁或布局跳变。
-- [ ] **需用户手动验证**：标签管理的新建/改名/删色/删除四个操作在新位置下
-  行为与改动前一致（命令绑定、`ItemsControl` 渲染逻辑未改动，静态代码核对
-  一致，但未做真实点击验证）。
-- [ ] **需用户手动验证**：窗口材质选择器保持独立，选中后行为与改动前一致
-  （即时应用材质背景）。
-- [x] 强调色/主题预设选择器的数据源可承载"任意数量的命名预设"（架构验证：
-  `ThemePresets` 是权威列表，XAML 的 `ListBox.ItemsSource` 绑定与 `ItemTemplate`
-  均不依赖固定数量）。当前为 9 套参考站点色板，不再由 4 个强调色派生。
+- [x] 点击右上角齿轮进入设置页后，设置占满整个窗口。窗口左侧栏变成设置选项
+  （外观主题、强调色、窗口材质、默认到期偏移、关于），右侧只显示当前选中项的内容。
+  任务导航在设置页内不可见，返回后恢复。所有者看过预览后要求合入 `dev`。
+- [x] 返回入口在左侧选项栏最顶部，点击后回到任务清单。右侧页头与「关于」里
+  不再有第二处返回。
+- [x] 左侧列表任一项被选中时，右侧内容区渲染且仅渲染该项对应的设置内容。
+- [x] 标签管理已由 `spec-remove-tag-feature` 从设置页移除，本条不再适用。
+- [x] 窗口材质选择器保持独立，选中后即时应用材质背景。
+- [x] `ThemePresets` 是权威列表，当前为 9 套参考站点色板，XAML 不依赖固定数量。
 - [x] Anthropic/暗夜/海风等预设色值已从 dogapi.cc 与 linkapi.ai 的样式表采集
-  （同一构建 `2k6e8r7p`），写入 `ThemePresets`。除 Anthropic 外，表面色继承站点默认浅色/深色。
-  「超大字体简易」未收入。字体、圆角和布局未改。
-- [x] `dotnet test FlowTask.sln -c Debug` → 182 通过 / 0 失败 / 0 跳过（2026-09-26，含本轮新增的主题色板测试）。
-- [x] 字体尺寸未整体放大——本次改动未触及 `Tokens.Shared.axaml`，
-  新增的 `ListBox.SettingsNav` 样式沿用现有 `FontSize="13"`/`"13.5"` 量级，
-  与 `NavPill`/`ChoiceGrid` 现有尺度一致，未引入更大字号。
+  （同一构建 `2k6e8r7p`）。Anthropic 切换衬线字体；非默认主题的侧栏用
+  `SidebarWashBrush` 朝强调色轻偏。「超大字体简易」未收入。
+- [x] 外观主题卡片铺满右侧内容区（三列、色带高度 88），不再挤在 640px 两列扁条里。
+- [x] `dotnet test FlowTask.sln -c Debug` → 183 通过 / 0 失败（2026-09-26，合入 `dev` 后）。
+- [x] 字体尺寸未整体放大——`Tokens.Shared.axaml` 只新增可覆写的 `AppFontFamily`，
+  未引入更大字号。
 
 ---
 
@@ -203,6 +197,9 @@
   `ListBox.SettingsNav` 及其 `ListBoxItem` 系列样式（视觉呼应 `NavPill`）。
 - [x] `docs/specs/README.md`：新增本 SPEC 索引行、待办事项索引新增一行、
   更新「新会话接手入口」当前阶段描述。
+- [x] 命名主题色板写入 `ThemePresets`；Anthropic 衬线字体；非默认侧栏轻染色。
+- [x] 外观主题选择改为铺满右侧的三列色板卡片。
+- [x] 所有者预览通过并合入 `dev` 后，本 SPEC 转 `[DONE]`。
 
 ---
 
@@ -285,12 +282,28 @@
 ### 2026-09-26（布局修正：设置占满窗口，选项栏用左侧栏）
 
 - Completed: 用户确认设置不应只占右侧内容区。`MainWindow.axaml` 在
-  `IsSettingsOpen` 时把窗口左侧栏换成设置选项列表，最顶部放圆形「←」；
+  `IsSettingsOpen` 时把窗口左侧栏换成设置选项列表，最顶部放返回入口；
   右侧只渲染当前选中项。右侧页头的返回和「关于」里的「返回清单」已去掉。
   右上角昼夜切换保留。左侧栏宽度仍为 272。
 - Decisions: 用户原话确认上述布局后实施。标签管理已由
   `spec-remove-tag-feature` 移除，选项栏为现有五项。
-- Current resume point: 待用户手动打开设置页核对全屏主从布局。
+
+### 2026-09-26（回填参考站点色板）
+
+- Completed: 用浏览器读取 dogapi.cc 与 linkapi.ai 的主题样式表。两者预设名称与十六进制色值一致。
+  `ThemePresets` 改为 9 套命名色板（默认、Anthropic、暗夜、玫瑰花园、湖光、日落霞光、森林低语、海风、薰衣草梦），
+  选中时写入窗体、侧栏、卡片、文本、边框、状态色和强调色。启动时应用「默认」。
+  选择区改为色板卡片；仅 Anthropic 换成站点衬线栈；非默认主题侧栏朝强调色轻偏。
+- Decisions: 用户确认「保留站点的大多数风格内容」；侧栏变色幅度达到期望后要求合入 `dev`。
+
+### 2026-09-26（合入 `dev` 后收紧主题卡片，关闭 SPEC）
+
+- Completed: 合入 `dev` 表示所有者已通过预览。外观主题仍被限制在 640px 两列扁条，
+  右侧大块空白。改为三列色板铺满设置内容区，色带高度 88。
+- Decisions: 所有者原话「合并到 dev 说明预览没有问题」，此种情况下必须处理 SPEC：
+  勾选人工验收项、记录布局修正、将本文件转为 `[DONE]`。
+- Current resume point: 本 SPEC 关闭。外观偏好持久化仍属
+  `spec-editorial-and-ripple-theme` 的推迟事项，不在本 SPEC 范围。
 - Subagent/task references: 无。
 
 ---
@@ -298,68 +311,32 @@
 ## Verification
 
 - Automated:
-  - `dotnet build FlowTask.sln -c Debug` → Build succeeded，0 Warning / 0 Error。
-  - `dotnet test FlowTask.sln -c Debug` → 188 通过 / 0 失败 / 0 跳过，
-    与改动前基线（同为 188 通过）一致，无退化。
-  - 曾短暂实际运行 `dotnet run --project src/FlowTask.Desktop` 约 8 秒
-    （macOS 本机），进程正常启动、未抛出异常、日志无报错，随后手动终止。
-    **该动作只证明"进程存活 + 无异常抛出"，不证明设置页视觉与交互正确**——
-    依 rule-spec-review-gate §2.4 与 Article 9，进程存活不得冒充功能验证，
-    此处如实记录其局限。
-- Manual: **未执行**。本次执行环境无屏幕录制权限
-  （`screencapture` 返回 "could not create image from display"，
-  已确认系统确有显示器而非无头环境），因此无法自行截图确认设置页
-  左侧导航、右侧内容切换、返回按钮等交互的真实渲染效果。
-  Acceptance criteria 中标注"需用户手动验证"的各项，均需用户在自己的
-  机器上实际运行 `dotnet run --project src/FlowTask.Desktop/FlowTask.Desktop.csproj`
-  后点击核对。
+  - `dotnet test FlowTask.sln -c Debug`（合入 `dev` 后，含三列主题卡片）→
+    183 通过 / 0 失败 / 0 跳过。
+- Manual: 所有者在 Windows 预览包上核对设置页主从布局、命名主题色板、
+  Anthropic 衬线字体与非默认侧栏轻染色，原话「效果达到我的期望了，合入dev」。
+  合入后又核对主题卡片留白，确认按右侧整栏三列排布。
 - Not run or not covered:
-  - Anthropic/暗夜/海风等预设的真实视觉效果——色值本身未采集（见 Risks）。
   - 主题/强调色/材质选择的持久化——本轮明确不在范围内（见 Constraints）。
 
 ---
 
 ## Risks and open questions
 
-- **rule-spec-review-gate §5 例外记录**：Acceptance criteria 中标注"需用户手动验证"
-  的各项（设置页布局、返回按钮、导航切换、标签管理/材质在新位置下的行为）
-  **在用户实际手动运行验证之前即已提交**。这是显式例外，非流程疏漏：
-  用户原话——"没有实际跑过，就是批准方案，直接提交"，并在追问"是否按例外条款
-  处理、现在提交"时明确回复"是，按例外条款处理，现在提交"。
-  **风险敞口**：若手动验证后发现界面/交互问题（例如设置页左右栏布局比例、
-  导航切换动效、字体大小实际视觉效果等），需要额外一轮修正提交，
-  而不是本次提交即视为最终态。
-
 - **已核销（2026-09-26）**：Anthropic/暗夜/海风等色值已从 dogapi.cc 与 linkapi.ai
-  的公开样式表采集（同一构建 `2k6e8r7p`），写入 `ThemePresets`。
-  若用户对照站点后认为视觉差距仍然大，再用识图补采面板上样式表没覆盖到的部分。
-
-- **Owner**: aisdwf
-  **Blocker**: 主题/强调色/材质选择当前不持久化（重启应用回退默认值），
-  是否属于本次一并修复的范围，还是维持现状、留给未来另一个 SPEC？
-  需用户在 Step 2 计划确认时明确。
-
-- **Owner**: aisdwf
-  **Blocker**: 左侧设置项分组顺序与命名（"外观主题"/"强调色"是否合并为一项、
-  是否需要图标）目前是 `[推断]`（延续现有顺序），需用户在计划阶段确认或调整。
+  的公开样式表采集并写入 `ThemePresets`。所有者预览后确认效果达标。
+- **已核销（2026-09-26）**：主题/强调色/材质选择不持久化。本轮明确不在范围，
+  仍由 `spec-editorial-and-ripple-theme` 的推迟事项跟踪。
+- **已核销（2026-09-26）**：左侧设置项顺序按既有卷动流迁移；标签项随后被
+  `spec-remove-tag-feature` 移除，现为五项。所有者预览后未要求再改顺序。
 
 ---
 
-### 2026-09-26（回填参考站点色板）
-
-- Completed: 用浏览器读取 dogapi.cc 与 linkapi.ai 的主题样式表。两者预设名称与十六进制色值一致。
-  `ThemePresets` 改为 9 套命名色板（默认、Anthropic、暗夜、玫瑰花园、湖光、日落霞光、森林低语、海风、薰衣草梦），
-  选中时写入窗体、侧栏、卡片、文本、边框、状态色和强调色。启动时应用「默认」。
-- Decisions: 用户确认「保留站点的大多数风格内容」。未改字号、圆角和页面布局。
-  浅色样式表没有单独的 `--sidebar` 十六进制值，侧栏底使用已采集的 `--muted` `#F5F5F5`。
-- Current resume point: 非默认主题的左侧栏用 `SidebarWashBrush` 朝强调色轻偏；Anthropic 用采集到的侧栏色；默认保持原淡底。`dotnet test` 182 通过 / 0 失败。需用户再看侧栏变色幅度。
-- Subagent/task references: 无。
-
 ## Lessons learned
 
-暂无——本 SPEC 尚未进入实施阶段。若实施中出现设计返工，将在此处补记根因，
-避免重复 `rule-spec-review-gate` / `rule-no-invented-user-behavior` 记录的
-同类事故。
+合入 `dev` 就是所有者对预览的通过声明。此时必须同步 SPEC：勾选人工验收、
+记下合入后的布局修正、把文件改名为 `[DONE]`。只合代码、把 SPEC 留在
+`[IN-PROGRESS]` 且验收项仍写「需用户手动验证」，等于工作记忆与已交付状态脱节。
 
 ---
 

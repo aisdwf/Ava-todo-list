@@ -572,35 +572,35 @@
                     <Grid IsVisible="{Binding IsSettingsOpen}">
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                       Padding="0,0,12,32">
-                            <StackPanel Spacing="20" MaxWidth="640" HorizontalAlignment="Left">
+                            <Grid>
+                                <!-- 九个主题正好三列，铺满右侧内容区，避免两列扁条留下大块空白。 -->
+                                <ListBox Classes="ThemeCards"
+                                         HorizontalAlignment="Stretch"
+                                         IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=ThemePreset}"
+                                         ItemsSource="{Binding ThemePresets}"
+                                         SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3" />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="appearance:ThemePreset">
+                                            <StackPanel Spacing="8">
+                                                <Border Height="88"
+                                                        CornerRadius="8"
+                                                        ClipToBounds="True"
+                                                        Background="{Binding Preview}" />
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontSize="13.5"
+                                                           FontWeight="Medium"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
 
-                                <!-- 外观主题：命名主题预设 -->
-                                <StackPanel Spacing="18"
-                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=ThemePreset}">
-                                    <ListBox Classes="ThemeCards"
-                                             ItemsSource="{Binding ThemePresets}"
-                                             SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="2" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="appearance:ThemePreset">
-                                                <StackPanel Spacing="10">
-                                                    <Border Height="72"
-                                                            CornerRadius="8"
-                                                            ClipToBounds="True"
-                                                            Background="{Binding Preview}" />
-                                                    <TextBlock Text="{Binding DisplayName}"
-                                                               FontSize="13.5"
-                                                               FontWeight="Medium"
-                                                               HorizontalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </StackPanel>
+                            <StackPanel Spacing="20" MaxWidth="640" HorizontalAlignment="Left">
 
                                 <!-- 强调色 -->
                                 <StackPanel Spacing="18"
@@ -682,6 +682,7 @@
                                     <TextBlock Text="aisdwf · .NET 8 &amp; Avalonia 11" Classes="CaptionText" />
                                 </StackPanel>
                             </StackPanel>
+                            </Grid>
                         </ScrollViewer>
                     </Grid>
                 </Grid>

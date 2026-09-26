@@ -250,8 +250,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
-        <Setter Property="Padding" Value="10" />
-        <Setter Property="Margin" Value="0,0,16,16" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Margin" Value="8" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">
             <ControlTemplate>
