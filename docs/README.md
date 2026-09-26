@@ -98,23 +98,12 @@ This document serves as the master navigation map for developers and AI agents.
 
 ### 2.4 `specs/` (功能规格与工作记忆，按 area 子目录组织)
 
-| 文件名 | Area | 作用简述 | 状态 |
-| :--- | :--- | :--- | :--- |
-| [`README.md`](./specs/README.md) | — | SPEC 管理规范、7 种状态、**新会话接手入口**、索引与跨 SPEC 待办 | — |
-| `spec-mvvm-infrastructure[DONE].md` | infrastructure | MVVM 基础设施与 SQLite 持久化 | `done` |
-| `spec-fluent-ui[SUPERSEDED].md` | visual-theme | Windows 11 Fluent 2 界面 | `superseded` |
-| `spec-editorial-and-ripple-theme[DONE].md` | visual-theme | Editorial 排版、水波纹昼夜切换、外观个性化 | `done` |
-| `spec-task-contract-and-clock[DONE].md` | task-domain | 任务数据契约扩展、IClock 时区整改、编辑闭环 | `done` |
-| `spec-tag-entity[DONE].md` | task-domain | 标签实体化与设置页管理（含数据迁移） | `done` |
-| `spec-due-date-calendar[DONE].md` | task-domain | 到期日三来源录入、日历、偏移设置 | `done` |
-| `spec-task-complete-before-archive[SUPERSEDED].md` | task-domain | 完成≠归档（已被 spec-project-managed-tasks 取代） | `superseded` |
-| `spec-project-managed-tasks[DONE].md` | task-domain | 全任务看板 + 单项目自主管理 | `done` |
-| `spec-classification-ui[DONE].md` | main-window | 项目侧边栏、任务行分类呈现、校验值对象 | `done`（交互设计已被实测证伪） |
-| `spec-sidebar-selection-consolidation[DONE].md` | main-window | 侧边栏选中机制收敛（纯结构整改） | `done` |
-| `spec-quick-window-hotkey-capture[IN-PROGRESS].md` | quick-capture | 全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` |
-| `spec-quick-window-single-project-list[DRAFT].md` | quick-capture | 小窗单项目列表 + 勾选 | `draft` |
-| `spec-doc-restructure[DONE].md` | docs-system | 文档体系重构：类型边界归位 + 编号清理 | `done` |
-| `spec-commit-msg-layout[DONE].md` | docs-system | 提交说明第一行 type 摘要 + 正文 Why/What；commit-msg hook | `done` |
+索引由脚本生成，**不要**在本文件或 `specs/README.md` 里手抄 SPEC 清单。
+
+| 文件 | 作用 |
+| :--- | :--- |
+| [`specs/README.md`](./specs/README.md) | 生成索引：area、数量、状态。命令：`powershell -File scripts/build-spec-index.ps1` |
+| `specs/<area>/spec-<feature>[STATUS].md` | 各 SPEC 正文（工作记忆）。规则见 [`docs-conventions.md`](./rules/docs-conventions.md) |
 
 ### 2.5 `adr/` (架构决策记录)
 

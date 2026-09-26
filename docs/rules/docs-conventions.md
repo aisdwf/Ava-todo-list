@@ -53,6 +53,7 @@ docs/specs/task-domain/       # task/project/tag data contract and clock
 docs/specs/main-window/       # main window layout and sidebar/selection
 docs/specs/quick-capture/      # quick-capture window and hotkey capture
 docs/specs/docs-system/       # documentation system restructuring itself
+docs/specs/packaging/         # release artifacts, CI build and distribution
 ```
 
 Invalid area examples:
@@ -277,8 +278,8 @@ Rules:
 3. Update `Last Updated` with the applicable current date.
 4. Add any required redirect or reason.
 5. Update every relative-path reference to the renamed file across `docs/` and code comments in the same change.
-6. Update `docs/specs/README.md` in the same change (see Index convention).
-7. Commit the rename, metadata change, redirect, and reference/index updates together.
+6. Run `powershell -File scripts/build-spec-index.ps1` in the same change. Do not hand-edit `docs/specs/README.md`.
+7. Commit the rename, metadata change, redirect, reference updates, and regenerated index together.
 
 ---
 
@@ -324,12 +325,13 @@ These thresholds (14 / 30 days) are this project's canonical values. Changing th
 
 ## Index convention (`docs/specs/README.md`)
 
-- No automated doc-index generator exists for this .NET project (see `AGENTS.md` Commands table).
-- `docs/specs/README.md` is therefore **hand-maintained**, not machine-generated.
-- Any SPEC add, rename, area move, or status change **must** update `docs/specs/README.md` in the same change: the status-tag legend, the area/index table, and the "handoff entry point" section.
-- Close and reindex the SPEC on the task branch before merging into `dev` (see `rule-spec-complete-before-merge.md`).
-- Do not let the index drift from the physical files. A stale index is treated the same as a stale SPEC: report it, do not silently leave it.
-- If a docs-index command is added later, this section must be rewritten to point to it and hand-editing must stop.
+- `docs/specs/README.md` is **generated**. Do not hand-edit it.
+- Generator: `powershell -File scripts/build-spec-index.ps1`
+- After any SPEC add, rename, area move, or status change, run the generator in the same change.
+- `powershell -File scripts/build-spec-index.ps1 -Check` exits non-zero if the file is stale.
+- The index lists area folders, status counts, in-progress SPECs, and every SPEC file. It is not a workflow manual, session handoff, command list, or cross-SPEC backlog.
+- Workflow, gates, and commands live in `AGENTS.md` and `docs/rules/`. Deferred work stays in the owning SPEC.
+- Close the SPEC on the task branch before merging into `dev` (see `rule-spec-complete-before-merge.md`).
 
 ---
 
@@ -345,9 +347,9 @@ When project tooling is added, SPEC checks should validate:
 - `[IN-PROGRESS]` contains a staged plan, checklist, progress log, and resume point;
 - terminal states contain required redirects or reasons;
 - stale thresholds are reported;
-- `docs/specs/README.md` matches physical files.
+- `docs/specs/README.md` matches physical files (`scripts/build-spec-index.ps1 -Check`).
 
-Until tooling exists, `rule-doc-boundary.md` §4 provides the manually-run `grep`/`find` checks that cover naming and type-boundary violations. Run them before every commit that touches `docs/`.
+`powershell -File scripts/build-spec-index.ps1 -Check` is the index freshness gate. `docs/rules/rule-doc-boundary.md` §4 still covers naming and type-boundary `grep` checks. Run both before every commit that touches `docs/`.
 
 ---
 
