@@ -119,11 +119,11 @@
      采集配色（推荐）"——用户明确说明 dogapi.cc / linkapi.ai 右上角有
      "类似调色盘的按钮"，点进去是这两个站点自己的风格设置面板，需要先看
      面板里实际的预设与配色，而非由本次执行者猜测定义。
-- **[推断] 左侧设置项分组顺序**：外观主题 → 强调色 → 窗口材质 →
-  默认到期偏移 → 标签管理 → 关于。
-  **推断依据**：延续当前卷动流的既有顺序（`MainWindow.axaml:588-783`
-  实际排列），只是把"顺序"从"卷动位置"改为"列表位置"，不引入新的信息架构
-  判断。若用户认为分组或顺序需要调整，需在 Step 2 计划确认时提出。
+- **后续用户确认（2026-09-26，覆盖上方第 3 条与导航推断）**：
+  1. 设置占满窗口，左侧栏换成设置选项，顶部返回。
+  2. 左侧三项：外观（主题 + 材质）、通用（默认到期偏移）、关于。去掉强调色选择，后续需要再重构。
+  3. 材质与主题同栏，色条方案 4；主题色块优化；右侧铺满。
+  4. 预览原话「预览没问题」后处理 SPEC 并合并入 `dev`。
 - **待决策（非推断，需用户明确回答，见 Risks 第 1 条）**：主题预设/强调色/
   材质的选择是否需要持久化到 SQLite（目前 `IAppSettingsRepository` 只有
   `default_due_offset_days`，重启应用后强调色/材质选择会回退到默认值——
@@ -133,6 +133,7 @@
 
 ## Acceptance criteria
 
+<<<<<<< HEAD
 - [x] 点击右上角齿轮进入设置页后，设置占满整个窗口。窗口左侧栏变成设置选项
   （外观主题、强调色、窗口材质、默认到期偏移、关于），右侧只显示当前选中项的内容。
   任务导航在设置页内不可见，返回后恢复。所有者看过预览后要求合入 `dev`。
@@ -149,6 +150,19 @@
 - [x] `dotnet test FlowTask.sln -c Debug` → 183 通过 / 0 失败（2026-09-26，合入 `dev` 后）。
 - [x] 字体尺寸未整体放大——`Tokens.Shared.axaml` 只新增可覆写的 `AppFontFamily`，
   未引入更大字号。
+=======
+- [x] **用户手动验证（2026-09-26，原话「预览没问题」）**：齿轮进入设置后占满窗口。
+  左侧为外观 / 通用 / 关于；右侧只显示当前项。任务导航在设置页内不可见，返回后恢复。
+- [x] **用户手动验证（同上）**：返回在左侧选项栏顶部（通栏「← 返回」），点击回到任务清单。
+  右侧页头与「关于」里没有第二处返回。
+- [x] **用户手动验证（同上）**：左侧任一项被选中时，右侧只渲染该项内容。
+- [x] 标签管理已由 `spec-remove-tag-feature` 移出设置体系，本 SPEC 不再验收该项。
+- [x] **用户手动验证（同上）**：窗口材质在「外观」栏内，与主题同款四列色条，选中即时改材质。
+- [x] 强调色选择器已从设置页撤下；主题预设列表可承载任意数量命名预设。
+- [x] Anthropic/暗夜/海风等预设色值已从参考站点样式表写入 `ThemePresets`。「超大字体简易」未收入。
+- [x] `dotnet test FlowTask.sln` → 183 通过 / 0 失败（2026-09-26，`feature/settings-nav-regroup`）。
+- [x] 字体尺度未整体放大。外观页主题/材质为四列扁圆角色条，选中角勾。
+>>>>>>> feature/settings-nav-regroup
 
 ---
 
@@ -197,9 +211,13 @@
   `ListBox.SettingsNav` 及其 `ListBoxItem` 系列样式（视觉呼应 `NavPill`）。
 - [x] `docs/specs/README.md`：新增本 SPEC 索引行、待办事项索引新增一行、
   更新「新会话接手入口」当前阶段描述。
+<<<<<<< HEAD
 - [x] 命名主题色板写入 `ThemePresets`；Anthropic 衬线字体；非默认侧栏轻染色。
 - [x] 外观主题选择改为铺满右侧的三列色板卡片。
 - [x] 所有者预览通过并合入 `dev` 后，本 SPEC 转 `[DONE]`。
+=======
+- [x] 设置导航收拢为外观 / 通用 / 关于；强调色选择撤下；主题与材质共用四列色条。
+>>>>>>> feature/settings-nav-regroup
 
 ---
 
@@ -306,11 +324,38 @@
   `spec-editorial-and-ripple-theme` 的推迟事项，不在本 SPEC 范围。
 - Subagent/task references: 无。
 
+### 2026-09-26（导航收拢：外观 / 通用 / 关于）
+
+- Completed: 用户要求去掉简陋的强调色选择器，把外观主题与窗口材质放进同一栏，
+  默认到期偏移改到「通用」。左侧现为三项：外观、通用、关于。
+  主题色块高度从 72 收到 44，三列排布。强调色数据与 `ApplyAccent` 仍由主题预设调用，设置页不再单独选色。
+- Decisions: 用户原话确认先删强调色选择，后续需要再重构。
+- Current resume point: 待用户手动核对新的三项导航与外观栏布局。
+- Subagent/task references: 无。
+
+### 2026-09-26（外观色条 + 材质方案 4 + 铺满右侧）
+
+- Completed: 用户确认方案 4，以及主题色块与右侧空间。外观页去掉 640 宽限制；
+  主题与材质共用 `ListBox.ColorChips`（四列扁圆角色条、名称在下、选中角勾）。
+  材质色条用渐变模拟雾面/更透/更糊/实地，不做窗口缩略图。
+- Decisions: 方案 4；不恢复强调色选择；工作流文档由用户自行补充。
+- Current resume point: 待用户打开预览核对色条与铺满效果。
+- Subagent/task references: 无。
+
+### 2026-09-26（用户预览通过，SPEC 收口）
+
+- Completed: 用户原话「预览没问题」，随后要求处理 SPEC 并合并入 `dev`。
+  手动验收项按当前三项导航与色条布局勾选。主题/材质选择仍不持久化，留给后续 SPEC。
+- Decisions: 本 SPEC 转 `done`。
+- Current resume point: 无。已合并目标为 `dev`。
+- Subagent/task references: 无。
+
 ---
 
 ## Verification
 
 - Automated:
+<<<<<<< HEAD
   - `dotnet test FlowTask.sln -c Debug`（合入 `dev` 后，含三列主题卡片）→
     183 通过 / 0 失败 / 0 跳过。
 - Manual: 所有者在 Windows 预览包上核对设置页主从布局、命名主题色板、
@@ -318,25 +363,54 @@
   合入后又核对主题卡片留白，确认按右侧整栏三列排布。
 - Not run or not covered:
   - 主题/强调色/材质选择的持久化——本轮明确不在范围内（见 Constraints）。
+=======
+  - `dotnet build FlowTask.sln -c Debug` → Build succeeded，0 Warning / 0 Error。
+  - `dotnet test FlowTask.sln -c Debug` → 188 通过 / 0 失败 / 0 跳过，
+    与改动前基线（同为 188 通过）一致，无退化。
+  - 曾短暂实际运行 `dotnet run --project src/FlowTask.Desktop` 约 8 秒
+    （macOS 本机），进程正常启动、未抛出异常、日志无报错，随后手动终止。
+    **该动作只证明"进程存活 + 无异常抛出"，不证明设置页视觉与交互正确**——
+    依 rule-spec-review-gate §2.4 与 Article 9，进程存活不得冒充功能验证，
+    此处如实记录其局限。
+- Manual: **2026-09-26 用户预览通过**（原话「预览没问题」）。
+  核对对象为 `preview/feature/settings-nav-regroup-staging/FlowTask.exe`
+  （正式路径当时被运行中的旧 exe 占用）。
+- Not run or not covered:
+  - 主题/材质选择的持久化——本轮明确不在范围内（见 Constraints）。
+>>>>>>> feature/settings-nav-regroup
 
 ---
 
 ## Risks and open questions
 
 - **已核销（2026-09-26）**：Anthropic/暗夜/海风等色值已从 dogapi.cc 与 linkapi.ai
+<<<<<<< HEAD
   的公开样式表采集并写入 `ThemePresets`。所有者预览后确认效果达标。
 - **已核销（2026-09-26）**：主题/强调色/材质选择不持久化。本轮明确不在范围，
   仍由 `spec-editorial-and-ripple-theme` 的推迟事项跟踪。
 - **已核销（2026-09-26）**：左侧设置项顺序按既有卷动流迁移；标签项随后被
   `spec-remove-tag-feature` 移除，现为五项。所有者预览后未要求再改顺序。
+=======
+  的公开样式表采集（同一构建 `2k6e8r7p`），写入 `ThemePresets`。
+  若用户对照站点后认为视觉差距仍然大，再用识图补采面板上样式表没覆盖到的部分。
+
+- **Owner**: aisdwf
+  **Follow-up**: 主题/材质选择当前不持久化（重启回退默认）。已不在本 SPEC 范围，另开任务再做。
+>>>>>>> feature/settings-nav-regroup
 
 ---
 
 ## Lessons learned
 
+<<<<<<< HEAD
 合入 `dev` 就是所有者对预览的通过声明。此时必须同步 SPEC：勾选人工验收、
 记下合入后的布局修正、把文件改名为 `[DONE]`。只合代码、把 SPEC 留在
 `[IN-PROGRESS]` 且验收项仍写「需用户手动验证」，等于工作记忆与已交付状态脱节。
+=======
+设置迭代后期多次跳过「复述需求 → 等确认再改代码」。根因是把同一 SPEC 上的续作
+当成已授权施工，没有在每次新需求后先对齐理解。用户已说明会把这条补进 workflow；
+本 SPEC 收口时记下，避免下一轮再把确认门当成可省步骤。
+>>>>>>> feature/settings-nav-regroup
 
 ---
 

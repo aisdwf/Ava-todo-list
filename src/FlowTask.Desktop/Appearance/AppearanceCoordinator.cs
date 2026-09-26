@@ -478,7 +478,7 @@ public sealed record ThemePreset(
     private IBrush? _preview;
 
     /// <summary>
-    /// 选择卡片上的色板：窗体底、卡片底、强调色三段，用来辨认主题而不是只看一个圆点。
+    /// 色条：卡片底过渡到强调色，对应设置页扁圆角色块，而不是三段预览卡。
     /// </summary>
     public IBrush Preview => _preview ??= new LinearGradientBrush
     {
@@ -486,8 +486,7 @@ public sealed record ThemePreset(
         EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
         GradientStops =
         {
-            new GradientStop(Color.Parse(Light.WindowHex), 0),
-            new GradientStop(Color.Parse(Light.CardHex), 0.42),
+            new GradientStop(Color.Parse(Light.CardHex), 0),
             new GradientStop(Color.Parse(Light.AccentHex), 1)
         }
     };
@@ -546,6 +545,32 @@ public sealed record MaterialOption(
     IReadOnlyList<WindowTransparencyLevel> Hint,
     double SurfaceOpacity)
 {
+    private IBrush? _swatch;
+
     /// <summary>该档位是否为完全不透明的纯色底。</summary>
     public bool IsOpaque => SurfaceOpacity >= 1.0;
+
+    /// <summary>
+    /// 设置页色条：用渐变模拟雾面 / 更透 / 更糊 / 实地，不另做窗口缩略图。
+    /// </summary>
+    public IBrush Swatch => _swatch ??= CreateSwatch();
+
+    private IBrush CreateSwatch() => Id switch
+    {
+        "Mica" => Gradient("#EDEBE6", "#C8C4BB"),
+        "Acrylic" => Gradient("#F3F6F8", "#9BB4C4"),
+        "Blur" => Gradient("#DCE8F2", "#7A90A4"),
+        _ => new SolidColorBrush(Color.Parse("#2A2A2C"))
+    };
+
+    private static IBrush Gradient(string fromHex, string toHex) => new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Color.Parse(fromHex), 0),
+            new GradientStop(Color.Parse(toHex), 1)
+        }
+    };
 }

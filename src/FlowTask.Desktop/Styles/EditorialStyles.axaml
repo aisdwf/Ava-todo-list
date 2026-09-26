@@ -237,44 +237,55 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
-    <!-- 主题预设卡片：色板在上、名称在下，避免把九个名字挤进一行小圆点。 -->
-    <Style Selector="ListBox.ThemeCards">
+    <!-- 设置页色条：扁圆角色块 + 名称，选中角标勾。主题与材质共用。 -->
+    <Style Selector="ListBox.ColorChips">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <Style Selector="ListBox.ThemeCards ListBoxItem">
+    <Style Selector="ListBox.ColorChips ListBoxItem">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
-        <Setter Property="Padding" Value="8" />
-        <Setter Property="Margin" Value="8" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,16,20" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="{TemplateBinding CornerRadius}"
-                        Padding="{TemplateBinding Padding}">
+                <Grid>
                     <ContentPresenter Content="{TemplateBinding Content}"
                                       ContentTemplate="{TemplateBinding ContentTemplate}"
                                       HorizontalAlignment="Stretch"
-                                      VerticalAlignment="Center" />
-                </Border>
+                                      VerticalAlignment="Top" />
+                    <Border x:Name="ChipCheck"
+                            Width="18" Height="18"
+                            CornerRadius="9"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,6,8,0"
+                            Background="{DynamicResource AccentBrush}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Viewbox Width="10" Height="10">
+                            <Path Classes="StrokeIcon"
+                                  Data="{StaticResource IconCheck}"
+                                  Stroke="{DynamicResource OnAccentBrush}" />
+                        </Viewbox>
+                    </Border>
+                </Grid>
             </ControlTemplate>
         </Setter>
     </Style>
-    <Style Selector="ListBox.ThemeCards ListBoxItem:pointerover">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentGlowBrush}" />
+    <Style Selector="ListBox.ColorChips ListBoxItem:pointerover">
+        <Setter Property="Opacity" Value="0.88" />
     </Style>
-    <Style Selector="ListBox.ThemeCards ListBoxItem:selected">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-        <Setter Property="BorderThickness" Value="2" />
+    <Style Selector="ListBox.ColorChips ListBoxItem:selected">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.ColorChips ListBoxItem:selected /template/ Border#ChipCheck">
+        <Setter Property="Opacity" Value="1" />
     </Style>
 
     <!-- ================= 设置页左侧导航 (spec-settings-master-detail-and-theme-presets) =================
