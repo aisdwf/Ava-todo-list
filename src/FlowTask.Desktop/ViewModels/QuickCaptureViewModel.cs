@@ -6,6 +6,7 @@ using FlowTask.Core.Enums;
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
+using FlowTask.Core.Ordering;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.ViewModels.Actions;
 
@@ -57,7 +58,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
     /// 当前选中项目下的任务（单项目列表，spec-quick-window-single-project-list）。
     /// </summary>
     /// <remarks>直接复用主窗 <see cref="TaskRowViewModel"/>，勾选走与主窗同一套完成命令，
-    /// 避免重复实现「完成 ≠ 归档」的语义（spec-task-complete-before-archive）。</remarks>
+    /// 避免重复实现完成套件（spec-project-managed-tasks）。</remarks>
     public ObservableCollection<TaskRowViewModel> Tasks { get; } = [];
 
     /// <summary>列表是否为空，驱动空状态提示显隐。</summary>
@@ -154,25 +155,15 @@ public partial class QuickCaptureViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 按当前选中项目载入任务，排序按 D2：未完成在上，已完成未归档置底。
+    /// 按当前选中项目载入任务，排序与主窗共用 <see cref="TaskListOrder"/>。
     /// </summary>
     private async Task LoadTasksForSelectedProjectAsync()
     {
         var projectId = SelectedProject?.Id ?? DefaultProject.Id;
         var items = await _taskRepository.GetTasksByProjectAsync(projectId);
+        var ordered = TaskListOrder.Sort(items);
 
         var project = _projects.FirstOrDefault(p => p.Id == projectId);
-
-        // D2：未完成在上（与主窗项目视图同序：优先级降序、到期日升序），
-        // 已完成未归档置底（按完成时刻降序，最近完成的在前）
-        var pending = items
-            .Where(t => !t.IsCompleted)
-            .OrderByDescending(t => t.Priority)
-            .ThenBy(t => t.DueDate ?? DateTime.MaxValue);
-        var completed = items
-            .Where(t => t.IsCompleted)
-            .OrderByDescending(t => t.CompletedAt);
-        var ordered = pending.Concat(completed);
 
         Tasks.Clear();
         foreach (var item in ordered)
@@ -184,8 +175,7 @@ public partial class QuickCaptureViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 切换任务完成状态。与主窗共用同一套「完成 ≠ 归档」语义
-    /// （spec-task-complete-before-archive）：勾选后任务仍留在列表，不立即消失。
+    /// 切换任务完成状态。与主窗共用完成套件：勾选后任务仍留在列表并置底。
     /// </summary>
     [RelayCommand]
     private async Task ToggleTaskCompleteAsync(TaskItem? item)

@@ -11,7 +11,7 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 | :--- | :--- |
 | [`infrastructure/`](./infrastructure/) | MVVM 基础设施、SQLite 持久化骨架 |
 | [`visual-theme/`](./visual-theme/) | 视觉语言、主题切换、外观个性化 |
-| [`task-domain/`](./task-domain/) | 任务/项目/标签数据契约、时钟整改、归档语义 |
+| [`task-domain/`](./task-domain/) | 任务/项目/标签数据契约、时钟整改、任务生命周期 |
 | [`main-window/`](./main-window/) | 主窗口布局、侧边栏、分类交互 |
 | [`quick-capture/`](./quick-capture/) | 快捷键显隐小窗、捕捉补全 |
 | [`docs-system/`](./docs-system/) | 文档体系自身的重构 |
@@ -42,13 +42,12 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：`visual-theme/spec-appearance-persist` 已完成（外观主题 / 材质 / 昼夜写入 `AppSettings`，重启后恢复；所有者预览原话「没问题」并合入 `dev`）。
-其余进行中的 SPEC 为：三份 quick-capture 相关 SPEC（`spec-quick-window-hotkey-capture` /
-`task-domain/spec-task-complete-before-archive` / `spec-quick-window-single-project-list`，
-均源自 `feature/quick-window-standalone` 分支，机器验证 195 测试已通过，
-统一等待用户在 Windows 端做一次性人工验收）；
-`spec-create-task-inherits-selected-project` 与 `spec-remove-tag-feature` 亦为 in-progress。
-上一完成项另有 `main-window/spec-create-project-click-outside-confirm`。**
+**当前阶段：`task-domain/spec-project-managed-tasks` 已 `[DONE]`（全任务看板 + 单项目自主管理；全局任务归档废除；所有者预览通过）。
+`spec-task-complete-before-archive` 已 `[SUPERSEDED]`。
+此前合入 `dev` 的完成项：`spec-appearance-persist`、`spec-create-project-click-outside-confirm`。
+其余进行中的 SPEC：`spec-quick-window-hotkey-capture` /
+`spec-quick-window-single-project-list`、`spec-create-task-inherits-selected-project`、`spec-remove-tag-feature`。
+上一完成项为 `spec-project-managed-tasks`。**
 跨 SPEC 未实现项见下方「待办事项索引」。
 
 ### 接手顺序
@@ -110,7 +109,8 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-task-contract-and-clock](./task-domain/spec-task-contract-and-clock[DONE].md) | task-domain | 任务数据契约扩展、IClock 整改与编辑闭环 | `done` | DESIGN 三段实施的第 1 段；产出无 UI 入口，见其 §5 |
 | [spec-tag-entity](./task-domain/spec-tag-entity[DONE].md) | task-domain | 标签实体化与设置页管理 | `done` | 直接切换实体模型，不兼容旧字符串标签；含 TODO(tag-filter) |
 | [spec-due-date-calendar](./task-domain/spec-due-date-calendar[DONE].md) | task-domain | 到期日三来源录入、日历、偏移设置；主窗移除今日聚焦 | `done` | 基础初版已验收；创建不自动写；快捷启用/清除；AppSettings N∈[1,30]；行上点击改期；日历按需展开；主窗删今日聚焦；含 TODO(quick-capture-today) |
-| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[IN-PROGRESS].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `in-progress` | **第 2 份**；归档保留项目来源；D3 采用全局「归档全部已完成」入口，不做逐项目/多选 |
+| [spec-task-complete-before-archive](./task-domain/spec-task-complete-before-archive[SUPERSEDED].md) | task-domain | 完成≠归档；手动归档；勾选容错 | `superseded` | 被 `spec-project-managed-tasks` 取代（用户 2026-09-26 推翻全局任务归档） |
+| [spec-project-managed-tasks](./task-domain/spec-project-managed-tasks[DONE].md) | task-domain | 全任务看板 + 单项目自主管理；废除任务归档 | `done` | 所有者预览通过（2026-09-26）；已完成组只按勾选顺序 |
 | [spec-classification-ui](./main-window/spec-classification-ui[DONE].md) | main-window | 主窗口分类交互与校验值对象 | `done` | **其交互设计已被用户实测证伪**，由 design-interaction-principles 重做 |
 | [spec-sidebar-selection-consolidation](./main-window/spec-sidebar-selection-consolidation[DONE].md) | main-window | 侧边栏选中机制收敛（结构整改） | `done` | 机器验证（167 测试通过）与人工验证均已完成，行为零变化 |
 | [spec-viewmodel-command-decomposition](./main-window/spec-viewmodel-command-decomposition[DONE].md) | main-window | MainViewModel TR-1 命令拆分（操作类抽取） | `done` | 人工验证通过；薄命令保留 XAML 绑定；`MainViewModel` 1183→912 行 |
@@ -136,7 +136,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | 移除 `Class1.cs` 模板残留空类（Core / Infrastructure） | 2026-09-21 | 无 | [spec-editorial-and-ripple-theme 的推迟事项](./visual-theme/spec-editorial-and-ripple-theme[DONE].md) |
 | ~~外观偏好持久化（主题 / 材质 / 昼夜，重启后回退默认）~~ | ~~2026-09-28~~ | **已核销** —— 命名主题 / 材质 / 昼夜写入 `AppSettings`；强调色选择器已撤下不单存；所有者预览通过 | [spec-appearance-persist](./visual-theme/spec-appearance-persist[DONE].md) |
 | `Description` 仍为死字段（无 UI 读写路径） | 2026-10-05 | 无（编辑态已有 5 字段，加备注需多行框、显著增高面板） | [spec-classification-ui 的推迟事项](./main-window/spec-classification-ui[DONE].md) |
-| 软删除任务无恢复入口，`PermanentDeleteAsync` 无调用方 | 2026-10-05 | 需先决定回收站是否作为需求纳入 REQUIREMENTS | [spec-task-contract-and-clock 的推迟事项](./task-domain/spec-task-contract-and-clock[DONE].md) |
+| 软删除任务无恢复入口，`PermanentDeleteAsync` 无调用方 | 2026-10-05 | **部分核销**：`X` 已改为物理删除（spec-project-managed-tasks Q1=B）。历史 `IsDeleted=true` 行仍无恢复入口，本轮不批量清掉 | [spec-task-contract-and-clock](./task-domain/spec-task-contract-and-clock[DONE].md) / [spec-project-managed-tasks](./task-domain/spec-project-managed-tasks[DONE].md) |
 | **项目归档命令已实现但无 UI 入口**（只能删除，不能归档） | 2026-10-12 | 需决策承载方式（右键菜单 / 项目详情弹层） | [spec-classification-ui 的推迟事项](./main-window/spec-classification-ui[DONE].md) |
 | ~~Anthropic/暗夜/海风等命名主题预设的具体色值未定义~~ | 已核销 | dogapi.cc 与 linkapi.ai 样式表色值已写入 `ThemePresets`；所有者预览通过；SPEC 已 `[DONE]` | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md) |
 | **`ProjectId` 实际仍存在 `null`，与 design-domain-contract §2.3「不可为 null，须挂 Default」的契约不一致**（创建路径、删除项目后的回退路径均写 `null`） | 待定 | 需先确认是否要把「全部任务」视图与 Default 项目的信息架构合并（用户本轮明确表示不想现在做这个抉择，见 spec-create-task-inherits-selected-project §6） | [spec-create-task-inherits-selected-project 的推迟事项](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) |

@@ -4,7 +4,7 @@ using FlowTask.Core.Models;
 namespace FlowTask.Desktop.ViewModels.Actions;
 
 /// <summary>
-/// 软删除任务并刷新列表（TR-1）。
+/// 物理删除任务并刷新列表（TR-1；spec-project-managed-tasks Q1=B）。
 /// </summary>
 public sealed class DeleteTaskViewModel
 {
@@ -22,7 +22,7 @@ public sealed class DeleteTaskViewModel
             return;
         }
 
-        await _taskRepository.SoftDeleteAsync(item.Id);
+        await _taskRepository.PermanentDeleteAsync(item.Id);
         await reloadTasks();
     }
 }

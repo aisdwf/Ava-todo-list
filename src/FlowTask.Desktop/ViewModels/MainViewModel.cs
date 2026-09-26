@@ -22,11 +22,8 @@ namespace FlowTask.Desktop.ViewModels;
 /// </remarks>
 public enum TaskFilter
 {
-    /// <summary>全部活跃任务。</summary>
+    /// <summary>全部任务看板。</summary>
     Active,
-
-    /// <summary>已完成归档。</summary>
-    Completed,
 
     /// <summary>设置。</summary>
     Settings
@@ -102,7 +99,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [NotifyPropertyChangedFor(nameof(CurrentFilter))]
     [NotifyPropertyChangedFor(nameof(SelectedProject))]
     [NotifyPropertyChangedFor(nameof(IsActiveFilterSelected))]
-    [NotifyPropertyChangedFor(nameof(IsCompletedFilterSelected))]
     private ViewSelection _currentSelection = ViewSelection.Active;
 
     /// <summary>
@@ -134,11 +130,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// （侧边栏高亮统一经 <see cref="ViewSelection"/> 直接比对，见 §2.2），
     /// 仅在 <see cref="LoadTasksAsync"/> 判断项目筛选优先级时作为占位默认值。
     /// </remarks>
-    public TaskFilter CurrentFilter => CurrentSelection.Kind switch
-    {
-        ViewSelectionKind.Completed => TaskFilter.Completed,
-        _ => TaskFilter.Active
-    };
+    public TaskFilter CurrentFilter => TaskFilter.Active;
 
     /// <summary>
     /// 当前选中的项目，由 <see cref="CurrentSelection"/> 派生；<c>null</c> 表示未启用项目筛选。
@@ -150,14 +142,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>VIEWS「全部任务」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
     public bool IsActiveFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Active;
 
-    /// <summary>VIEWS「已完成归档」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
-    public bool IsCompletedFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Completed;
-
     [ObservableProperty]
     private string _currentCategoryTitle = "全部任务";
 
     [ObservableProperty]
-    private string _currentCategorySubtitle = "聚焦所有活跃进行中的待办";
+    private string _currentCategorySubtitle = "所有任务的综合看板";
 
     [ObservableProperty]
     private string _newTaskTitle = string.Empty;
@@ -186,21 +175,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     [ObservableProperty]
     private int _activeCount;
-
-    /// <summary>「已完成归档」计数，语义为已归档任务数（spec-task-complete-before-archive）。</summary>
-    [ObservableProperty]
-    private int _completedCount;
-
-    /// <summary>
-    /// 已完成但尚未归档的任务数，驱动「归档全部已完成」按钮的可用/可见状态。
-    /// </summary>
-    /// <remarks>0 时该按钮应禁用或隐藏，避免空操作（spec-task-complete-before-archive §2.4 D3）。</remarks>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPendingArchive))]
-    private int _pendingArchiveCount;
-
-    /// <summary>是否存在可归档的已完成任务，驱动按钮 IsVisible/IsEnabled 绑定。</summary>
-    public bool HasPendingArchive => PendingArchiveCount > 0;
 
     /// <summary>
     /// 当前筛选下的任务行集合（只读投影）。
@@ -437,9 +411,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         (CurrentCategoryTitle, CurrentCategorySubtitle) = value.Kind switch
         {
-            ViewSelectionKind.Completed => ("已完成归档", "所有已达成的历史成果记录"),
-            ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下进行中的待办"),
-            _ => ("全部任务", "聚焦所有活跃进行中的待办")
+            ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下的全部任务"),
+            _ => ("全部任务", "所有任务的综合看板")
         };
 
         SyncProjectSelectionFlags();
@@ -505,11 +478,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // 项目筛选优先于 VIEWS 筛选：二者现由同一状态量表达为互斥的不同取值
         var items = CurrentSelection.Kind == ViewSelectionKind.Project
             ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
-            : CurrentFilter switch
-            {
-                TaskFilter.Completed => await _repository.GetCompletedTasksAsync(),
-                _ => await _repository.GetAllActiveTasksAsync()
-            };
+            : await _repository.GetAllActiveTasksAsync();
 
         // 建立 Id → 项目 的查找表，避免为每行任务各查一次库（N+1 查询）
         var projectLookup = _projects.ToDictionary(p => p.Id, p => p.Project);
@@ -530,12 +499,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 刷新侧边栏活跃与已完成计数，以及各项目行的任务数。
+    /// 刷新侧边栏全部任务计数，以及各项目行的任务数。
     /// </summary>
     /// <remarks>
-    /// 原实现声明了 ActiveCount / CompletedCount 却从未赋值，侧边栏徽标恒显 0。
-    /// 计数必须独立查询：当前筛选为"已完成"时，Tasks 集合内不含活跃项，
-    /// 无法从中推导出活跃数。
+    /// 原实现声明了 ActiveCount 却从未赋值，侧边栏徽标恒显 0。
+    /// 计数必须独立查询：当前若在某个项目下，<see cref="Tasks"/> 不含其他项目的行，
+    /// 无法从中推导出「全部任务」总数。
     /// <para>
     /// <b>项目行计数同理需独立查询</b>：<see cref="ProjectItemViewModel.TaskCount"/>
     /// 只在 <see cref="LoadProjectsAsync"/> 重建项目集合时被赋值一次；新增/删除任务、
@@ -546,15 +515,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     private async Task RefreshCountsAsync()
     {
-        var active = await _repository.GetAllActiveTasksAsync();
-        var completed = await _repository.GetCompletedTasksAsync();
-
-        ActiveCount = active.Count;
-        CompletedCount = completed.Count;
-
-        // 活动列表本身已含「已完成未归档」（完成 ≠ 归档），从中筛出待归档数，
-        // 无需新增仓储查询方法
-        PendingArchiveCount = active.Count(t => t.IsCompleted);
+        var visible = await _repository.GetAllActiveTasksAsync();
+        ActiveCount = visible.Count;
 
         foreach (var project in _projects)
         {
@@ -577,8 +539,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 NewTaskTitle = string.Empty;
                 NewDueDateEditor.Load(null);
             },
-            CurrentSelection.Kind == ViewSelectionKind.Completed,
-            () => CurrentSelection = ViewSelection.Active,
             LoadTasksAsync);
 
     /// <summary>
@@ -644,21 +604,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new ToggleCompleteTaskViewModel(_repository, _clock).ExecuteAsync(item, LoadTasksAsync);
 
     /// <summary>
-    /// 手动归档全部已完成任务（spec-task-complete-before-archive D3：全局范围）。
-    /// </summary>
-    /// <remarks>
-    /// 完成 ≠ 归档：勾选完成只是划线低饱和地留在活动列表；
-    /// 用户需要显式点击这个动作才会真正移入「已完成归档」视图。
-    /// </remarks>
-    [RelayCommand]
-    private async Task ArchiveCompletedAsync()
-    {
-        await _repository.ArchiveAllCompletedAsync();
-        await LoadTasksAsync();
-    }
-
-    /// <summary>
-    /// 软删除任务。
+    /// 物理删除任务。
     /// </summary>
     /// <param name="item">目标任务。</param>
     /// <remarks>

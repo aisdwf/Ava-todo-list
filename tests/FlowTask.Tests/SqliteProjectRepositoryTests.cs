@@ -247,9 +247,9 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Equal(2, await _projects.CountTasksAsync(project.Id));
 
-        await _tasks.SoftDeleteAsync(toDelete.Id);
+        await _tasks.PermanentDeleteAsync(toDelete.Id);
 
-        // 软删除的任务不计入影响提示
+        // 物理删除的任务不计入影响提示
         Assert.Equal(1, await _projects.CountTasksAsync(project.Id));
     }
 

@@ -115,7 +115,7 @@
 ### 2.6 非本 SPEC
 
 - 小窗任务列表、勾选、单项目切换 → `spec-quick-window-single-project-list`
-- 完成≠归档 → `spec-task-complete-before-archive`
+- 完成套件 → `spec-project-managed-tasks`
 - 主窗创建栏 `@`/`#` 语法 → 显式推迟
 
 ---

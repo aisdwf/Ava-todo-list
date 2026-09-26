@@ -26,8 +26,6 @@ public sealed class AddTaskViewModel
         DateTime? dueDate,
         string? projectId,
         Action resetInput,
-        bool leaveCompletedView,
-        Action switchToActiveView,
         Func<Task> reloadTasks)
     {
         if (!TaskTitle.IsValid(title))
@@ -38,12 +36,6 @@ public sealed class AddTaskViewModel
         var task = TaskItemFactory.Create(_clock, title, priority, projectId: projectId, dueDate: dueDate);
         await _taskRepository.SaveTaskAsync(task);
         resetInput();
-
-        if (leaveCompletedView)
-        {
-            switchToActiveView();
-        }
-
         await reloadTasks();
     }
 }

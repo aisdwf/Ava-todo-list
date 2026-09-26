@@ -1,6 +1,7 @@
 using SQLite;
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
+using FlowTask.Core.Ordering;
 
 namespace FlowTask.Infrastructure.Persistence;
 
@@ -59,7 +60,6 @@ public class SqliteTaskRepository : ITaskRepository
             if (!_initialized)
             {
                 await _db.CreateTableAsync<TaskItem>();
-                await MigrateHistoricalCompletedToArchivedAsync();
                 _initialized = true;
             }
         }
@@ -69,40 +69,14 @@ public class SqliteTaskRepository : ITaskRepository
         }
     }
 
-    /// <summary>
-    /// D4 一次性数据校正（spec-task-complete-before-archive）：
-    /// <c>IsArchived</c> 列是本轮新增字段，历史行的默认值为 <c>false</c>。
-    /// 若不做这一步，升级前所有已勾选完成的任务会在活动列表「已完成未归档」区间突然重新出现，
-    /// 与用户认知（这些任务早已在旧版本的「已完成归档」视图里）相悖。
-    /// </summary>
-    /// <remarks>
-    /// 幂等：只对 <c>IsCompleted &amp;&amp; !IsArchived</c> 的历史行生效；
-    /// 校正后这些行的 <c>IsArchived</c> 变为 <c>true</c>，重复调用不会再匹配到它们。
-    /// 归档时刻无法还原真实归档发生的那一刻，取 <c>CreatedAt</c> 占位而非读系统时钟（Article 9）。
-    /// </remarks>
-    private async Task MigrateHistoricalCompletedToArchivedAsync()
-    {
-        var staleCompleted = await _db.Table<TaskItem>()
-            .Where(t => t.IsCompleted && !t.IsArchived)
-            .ToListAsync();
-
-        foreach (var item in staleCompleted)
-        {
-            item.IsArchived = true;
-            item.ArchivedAt = item.CreatedAt;
-            await _db.UpdateAsync(item);
-        }
-    }
-
     /// <inheritdoc />
     public async Task<List<TaskItem>> GetAllActiveTasksAsync()
     {
         await InitializeAsync();
-        return await _db.Table<TaskItem>()
-                  .Where(t => !t.IsDeleted && !t.IsArchived)
-                  .OrderByDescending(t => t.Priority)
-                  .ThenBy(t => t.DueDate)
+        var items = await _db.Table<TaskItem>()
+                  .Where(t => !t.IsDeleted)
                   .ToListAsync();
+        return TaskListOrder.Sort(items);
     }
 
     /// <summary>
@@ -153,20 +127,6 @@ public class SqliteTaskRepository : ITaskRepository
     }
 
     /// <inheritdoc />
-    /// <remarks>
-    /// 语义已随 spec-task-complete-before-archive 从「已完成」改为「已归档」：
-    /// 完成但未归档的任务不在此列，仍留在活动列表。
-    /// </remarks>
-    public async Task<List<TaskItem>> GetCompletedTasksAsync()
-    {
-        await InitializeAsync();
-        return await _db.Table<TaskItem>()
-                  .Where(t => !t.IsDeleted && t.IsArchived)
-                  .OrderByDescending(t => t.ArchivedAt)
-                  .ToListAsync();
-    }
-
-    /// <inheritdoc />
     public async Task<List<TaskItem>> GetTasksByProjectAsync(string? projectId)
     {
         await InitializeAsync();
@@ -174,13 +134,11 @@ public class SqliteTaskRepository : ITaskRepository
         // 分成两条查询：sqlite-net 的表达式翻译对「参数为 null 时改变比较语义」
         // 支持不可靠，显式分支比依赖其推断更稳妥
         var query = projectId is null
-            ? _db.Table<TaskItem>().Where(t => !t.IsDeleted && !t.IsArchived && t.ProjectId == null)
-            : _db.Table<TaskItem>().Where(t => !t.IsDeleted && !t.IsArchived && t.ProjectId == projectId);
+            ? _db.Table<TaskItem>().Where(t => !t.IsDeleted && t.ProjectId == null)
+            : _db.Table<TaskItem>().Where(t => !t.IsDeleted && t.ProjectId == projectId);
 
-        return await query
-                  .OrderByDescending(t => t.Priority)
-                  .ThenBy(t => t.DueDate)
-                  .ToListAsync();
+        var items = await query.ToListAsync();
+        return TaskListOrder.Sort(items);
     }
 
     /// <inheritdoc />
@@ -252,44 +210,9 @@ public class SqliteTaskRepository : ITaskRepository
             : DateTime.SpecifyKind(dueDate.Value.Date, DateTimeKind.Unspecified);
 
     /// <inheritdoc />
-    public async Task<int> SoftDeleteAsync(string id)
-    {
-        await InitializeAsync();
-        var existing = await GetByIdAsync(id);
-        if (existing == null) return 0;
-
-        existing.IsDeleted = true;
-        return await _db.UpdateAsync(existing);
-    }
-
-    /// <inheritdoc />
     public async Task<int> PermanentDeleteAsync(string id)
     {
         await InitializeAsync();
         return await _db.DeleteAsync<TaskItem>(id);
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// D1：只处理 <c>IsCompleted &amp;&amp; !IsArchived</c> 的行，未完成任务不受影响。
-    /// D3：全局范围，不按单项目拆分；归档保留 <c>ProjectId</c> 来源（字段本身不变）。
-    /// </remarks>
-    public async Task<int> ArchiveAllCompletedAsync()
-    {
-        await InitializeAsync();
-
-        var pending = await _db.Table<TaskItem>()
-            .Where(t => !t.IsDeleted && t.IsCompleted && !t.IsArchived)
-            .ToListAsync();
-
-        var archivedAt = _clock.UtcNow;
-        foreach (var item in pending)
-        {
-            item.IsArchived = true;
-            item.ArchivedAt = archivedAt;
-            await _db.UpdateAsync(item);
-        }
-
-        return pending.Count;
     }
 }
