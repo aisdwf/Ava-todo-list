@@ -15,7 +15,7 @@ namespace FlowTask.Desktop.ViewModels;
 /// <summary>
 /// 快捷小窗：热键显隐 + <c>@项目</c> 解析与补全（spec-quick-window-hotkey-capture）。
 /// </summary>
-public partial class QuickCaptureViewModel : ViewModelBase
+public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 {
     /// <summary>记忆上次在小窗选择项目的设置键（spec-quick-window-single-project-list §2.4）。</summary>
     private const string LastProjectSettingsKey = "QuickWindow.LastProjectId";
@@ -29,6 +29,11 @@ public partial class QuickCaptureViewModel : ViewModelBase
 
     /// <summary>切换项目时抑制联动查询，避免 <see cref="PrepareAsync"/> 恢复上次项目时触发一次多余的重复加载。</summary>
     private bool _suppressProjectSelectionReload;
+
+    /// <summary>
+    /// 本窗口正在从自己的勾选命令重载列表时跳过总线，避免与 <c>reloadTasks</c> 并发重建同一集合。
+    /// </summary>
+    private bool _suppressTaskSavedReload;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -64,6 +69,12 @@ public partial class QuickCaptureViewModel : ViewModelBase
     /// <summary>列表是否为空，驱动空状态提示显隐。</summary>
     public bool IsTaskListEmpty => Tasks.Count == 0;
 
+    /// <summary>
+    /// 最近一次由 <see cref="TaskSavedMessage"/> 触发的列表重载。
+    /// 对端勾选后测试等待本任务，避免用延时猜测 UI 刷新（Article 9）。
+    /// </summary>
+    public Task TaskListRefreshTask { get; private set; } = Task.CompletedTask;
+
     /// <summary>请求关闭浮窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestClose;
 
@@ -83,6 +94,8 @@ public partial class QuickCaptureViewModel : ViewModelBase
         _projectRepository = projectRepository;
         _settingsRepository = settingsRepository;
         _clock = clock;
+
+        WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
     }
 
     /// <summary>
@@ -179,8 +192,51 @@ public partial class QuickCaptureViewModel : ViewModelBase
     /// </summary>
     [RelayCommand]
     private async Task ToggleTaskCompleteAsync(TaskItem? item)
-        => await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
-            .ExecuteAsync(item, LoadTasksForSelectedProjectAsync);
+    {
+        _suppressTaskSavedReload = true;
+        try
+        {
+            await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
+                .ExecuteAsync(item, LoadTasksForSelectedProjectAsync);
+        }
+        finally
+        {
+            _suppressTaskSavedReload = false;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Receive(TaskSavedMessage message)
+    {
+        if (_suppressTaskSavedReload)
+        {
+            return;
+        }
+
+        TaskListRefreshTask = UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id));
+    }
+
+    /// <summary>
+    /// 从 SQLite 读回该任务并就地写到当前小窗列表里已有的行。
+    /// </summary>
+    private async Task SyncFromStoreAsync(string taskId)
+    {
+        var persisted = await _taskRepository.GetByIdAsync(taskId);
+        if (persisted is null)
+        {
+            await LoadTasksForSelectedProjectAsync();
+            return;
+        }
+
+        if (!TaskRowListSync.TryApply(Tasks, persisted))
+        {
+            await LoadTasksForSelectedProjectAsync();
+            return;
+        }
+
+        TaskRowListSync.Reorder(Tasks);
+        OnPropertyChanged(nameof(IsTaskListEmpty));
+    }
 
     /// <summary>
     /// 保存捕捉项并关闭浮窗。空白标题静默忽略。
@@ -203,7 +259,15 @@ public partial class QuickCaptureViewModel : ViewModelBase
         var task = TaskItemFactory.Create(_clock, parsed.Title, Priority, projectId);
         await _taskRepository.SaveTaskAsync(task);
 
-        WeakReferenceMessenger.Default.Send(new TaskSavedMessage(task));
+        _suppressTaskSavedReload = true;
+        try
+        {
+            WeakReferenceMessenger.Default.Send(new TaskSavedMessage(task));
+        }
+        finally
+        {
+            _suppressTaskSavedReload = false;
+        }
 
         // 新任务落在当前小窗选中的项目时立即刷新列表，不需要关闭再重开才能看到（Q7）
         if (projectId == (SelectedProject?.Id ?? DefaultProject.Id))

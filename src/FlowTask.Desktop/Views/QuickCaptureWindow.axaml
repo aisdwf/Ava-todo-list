@@ -115,7 +115,7 @@
                                     <Grid ColumnDefinitions="Auto,*">
                                         <CheckBox Grid.Column="0"
                                                   Classes="RingCheck"
-                                                  IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                  IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,12,0"
                                                   Command="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).ToggleTaskCompleteCommand}"
@@ -125,7 +125,7 @@
                                                    Text="{Binding Task.Title}"
                                                    FontSize="14"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Classes.QuickCaptureCompleted="{Binding Task.IsCompleted}"
+                                                   Classes.QuickCaptureCompleted="{Binding IsCompleted}"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center" />
                                     </Grid>
