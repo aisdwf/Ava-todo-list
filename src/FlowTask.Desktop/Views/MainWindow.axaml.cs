@@ -111,6 +111,8 @@ public partial class MainWindow : Window
 
         Opened += async (_, _) =>
         {
+            // 先读库再刷窗，否则首帧会用字段默认值（深色 / 默认主题 / Mica）闪一下。
+            await vm.LoadAppearanceAsync();
             AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
             AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
             await vm.InitializeAsync();

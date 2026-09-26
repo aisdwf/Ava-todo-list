@@ -216,6 +216,7 @@
 - **TODO(persistence): [2026-09-28] 外观偏好（主题、强调色、材质）当前仅存于内存，重启后回退默认值。**
   - **为什么推迟**：spec-editorial-and-ripple-theme 只要求「即时生效」，未要求持久化。持久化涉及配置存储位置与格式决策，应作为独立 SPEC 处理。
   - **Owner**: aisdwf
+  - **已核销（2026-09-26）**：由 [spec-appearance-persist[DONE]](./spec-appearance-persist[DONE].md) 落地（命名主题 / 材质 / 昼夜；强调色选择器已撤下不单存）。
 
 ---
 

@@ -27,6 +27,15 @@ public static class AppearanceCoordinator
     /// <summary>应用字体令牌键，定义在 Tokens.Shared.axaml。</summary>
     private const string AppFontFamilyKey = "AppFontFamily";
 
+    /// <summary>命名主题预设 id 的 AppSettings 键。外观属 UI，键名不进入 Core 仓储接口。</summary>
+    public const string ThemePresetSettingsKey = "Appearance.ThemePresetId";
+
+    /// <summary>窗口材质预设 id 的 AppSettings 键。</summary>
+    public const string MaterialSettingsKey = "Appearance.MaterialId";
+
+    /// <summary>昼夜主题的 AppSettings 键，值为 <c>1</c>（深色）或 <c>0</c>（浅色）。</summary>
+    public const string IsDarkSettingsKey = "Appearance.IsDark";
+
     /// <summary>站点默认无衬线栈，与 Tokens.Shared 的初始值一致。</summary>
     private const string SansFontFamily =
         "Inter, Segoe UI Variable, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif";
@@ -195,6 +204,29 @@ public static class AppearanceCoordinator
     /// </summary>
     public static ThemePreset FindThemePreset(string presetId)
         => ThemePresets.FirstOrDefault(p => p.Id == presetId) ?? ThemePresets[0];
+
+    /// <summary>
+    /// 解析已持久化的昼夜值。缺键或无法识别时回退到编译期默认（深色）。
+    /// </summary>
+    public static bool ParseIsDark(string? raw, bool fallback = true)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        if (raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (raw == "0" || raw.Equals("false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return fallback;
+    }
 
     /// <summary>
     /// 应用命名主题预设：把该预设的表面、文本、边框、状态色和强调色写入两套主题字典。

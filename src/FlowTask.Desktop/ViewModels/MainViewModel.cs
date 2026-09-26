@@ -41,9 +41,16 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IProjectRepository _projectRepository;
     private readonly IAppSettingsRepository _settingsRepository;
     private readonly IClock _clock;
+    private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
+    private bool _suppressAppearancePersist;
 
     [ObservableProperty]
     private bool _isDarkTheme = true;
+
+    /// <summary>
+    /// 最近一次外观偏好写入。属性变更回调不能是 async，调用方与测试等待本任务确认已落盘。
+    /// </summary>
+    public Task AppearancePersistTask { get; private set; } = Task.CompletedTask;
 
     /// <summary>
     /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="ViewSelection"/> 的取值位。
@@ -329,19 +336,46 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         await _settingsRepository.InitializeAsync();
         DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
+        await LoadAppearanceAsync();
 
         // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
 
-        AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
-        ThemeApplied?.Invoke();
         await LoadProjectsAsync();
         await LoadTasksAsync();
     }
 
     /// <summary>
-    /// 载入未归档项目及其任务计数，并同步编辑态下拉候选。
+    /// 从 AppSettings 恢复外观三项，并立刻写入主题字典。
     /// </summary>
+    /// <remarks>
+    /// 必须在窗口套用材质之前调用，否则首帧会闪过字段默认值。
+    /// 加载期间抑制回写，避免把回退后的默认 id 在用户尚未操作时写回库。
+    /// </remarks>
+    public async Task LoadAppearanceAsync()
+    {
+        await _settingsRepository.InitializeAsync();
+
+        var themeId = await _settingsRepository.GetAsync(AppearanceCoordinator.ThemePresetSettingsKey);
+        var materialId = await _settingsRepository.GetAsync(AppearanceCoordinator.MaterialSettingsKey);
+        var isDarkRaw = await _settingsRepository.GetAsync(AppearanceCoordinator.IsDarkSettingsKey);
+
+        _suppressAppearancePersist = true;
+        try
+        {
+            SelectedThemePreset = AppearanceCoordinator.FindThemePreset(themeId ?? string.Empty);
+            SelectedMaterial = AppearanceCoordinator.FindMaterial(materialId ?? string.Empty);
+            IsDarkTheme = AppearanceCoordinator.ParseIsDark(isDarkRaw);
+        }
+        finally
+        {
+            _suppressAppearancePersist = false;
+        }
+
+        AppearanceCoordinator.ApplyTheme(IsDarkTheme);
+        AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
+        ThemeApplied?.Invoke();
+    }
     private async Task LoadProjectsAsync()
     {
         var projects = await _projectRepository.GetActiveProjectsAsync();
@@ -875,6 +909,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         IsDarkTheme = isDark;
         AppearanceCoordinator.ApplyTheme(isDark);
         ThemeApplied?.Invoke();
+        QueueAppearancePersist();
     }
 
     /// <summary>
@@ -910,7 +945,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。
     /// </summary>
-    partial void OnSelectedMaterialChanged(MaterialOption value) => MaterialPresetChanged?.Invoke(value);
+    partial void OnSelectedMaterialChanged(MaterialOption value)
+    {
+        MaterialPresetChanged?.Invoke(value);
+        QueueAppearancePersist();
+    }
 
     /// <summary>
     /// 强调色预设选中变更时立即写入主题字典，实现即时生效。
@@ -924,6 +963,35 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         AppearanceCoordinator.ApplyThemePreset(value.Id);
         ThemeApplied?.Invoke();
+        QueueAppearancePersist();
+    }
+
+    private void QueueAppearancePersist()
+    {
+        if (_suppressAppearancePersist)
+        {
+            return;
+        }
+
+        AppearancePersistTask = PersistAppearanceAsync();
+    }
+
+    private async Task PersistAppearanceAsync()
+    {
+        await _appearancePersistGate.WaitAsync();
+        try
+        {
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.ThemePresetSettingsKey, SelectedThemePreset.Id);
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.MaterialSettingsKey, SelectedMaterial.Id);
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.IsDarkSettingsKey, IsDarkTheme ? "1" : "0");
+        }
+        finally
+        {
+            _appearancePersistGate.Release();
+        }
     }
 
     /// <summary>
