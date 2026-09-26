@@ -42,7 +42,7 @@ design vs spec 的类型边界见 [`docs/rules/rule-doc-boundary.md`](../rules/r
 
 ## 四、⚠ 新会话接手入口
 
-**当前阶段：四份 SPEC 为 `in-progress`——
+**当前阶段：`visual-theme/spec-unified-svg-icons` 已完成（描边图标 + 移除更换颜色，所有者已看预览包）。其余进行中的 SPEC 为：
 `visual-theme/spec-settings-master-detail-and-theme-presets`（代码已提交，人工验证按例外推迟）；
 三份 quick-capture 相关 SPEC（`spec-quick-window-hotkey-capture` /
 `task-domain/spec-task-complete-before-archive` / `spec-quick-window-single-project-list`，
@@ -119,6 +119,7 @@ dotnet test  FlowTask.sln --nologo -v q     # 基线：163 通过
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` | **第 3 份**；依赖前两份（均已机器验证通过）；记忆上次项目；D1 用下拉切换、D2 未完成在上已完成置底 |
 | [spec-doc-restructure](./docs-system/spec-doc-restructure[DONE].md) | docs-system | 文档体系重构：类型边界归位 + 全库编号清理 | `done` | 拆分 5 份职责混杂的 design，清理 434 处编号引用 |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[IN-PROGRESS].md) | visual-theme | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `in-progress` | 代码已提交；**人工功能验证按 rule-spec-review-gate §5 例外推迟至提交后**（用户原话见其 SPEC「Risks」）；Anthropic/暗夜/海风等预设色值待 browser-use agent 采集 |
+| [spec-unified-svg-icons](./visual-theme/spec-unified-svg-icons[DONE].md) | visual-theme | 操作图标统一为描边 SVG；移除更换颜色入口 | `done` | 保留项目 `ColorHex` 的色点与色条；图表与品牌图标不在范围；所有者已看预览包 |
 | [spec-windows-single-file-release](./packaging/spec-windows-single-file-release[DONE].md) | packaging | Windows 单文件发布 + GitHub Actions 自动构建/发布 Release | `done` | 新建 `packaging` area；44 文件→1 exe；`v0.1.0` 已正式发布，zip + 裸 exe 双资产；人工验证通过 |
 | [spec-create-task-inherits-selected-project](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) | main-window | 新建任务继承当前选中项目 | `in-progress` | 用户已确认开工 |
 | [spec-remove-tag-feature](./task-domain/spec-remove-tag-feature[IN-PROGRESS].md) | task-domain | 完全移除标签功能 | `in-progress` | 用户已确认开工；推翻 `spec-tag-entity` 既有裁决，联动修订 `spec-quick-window-hotkey-capture[IN-PROGRESS]` 与 `REQUIREMENTS.md` |

@@ -96,19 +96,15 @@ public class AppearanceCoordinatorTests
     }
 
     /// <summary>
-    /// 按条目数循环取色与轮转下一色必须走 AccentPresets 单一权威源（TR-1）。
+    /// 新建项目的默认色必须走 AccentPresets 单一权威源（TR-1）。
     /// </summary>
     [AvaloniaFact]
-    public void PaletteColorHelpers_CycleThroughAccentPresets()
+    public void PickPaletteColor_CyclesThroughAccentPresets()
     {
         var palette = AppearanceCoordinator.AccentPresets;
         Assert.Equal(palette[0].DarkHex, AppearanceCoordinator.PickPaletteColor(0));
         Assert.Equal(palette[1].DarkHex, AppearanceCoordinator.PickPaletteColor(1));
         Assert.Equal(palette[0].DarkHex, AppearanceCoordinator.PickPaletteColor(palette.Count));
-
-        Assert.Equal(palette[1].DarkHex, AppearanceCoordinator.CyclePaletteColor(palette[0].DarkHex));
-        Assert.Equal(palette[0].DarkHex, AppearanceCoordinator.CyclePaletteColor(palette[^1].DarkHex));
-        Assert.Equal(palette[1].DarkHex, AppearanceCoordinator.CyclePaletteColor("#not-a-preset"));
     }
 
     /// <summary>
