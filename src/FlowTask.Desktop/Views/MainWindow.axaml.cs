@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Animation;
@@ -57,6 +58,11 @@ public partial class MainWindow : Window
     private bool _isRevealRunning;
 
     /// <summary>
+    /// 新建项目非法提示的自动消失计时。展示时长不是业务门闩，只服务「短暂」这一观感。
+    /// </summary>
+    private DispatcherTimer? _createProjectErrorTimer;
+
+    /// <summary>
     /// 设计器与 XAML 预览专用构造函数。
     /// </summary>
     public MainWindow()
@@ -106,8 +112,10 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
         // Tunnel：点击落在编辑框以外的任意位置（包括 Border/StackPanel 等本身不可
-        // 聚焦的空白区域）都要提交重命名 —— 见 OnWindowPointerPressed 备注。
+        // 聚焦的空白区域）都要提交重命名 / 新建 —— 见 OnWindowPointerPressed 备注。
         AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
+
+        vm.PropertyChanged += OnMainViewModelPropertyChanged;
 
         Opened += async (_, _) =>
         {
@@ -363,7 +371,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 点击窗口内任意位置时，若有正在编辑的重命名输入框且点击落在其外部，则提交该重命名。
+    /// 点击窗口内任意位置时，若有正在编辑的重命名或新建输入框且点击落在其外部，则提交。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -379,9 +387,8 @@ public partial class MainWindow : Window
     /// 因此能覆盖"点击空白区域"这一 LostFocus 覆盖不到的场景。
     /// </para>
     /// <para>
-    /// 仍保留 <see cref="OnProjectRenameLostFocus"/>（<c>TextBox.LostFocus</c>）
-    /// 作为 Tab 切焦点等非指针路径的兜底；两条路径都委托到同一个幂等的
-    /// <c>CommitRenameProjectCommand</c>，重复触发不会产生副作用。
+    /// 仍保留 <see cref="OnProjectRenameLostFocus"/> 与 <see cref="OnNewProjectLostFocus"/>
+    /// 作为 Tab 切焦点等非指针路径的兜底；提交命令均幂等，重复触发不会产生副作用。
     /// </para>
     /// </remarks>
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -398,6 +405,28 @@ public partial class MainWindow : Window
         {
             vm.CommitRenameProjectCommand.Execute(renamingProject);
         }
+
+        if (vm.IsCreatingProject && !IsInsideNewProjectEditor(target))
+        {
+            vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
+        }
+    }
+
+    /// <summary>
+    /// 判断点击目标是否位于新建项目输入区（输入框 + 校验提示）的可视树内。
+    /// </summary>
+    private bool IsInsideNewProjectEditor(Visual? target)
+    {
+        var editor = this.FindControl<Control>("NewProjectEditor");
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (ReferenceEquals(node, editor))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -435,6 +464,50 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
         {
             vm.CommitRenameProjectCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
+    /// 新建项目输入框失焦时提交，兜底 Tab 切焦点等非指针路径。
+    /// </summary>
+    private void OnNewProjectLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || !vm.IsCreatingProject)
+        {
+            return;
+        }
+
+        vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
+    }
+
+    private void OnMainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.CreateProjectError)
+            || DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        _createProjectErrorTimer?.Stop();
+        if (!vm.HasCreateProjectError)
+        {
+            return;
+        }
+
+        _createProjectErrorTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(2500)
+        };
+        _createProjectErrorTimer.Tick += OnCreateProjectErrorTimerTick;
+        _createProjectErrorTimer.Start();
+    }
+
+    private void OnCreateProjectErrorTimerTick(object? sender, EventArgs e)
+    {
+        _createProjectErrorTimer?.Stop();
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CreateProjectError = string.Empty;
         }
     }
 }

@@ -19,16 +19,19 @@ public sealed class CreateProjectViewModel
     }
 
     /// <summary>
-    /// 名称非法时静默忽略；成功时清空输入并收起创建区。
+    /// 名称非法时回调可展示文案（来自 <see cref="ProjectName.Validate"/>）；成功时清空输入并收起创建区。
     /// </summary>
     public async Task ExecuteAsync(
         string name,
         int sortOrder,
         Action clearAndCollapse,
-        Func<Task> reloadProjects)
+        Func<Task> reloadProjects,
+        Action<string> onInvalid)
     {
-        if (!ProjectName.IsValid(name))
+        var error = ProjectName.Validate(name);
+        if (error is not null)
         {
+            onInvalid(error);
             return;
         }
 
@@ -43,5 +46,24 @@ public sealed class CreateProjectViewModel
         await _projectRepository.SaveProjectAsync(project);
         clearAndCollapse();
         await reloadProjects();
+    }
+
+    /// <summary>
+    /// 离开输入框时提交：空白视为放弃（收起、不提示）；非空则走 <see cref="ExecuteAsync"/>。
+    /// </summary>
+    public Task ExecuteOnLeaveAsync(
+        string name,
+        int sortOrder,
+        Action collapse,
+        Func<Task> reloadProjects,
+        Action<string> onInvalid)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            collapse();
+            return Task.CompletedTask;
+        }
+
+        return ExecuteAsync(name, sortOrder, collapse, reloadProjects, onInvalid);
     }
 }

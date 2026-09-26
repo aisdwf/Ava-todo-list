@@ -105,6 +105,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
+        Assert.Equal(ProjectName.Validate("   "), vm.CreateProjectError);
+        Assert.True(vm.HasCreateProjectError);
     }
 
     [AvaloniaFact]
@@ -116,6 +118,7 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
+        Assert.Equal(ProjectName.Validate(vm.NewProjectName), vm.CreateProjectError);
     }
 
     [AvaloniaFact]
@@ -130,6 +133,65 @@ public class ProjectInteractionTests : IDisposable
 
         Assert.Empty(vm.NewProjectName);
         Assert.False(vm.IsCreatingProject);
+        Assert.False(vm.HasCreateProjectError);
+    }
+
+    [AvaloniaFact]
+    public async Task CreateProject_TypingClearsError()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "   ";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        Assert.True(vm.HasCreateProjectError);
+
+        vm.NewProjectName = "甲";
+        Assert.False(vm.HasCreateProjectError);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Blank_CollapsesWithoutCreatingOrHint()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "  ";
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsCreatingProject);
+        Assert.Empty(vm.NewProjectName);
+        Assert.False(vm.HasCreateProjectError);
+        Assert.Empty(UserProjects(vm));
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Overlong_ShowsErrorAndKeepsForm()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        var tooLong = new string('x', ProjectName.MaxLength + 1);
+        vm.NewProjectName = tooLong;
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsCreatingProject);
+        Assert.Equal(tooLong, vm.NewProjectName);
+        Assert.Equal(ProjectName.Validate(tooLong), vm.CreateProjectError);
+        Assert.Empty(UserProjects(vm));
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Valid_CreatesAndCollapses()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "外部确认";
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsCreatingProject);
+        Assert.Equal("外部确认", SoleUserProject(vm).Name);
+        Assert.False(vm.HasCreateProjectError);
     }
 
     /// <summary>

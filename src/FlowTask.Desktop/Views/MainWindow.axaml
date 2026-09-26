@@ -174,17 +174,26 @@
                             </StackPanel>
                         </Button>
 
-                        <TextBox Classes="FieldInput"
-                                 x:Name="NewProjectInput"
-                                 Margin="14,10,4,0"
-                                 Watermark="项目名称"
-                                 Text="{Binding NewProjectName, Mode=TwoWay}"
-                                 IsVisible="{Binding IsCreatingProject}">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding CreateProjectCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding ToggleCreateProjectCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
+                        <StackPanel x:Name="NewProjectEditor"
+                                    IsVisible="{Binding IsCreatingProject}">
+                            <TextBox Classes="FieldInput"
+                                     x:Name="NewProjectInput"
+                                     Margin="14,10,4,0"
+                                     Watermark="项目名称"
+                                     Text="{Binding NewProjectName, Mode=TwoWay}"
+                                     LostFocus="OnNewProjectLostFocus">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding CreateProjectCommand}" />
+                                    <KeyBinding Gesture="Escape" Command="{Binding ToggleCreateProjectCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBlock Classes="CaptionText"
+                                       Margin="14,4,4,0"
+                                       Foreground="{DynamicResource DangerBrush}"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasCreateProjectError}"
+                                       Text="{Binding CreateProjectError}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- 底部快捷小窗唤起钮 (design-visual-language §2.2)：
