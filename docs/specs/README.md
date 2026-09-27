@@ -18,12 +18,12 @@ powershell -File scripts/build-spec-index.ps1
 | :--- | ---: |
 | `draft` | 0 |
 | `in-progress` | 4 |
-| `done` | 21 |
+| `done` | 22 |
 | `done-refactored` | 0 |
 | `superseded` | 2 |
 | `archived` | 0 |
 | `obsolete` | 1 |
-| 合计 | 28 |
+| 合计 | 29 |
 
 ## Area
 
@@ -34,7 +34,7 @@ powershell -File scripts/build-spec-index.ps1
 | [`main-window/`](./main-window/) | 8 |
 | [`packaging/`](./packaging/) | 1 |
 | [`quick-capture/`](./quick-capture/) | 3 |
-| [`task-domain/`](./task-domain/) | 6 |
+| [`task-domain/`](./task-domain/) | 7 |
 | [`visual-theme/`](./visual-theme/) | 6 |
 
 ## 进行中
@@ -93,6 +93,7 @@ powershell -File scripts/build-spec-index.ps1
 
 | SPEC | 主题 | 状态 |
 | :--- | :--- | :--- |
+| [spec-delete-project-cascade-tasks](./task-domain/spec-delete-project-cascade-tasks[DONE].md) | 删除项目时级联删除其下任务 | `done` |
 | [spec-due-date-calendar](./task-domain/spec-due-date-calendar[DONE].md) | 到期日三来源录入、日历、默认偏移设置；主窗移除今日聚焦 | `done` |
 | [spec-project-managed-tasks](./task-domain/spec-project-managed-tasks[DONE].md) | 全任务看板 + 单项目自主管理（废除任务归档） | `done` |
 | [spec-remove-tag-feature](./task-domain/spec-remove-tag-feature[IN-PROGRESS].md) | 移除标签功能 | `in-progress` |

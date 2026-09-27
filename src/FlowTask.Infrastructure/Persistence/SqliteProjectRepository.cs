@@ -151,8 +151,8 @@ public class SqliteProjectRepository : IProjectRepository
     /// 原子性静默失效且不报任何错。此处必须使用同步 <c>Execute</c> / <c>Delete</c>。
     /// </para>
     /// <para>
-    /// 以 SQL 直接批量置空而非逐条 <c>Update</c>：避免先查询再回写的读改写竞态，
-    /// 且单条语句天然原子。
+    /// 以 SQL 直接批量删除该项目下全部任务行，再删项目：避免逐条往返，
+    /// 且单条语句天然原子（R-2.7）。
     /// </para>
     /// </remarks>
     public async Task<int> DeleteAsync(string id)
@@ -168,10 +168,8 @@ public class SqliteProjectRepository : IProjectRepository
 
         await _db.RunInTransactionAsync(conn =>
         {
-            // R-2.6：删除用户项目后改挂 Default，不再置 null
             affectedTasks = conn.Execute(
-                "UPDATE Tasks SET ProjectId = ? WHERE ProjectId = ?",
-                DefaultProject.Id,
+                "DELETE FROM Tasks WHERE ProjectId = ?",
                 id);
 
             conn.Delete<Project>(id);

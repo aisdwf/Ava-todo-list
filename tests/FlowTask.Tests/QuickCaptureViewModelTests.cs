@@ -140,6 +140,24 @@ public class QuickCaptureViewModelTests : IDisposable
         Assert.Equal("买菜", vm.Tasks[0].Task.Title);
     }
 
+    [AvaloniaFact]
+    public async Task PrepareAsync_FallsBackToDefaultWhenLastProjectWasDeleted()
+    {
+        var project = new Project { Name = "已删", CreatedAt = _clock.UtcNow };
+        await _projectRepo.SaveProjectAsync(project);
+        await _taskRepo.SaveTaskAsync(TaskItemFactory.Create(_clock, "随项目走", projectId: project.Id));
+        await _settingsRepo.SetAsync("QuickWindow.LastProjectId", project.Id);
+
+        await _projectRepo.DeleteAsync(project.Id);
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        Assert.Equal(DefaultProject.Id, vm.SelectedProject!.Id);
+        Assert.DoesNotContain(vm.Projects, p => p.Id == project.Id);
+        Assert.Empty(vm.Tasks);
+    }
+
     /// <summary>
     /// 打开小窗只确保 Default 存在，不得把历史 null 归属改写成 Default。
     /// </summary>

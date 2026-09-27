@@ -28,12 +28,11 @@ public interface IProjectRepository
     Task<int> SetArchivedAsync(string id, bool isArchived);
 
     /// <summary>
-    /// 删除项目，并将其下任务改挂 <see cref="DefaultProject"/>（R-2.6）。
+    /// 删除项目，并物理删除其下全部任务（R-2.7）。
     /// </summary>
-    /// <returns>受影响的任务条数。</returns>
+    /// <returns>被删除的任务条数（含历史 <c>IsDeleted</c> 行）。</returns>
     /// <remarks>
-    /// <b>绝不删除任务。</b>禁止删除 Default 本身。
-    /// 两步操作须在单个事务内完成。
+    /// 禁止删除 Default 本身。两步操作须在单个事务内完成。
     /// </remarks>
     Task<int> DeleteAsync(string id);
 

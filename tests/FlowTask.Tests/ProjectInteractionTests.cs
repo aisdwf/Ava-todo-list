@@ -17,7 +17,7 @@ namespace FlowTask.Tests;
 ///   导致视图模式与数据筛选纠缠（spec-editorial-and-ripple-theme 已修正），此处不得重犯。
 ///   </description></item>
 ///   <item><description>
-///   删除项目误删任务 —— 任务是核心资产，绝不能随项目消失。
+    ///   删除项目必须级联删除其下任务 —— 项目是任务的家，家没了任务一起走（R-2.7）。
 ///   </description></item>
 /// </list>
 /// </remarks>
@@ -727,17 +727,17 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// <b>核心保全语义</b>：删除项目后任务仍在，仅退回未归属。
+    /// <b>级联删除</b>：确认后任务物理消失，不再改挂 Default。
     /// </summary>
     [AvaloniaFact]
-    public async Task ConfirmDeleteProject_KeepsTasksAndClearsAssignment()
+    public async Task ConfirmDeleteProject_DeletesTasks()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "建错的项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
         var project = SoleUserProject(vm);
 
-        vm.NewTaskTitle = "不该丢失的任务";
+        vm.NewTaskTitle = "应随项目删除";
         await vm.AddTaskCommand.ExecuteAsync(null);
         var taskId = vm.Tasks[0].Task.Id;
         await vm.AssignProjectAsync(vm.Tasks[0].Task, project.Id);
@@ -746,12 +746,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
-
-        var stored = await _repo.GetByIdAsync(taskId);
-        Assert.NotNull(stored);
-        Assert.Equal("不该丢失的任务", stored.Title);
-        Assert.Equal(DefaultProject.Id, stored.ProjectId);
-        Assert.False(stored.IsDeleted);
+        Assert.Null(await _repo.GetByIdAsync(taskId));
+        Assert.DoesNotContain(vm.Tasks, t => t.Task.Id == taskId);
     }
 
     /// <summary>
