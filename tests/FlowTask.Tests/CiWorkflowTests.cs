@@ -30,6 +30,23 @@ public class CiWorkflowTests
         Assert.Contains("TreatWarningsAsErrors=true", release, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CoreProject_DoesNotReferenceCommunityToolkitMvvm()
+    {
+        var csproj = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "FlowTask.Core", "FlowTask.Core.csproj"));
+        Assert.DoesNotContain("CommunityToolkit.Mvvm", csproj, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OrmOnCoreEntitiesAdr_Exists()
+    {
+        var adr = Path.Combine(FindRepoRoot(), "docs", "adr", "adr-orm-on-core-entities.md");
+        Assert.True(File.Exists(adr), "M5 ADR must be present");
+        var text = File.ReadAllText(adr);
+        Assert.Contains("sqlite-net", text, StringComparison.Ordinal);
+        Assert.Contains("accepted", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
