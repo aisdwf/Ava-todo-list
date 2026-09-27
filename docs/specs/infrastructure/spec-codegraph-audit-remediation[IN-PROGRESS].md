@@ -87,7 +87,7 @@
 
 - [x] **L1** 仓储提供按项目 `GROUP BY` 计数，去掉 `RefreshCountsAsync` / `LoadProjectsAsync` 的 N+1
 - [x] **L2** 清理死代码：`TaskFilter.Settings`、`knownProjects`、`EditDueDate`、两个 `Class1.cs`、Title `[Indexed]`。保留理由：`CurrentFilter` 供绑定/测试派生；`AssignProjectAsync`/`SetDueDateAsync` 为测试与无 UI 入口；`IsDeleted` 仍过滤历史行
-- [ ] **L3** 托盘跨午夜后刷新到期文案 / 逾期样式（或可注入时钟）
+- [x] **L3** 托盘跨午夜后刷新到期文案 / 逾期样式（或可注入时钟）
 - [ ] **L4** 启动路径只调用一次 `LoadAppearanceAsync`
 - [ ] **L5** 落库成功后再回写实体，或写入失败时回滚（编辑 / 到期日 / 重命名 / 勾选）
 - [ ] **L6** 项目名唯一性校验；`SortOrder` 取 `MAX+1`；`@项目` 匹配含归档

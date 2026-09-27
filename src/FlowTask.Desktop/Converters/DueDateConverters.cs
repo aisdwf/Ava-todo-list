@@ -33,7 +33,7 @@ public sealed class DueDateTextConverter : IValueConverter
             return string.Empty;
         }
 
-        var today = DateTime.Today;
+        var today = DueDateDisplay.Today().Date;
         var days = (due.Date - today).Days;
 
         return days switch
@@ -61,7 +61,7 @@ public sealed class DueDateOverdueConverter : IValueConverter
 
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is DateTime due && due.Date < DateTime.Today;
+        => value is DateTime due && due.Date < DueDateDisplay.Today().Date;
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -77,7 +77,7 @@ public sealed class DueDateTodayConverter : IValueConverter
 
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is DateTime due && due.Date == DateTime.Today;
+        => value is DateTime due && due.Date == DueDateDisplay.Today().Date;
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
