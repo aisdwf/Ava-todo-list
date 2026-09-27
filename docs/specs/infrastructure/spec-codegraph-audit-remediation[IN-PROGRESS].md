@@ -77,7 +77,7 @@
 - [ ] **M1** `LoadTasksAsync` / `LoadTasksForSelectedProjectAsync` 用加载序号或 `CancellationToken` 丢弃过期结果
 - [ ] **M2** 所有任务写入成功后发总线消息（含删除）；`TaskDeletedMessage` 必须有发送点；抑制逻辑按消息来源而非跨 await 的布尔窗
 - [ ] **M3** `EnsureDefaultProjectAsync` 改为 `INSERT OR IGNORE` 或单事务，避免并发主键冲突
-- [ ] **M4** 抽出单一 `DatabaseLocation` / 连接工厂；预览与 `dotnet run` 默认可指向独立 db 文件
+- [x] **M4** 抽出单一 `DatabaseLocation` / 连接工厂；预览与 `dotnet run` 默认可指向独立 db 文件
 - [ ] **M5** 补 ADR 承认实体上的 sqlite-net 特性；去掉 Core 未使用的 `CommunityToolkit.Mvvm`
 - [ ] **M6** 对齐注释与文档：删除项目改挂 Default、删除 `TaskTags` 表述、清理 `TaskFilter.Settings` / `SaveDefaultDueOffsetAsync` 注释、`AGENTS.md` 测试基线改为 218
 - [ ] **M7** PR 工作流：`TreatWarningsAsErrors=true` 的 build + test；Release 工作流在 publish 前跑测试
@@ -100,7 +100,7 @@
 
 - Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 3，H4（热键注册等待去掉 Sleep(50)）。
+- Current resume point: 阶段 4，M4（数据库路径单一真源）。
 
 ## Verification
 

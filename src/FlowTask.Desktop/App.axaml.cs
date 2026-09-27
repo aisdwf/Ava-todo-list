@@ -56,7 +56,7 @@ public partial class App : Application
             // 唯一允许触达系统时钟的实现，其余组件一律经 IClock 获取时间（Article 9）
             IClock clock = new SystemClock();
 
-            // 单一仓储实例供两个窗口共享，保证 SQLite 连接与初始化状态唯一
+            // 三个仓储经 DatabaseLocation 解析同一文件；sqlite-net 按路径池化连接。
             ITaskRepository repository = new SqliteTaskRepository(clock);
 
             // 项目仓储须与任务仓储指向同一数据库文件：

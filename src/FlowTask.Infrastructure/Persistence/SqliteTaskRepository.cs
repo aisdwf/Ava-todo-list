@@ -23,23 +23,7 @@ public class SqliteTaskRepository : ITaskRepository
     public SqliteTaskRepository(IClock clock, string? dbPath = null)
     {
         _clock = clock;
-
-        if (string.IsNullOrEmpty(dbPath))
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var folder = Path.Combine(appData, "FlowTask");
-            Directory.CreateDirectory(folder);
-            dbPath = Path.Combine(folder, "flowtask.db");
-        }
-        else
-        {
-            var dbDir = Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
-            {
-                Directory.CreateDirectory(dbDir);
-            }
-        }
-
+        dbPath = DatabaseLocation.Resolve(dbPath);
         _db = new SQLiteAsyncConnection(dbPath);
     }
 
