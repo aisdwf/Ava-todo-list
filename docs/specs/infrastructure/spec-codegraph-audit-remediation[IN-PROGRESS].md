@@ -47,7 +47,7 @@
 - [x] 分析报告落在 `docs/analysis/`。
 - [x] 本 SPEC 列出 H1–H4、M1–M8、L1–L8，无遗漏。
 - [x] 所有者确认本清单后，才允许翻成 `[IN-PROGRESS]` 并改代码。
-- [ ] 每条问题在本任务分支修复，回归测试不回退；本清单同步打钩。
+- [x] 每条问题在本任务分支修复，回归测试不回退；本清单同步打钩。
 - [ ] 全部勾选后本 SPEC 收为 `[DONE]`。
 - [ ] 所有者预览通过后再合入 `dev`。
 
@@ -100,7 +100,7 @@
 
 - Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 7，L8（关闭策略分派单测）。
+- Current resume point: 20 条已提交；等待所有者预览后合入 `dev`。
 
 ## Verification
 
