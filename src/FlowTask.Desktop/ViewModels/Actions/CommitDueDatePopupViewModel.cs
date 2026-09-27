@@ -28,8 +28,18 @@ public sealed class CommitDueDatePopupViewModel
             return;
         }
 
+        var previousDue = row.Task.DueDate;
         row.Task.DueDate = dueDate;
-        await _taskRepository.SaveTaskAsync(row.Task);
+        try
+        {
+            await _taskRepository.SaveTaskAsync(row.Task);
+        }
+        catch
+        {
+            row.Task.DueDate = previousDue;
+            throw;
+        }
+
         TaskChangeBus.Saved(row.Task, origin);
         await reloadTasks();
         closePopup();

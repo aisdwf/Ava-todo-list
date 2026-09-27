@@ -24,6 +24,9 @@ public sealed class SaveEditTaskViewModel
         }
 
         var task = row.Task;
+        var previousTitle = task.Title;
+        var previousPriority = task.Priority;
+        var previousProjectId = task.ProjectId;
 
         if (TaskTitle.IsValid(row.EditTitle))
         {
@@ -33,7 +36,18 @@ public sealed class SaveEditTaskViewModel
         task.Priority = row.EditPriority;
         task.ProjectId = row.EditProject.ProjectId;
 
-        await _taskRepository.SaveTaskAsync(task);
+        try
+        {
+            await _taskRepository.SaveTaskAsync(task);
+        }
+        catch
+        {
+            task.Title = previousTitle;
+            task.Priority = previousPriority;
+            task.ProjectId = previousProjectId;
+            throw;
+        }
+
         TaskChangeBus.Saved(task, origin);
 
         row.EndEdit();
