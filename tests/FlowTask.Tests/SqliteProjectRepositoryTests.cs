@@ -316,4 +316,32 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Equal(DefaultProject.Id, (await _tasks.GetByIdAsync(task.Id))!.ProjectId);
     }
+
+    [Fact]
+    public async Task EnsureDefaultProject_ConcurrentInserts_DoNotThrowAndKeepSingleRow()
+    {
+        var other = new SqliteProjectRepository(_dbPath);
+        var t1 = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var t2 = new DateTime(2026, 3, 10, 9, 0, 0, DateTimeKind.Utc);
+
+        await Task.WhenAll(
+            _projects.EnsureDefaultProjectAsync(t1),
+            other.EnsureDefaultProjectAsync(t2));
+
+        var all = await _projects.GetAllProjectsAsync();
+        Assert.Single(all);
+        Assert.Equal(DefaultProject.Id, all[0].Id);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultProject_SecondCall_DoesNotOverwriteCreatedAt()
+    {
+        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var second = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _projects.EnsureDefaultProjectAsync(first);
+        await _projects.EnsureDefaultProjectAsync(second);
+
+        var stored = await _projects.GetByIdAsync(DefaultProject.Id);
+        Assert.Equal(first, stored!.CreatedAt);
+    }
 }
