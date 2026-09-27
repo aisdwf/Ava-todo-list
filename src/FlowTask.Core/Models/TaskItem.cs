@@ -12,7 +12,6 @@ public class TaskItem
     [PrimaryKey]
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    [Indexed]
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
@@ -25,20 +24,12 @@ public class TaskItem
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
 
     /// <summary>
-    /// 所属项目 Id；<c>null</c> 表示未归属任何项目。
+    /// 所属项目 Id。未指定时由写入路径落到 <see cref="DefaultProject"/>（R-2.6），
+    /// 历史库中的 <c>null</c> 仅在主窗启动迁移里改挂 Default。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>null</c> 是**默认且完全正常**的状态，不是「数据不完整」——
-    /// 零必填是本产品的最高原则，UI 不得对其做任何催促或标记（design-domain-contract §1、§3.3）。
-    /// </para>
-    /// <para>
-    /// 一个任务只能属于一个项目；标签维度由 <c>TaskTags</c> 关联表独立承担。
-    /// </para>
-    /// <para>
-    /// 项目被删除时此字段置 <c>null</c>（任务本身永不随项目删除），
-    /// 归档时保持不变。见 <c>IProjectRepository.DeleteAsync</c>。
-    /// </para>
+    /// 一个任务只能属于一个项目。项目被删除时任务一并物理删除（R-2.7）。
+    /// 归档项目时归属保持不变。见 <c>IProjectRepository.DeleteAsync</c>。
     /// </remarks>
     [Indexed]
     public string? ProjectId { get; set; }
@@ -76,23 +67,16 @@ public class TaskItem
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
-    /// 是否已归档。
+    /// 已停用的任务归档标记。列保留（sqlite-net 不物理删列），查询与写入路径不再使用。
+    /// 见 spec-project-managed-tasks。
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>完成 ≠ 归档</b>（spec-task-complete-before-archive）：<see cref="IsCompleted"/>
-    /// 只表示用户勾选完成，任务仍留在活动列表（划线低饱和）；
-    /// 只有显式的归档动作才会把它移入「已完成归档」视图。
-    /// </para>
-    /// <para>
-    /// 不变量：<c>IsArchived == true</c> 之前必须 <c>IsCompleted == true</c>
-    /// （未完成任务不可归档，由 <c>ArchiveAllCompletedAsync</c> 保证）。
-    /// </para>
-    /// </remarks>
     public bool IsArchived { get; set; }
 
-    /// <summary>归档时刻（UTC）；未归档时为 <c>null</c>。</summary>
+    /// <summary>已停用。随 <see cref="IsArchived"/> 一同不再读写。</summary>
     public DateTime? ArchivedAt { get; set; }
 
+    /// <summary>
+    /// 遗留软删列。写入路径只做物理删除，不再置 true；查询仍排除 <c>IsDeleted = 1</c> 的历史行。
+    /// </summary>
     public bool IsDeleted { get; set; }
 }

@@ -1,0 +1,3 @@
+Why: design wrong — settings still split accent, theme, and material.
+
+What: Collapse settings to Appearance, General, and About.

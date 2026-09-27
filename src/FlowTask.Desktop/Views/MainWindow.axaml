@@ -15,7 +15,8 @@
         ExtendClientAreaChromeHints="PreferSystemChrome">
 
     <Grid>
-        <Grid ColumnDefinitions="272,*">
+        <Grid ColumnDefinitions="272,*"
+              IsHitTestVisible="{Binding !IsBlockingOverlayOpen}">
 
             <!-- ==================== 左侧极简导航 (design-visual-language §2.2) ====================
                  无右侧分割线：Editorial 风格以底色差异而非描边划分区域。 -->
@@ -55,35 +56,6 @@
                                 <TextBlock Grid.Column="0" Text="全部任务" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
                                 <Border Grid.Column="1" Classes="CountBadge">
                                     <TextBlock Text="{Binding ActiveCount}" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <Button Classes="NavPill"
-                                Classes.Selected="{Binding IsCompletedFilterSelected}"
-                                Command="{Binding ChangeFilterCommand}"
-                                CommandParameter="{x:Static vm:TaskFilter.Completed}">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="已完成归档" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
-                                <Border Grid.Column="1" Classes="CountBadge">
-                                    <TextBlock Text="{Binding CompletedCount}" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- 完成 ≠ 归档 (spec-task-complete-before-archive)：勾选完成后任务仍留在活动列表，
-                             需显式点击本按钮才会移入「已完成归档」。仅在有待归档项时可见，避免空操作。 -->
-                        <Button Classes="NavPill"
-                                Margin="14,4,0,0"
-                                Command="{Binding ArchiveCompletedCommand}"
-                                IsVisible="{Binding HasPendingArchive}"
-                                ToolTip.Tip="将所有已勾选完成但尚未归档的任务移入「已完成归档」">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="归档全部已完成" FontSize="13"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                           VerticalAlignment="Center" />
-                                <Border Grid.Column="1" Classes="CountBadge">
-                                    <TextBlock Text="{Binding PendingArchiveCount}" />
                                 </Border>
                             </Grid>
                         </Button>
@@ -147,7 +119,7 @@
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RequestDeleteProjectCommand}"
                                                         CommandParameter="{Binding}"
                                                         IsVisible="{Binding ShowDeleteAction}"
-                                                        ToolTip.Tip="删除项目（任务会保留）">
+                                                        ToolTip.Tip="删除项目（其下任务一并删除）">
                                                     <Viewbox Width="14" Height="14">
                                                         <Path Classes="StrokeIcon Muted" Data="{StaticResource IconTrash}" />
                                                     </Viewbox>
@@ -174,17 +146,26 @@
                             </StackPanel>
                         </Button>
 
-                        <TextBox Classes="FieldInput"
-                                 x:Name="NewProjectInput"
-                                 Margin="14,10,4,0"
-                                 Watermark="项目名称"
-                                 Text="{Binding NewProjectName, Mode=TwoWay}"
-                                 IsVisible="{Binding IsCreatingProject}">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding CreateProjectCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding ToggleCreateProjectCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
+                        <StackPanel x:Name="NewProjectEditor"
+                                    IsVisible="{Binding IsCreatingProject}">
+                            <TextBox Classes="FieldInput"
+                                     x:Name="NewProjectInput"
+                                     Margin="14,10,4,0"
+                                     Watermark="项目名称"
+                                     Text="{Binding NewProjectName, Mode=TwoWay}"
+                                     LostFocus="OnNewProjectLostFocus">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding CreateProjectCommand}" />
+                                    <KeyBinding Gesture="Escape" Command="{Binding ToggleCreateProjectCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBlock Classes="CaptionText"
+                                       Margin="14,4,4,0"
+                                       Foreground="{DynamicResource DangerBrush}"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasCreateProjectError}"
+                                       Text="{Binding CreateProjectError}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- 底部快捷小窗唤起钮 (design-visual-language §2.2)：
@@ -265,8 +246,18 @@
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}" />
                     </StackPanel>
 
-                    <!-- 右上角一对药丸按钮 (spec-editorial-and-ripple-theme §2) -->
+                    <!-- 右上角一对药丸按钮：齿轮在左、昼夜在右。齿轮隐藏后昼夜仍停在最右侧，不占齿轮原位。 -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
+                        <Button Classes="IconCircle"
+                                Command="{Binding ToggleSettingsCommand}"
+                                ToolTip.Tip="外观设置"
+                                IsVisible="{Binding !IsSettingsOpen}">
+                            <Viewbox Width="18" Height="18">
+                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
+                            </Viewbox>
+                        </Button>
+
                         <Button x:Name="ThemeToggleButton"
                                 Classes="IconCircle"
                                 ToolTip.Tip="切换昼夜主题">
@@ -279,16 +270,6 @@
                                     <Path Classes="StrokeIcon" Data="{StaticResource IconMoon}" />
                                 </Viewbox>
                             </Panel>
-                        </Button>
-
-                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
-                        <Button Classes="IconCircle"
-                                Command="{Binding ToggleSettingsCommand}"
-                                ToolTip.Tip="外观设置"
-                                IsVisible="{Binding !IsSettingsOpen}">
-                            <Viewbox Width="18" Height="18">
-                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
-                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -363,9 +344,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- 删除项目确认条：删除不可逆，须先告知影响范围 (design-domain-contract §2.2)。
-                             明确写出「任务会保留」—— 这是本产品与常见实现的关键差异，
-                             不说清用户会因担心丢数据而不敢用删除功能。 -->
+                        <!-- 删除项目确认条：级联物理删除不可逆，须先告知将删除多少条任务
+                             (spec-delete-project-cascade-tasks / R-2.7)。 -->
                         <Border Grid.Row="1"
                                 Classes="DangerConfirm"
                                 IsVisible="{Binding ProjectPendingDeletion, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -375,7 +355,7 @@
                                                Foreground="{DynamicResource TextPrimaryBrush}"
                                                Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
                                     <TextBlock Classes="CaptionText"
-                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='其下 {0} 条任务不会被删除，将退回「未归属」。此操作不可撤销。'}" />
+                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='将删除其下 {0} 条任务，不可撤销。'}" />
                                 </StackPanel>
 
                                 <Button Grid.Column="1" Margin="12,0,8,0"
@@ -402,12 +382,15 @@
                                        Foreground="{DynamicResource TextTertiaryBrush}" />
                         </StackPanel>
 
-                        <!-- 呼吸感条目流：无卡片描边，靠留白与发丝线建立节奏 -->
+                        <!-- 呼吸感条目流：无卡片描边，靠留白与发丝线建立节奏。
+                             底部/右侧留白必须写在内部内容的 Margin，不能写 ScrollViewer.Padding：
+                             Avalonia 11.2 ScrollContentPresenter 计算 Extent 时只计入子元素
+                             尺寸与 Margin，不计自身 Padding，否则滚到底时最后一行会被裁掉约半行。 -->
                         <ScrollViewer Grid.Row="2"
                                       HorizontalScrollBarVisibility="Disabled"
-                                      Padding="0,0,12,32"
                                       IsVisible="{Binding !IsTaskStreamEmpty}">
-                            <ItemsControl ItemsSource="{Binding Tasks}">
+                            <ItemsControl ItemsSource="{Binding Tasks}"
+                                          Margin="0,0,12,32">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TaskRowViewModel">
                                         <StackPanel>
@@ -419,7 +402,7 @@
 
                                                 <CheckBox Grid.Column="0"
                                                           Classes="RingCheck"
-                                                          IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                          IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,18,0"
                                                           Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
@@ -457,7 +440,7 @@
                                                         HorizontalContentAlignment="Left"
                                                         ToolTip.Tip="点击展开编辑">
                                                     <TextBlock Classes="TaskTitle"
-                                                               Classes.Completed="{Binding Task.IsCompleted}"
+                                                               Classes.Completed="{Binding IsCompleted}"
                                                                Text="{Binding Task.Title}"
                                                                VerticalAlignment="Center" />
                                                 </Button>
@@ -564,9 +547,10 @@
                     <!-- ========== 视图 B: 外观设置内容 (spec-settings-master-detail-and-theme-presets) ==========
                          选项栏与返回在窗口左侧；此处只渲染当前选中项。 -->
                     <Grid IsVisible="{Binding IsSettingsOpen}">
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                                      Padding="0,0,12,32">
-                            <StackPanel Spacing="28">
+                        <!-- 留白用内容 Margin 而非 ScrollViewer.Padding，原因同上（Extent 不计 Padding）。 -->
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Spacing="28"
+                                        Margin="0,0,12,32">
 
                                 <StackPanel Spacing="28"
                                             IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Appearance}">
@@ -625,24 +609,52 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <StackPanel Spacing="10"
+                                <StackPanel Spacing="28"
                                             MaxWidth="640"
                                             HorizontalAlignment="Left"
                                             IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}">
-                                    <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <NumericUpDown Grid.Column="0"
-                                                       Minimum="1"
-                                                       Maximum="30"
-                                                       Increment="1"
-                                                       Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
-                                        <Button Grid.Column="1"
-                                                Classes="PrimaryAction"
-                                                Margin="10,0,0,0"
-                                                Content="保存"
-                                                Command="{Binding SaveDefaultDueOffsetCommand}"
-                                                CommandParameter="{Binding DefaultDueOffsetDays}" />
-                                    </Grid>
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="默认到期偏移" Classes="FieldLabel" />
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <NumericUpDown Grid.Column="0"
+                                                           Minimum="1"
+                                                           Maximum="30"
+                                                           Increment="1"
+                                                           Value="{Binding EditingDefaultDueOffsetDays, Mode=TwoWay}" />
+                                            <Button Grid.Column="1"
+                                                    Classes="PrimaryAction"
+                                                    Margin="10,0,0,0"
+                                                    Content="保存"
+                                                    Command="{Binding SaveDefaultDueOffsetCommand}" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="关闭窗口" Classes="FieldLabel" />
+                                        <RadioButton GroupName="CloseWindowAction"
+                                                     IsChecked="{Binding CloseAction, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=MinimizeToTray, Mode=TwoWay}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="最小化到系统托盘"
+                                                           VerticalAlignment="Center" />
+                                                <Border CornerRadius="4"
+                                                        Padding="6,2"
+                                                        Background="{DynamicResource AccentSubtleBrush}"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="推荐"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource AccentBrush}" />
+                                                </Border>
+                                            </StackPanel>
+                                        </RadioButton>
+                                        <RadioButton GroupName="CloseWindowAction"
+                                                     Content="彻底退出"
+                                                     IsChecked="{Binding CloseAction, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Exit, Mode=TwoWay}" />
+                                    </StackPanel>
+
+                                    <Button Content="彻底退出"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,12,0,0"
+                                            Command="{Binding ExitApplicationCommand}" />
                                 </StackPanel>
 
                                 <StackPanel Spacing="10"
@@ -662,12 +674,19 @@
 
 
         <!-- 到期日编辑弹出层 -->
+        <!-- 遮罩必须自带铺满的命中面：宿主 Grid 无 Background 不参与命中；
+             空 Fluent Button 的背景画在按内容尺寸的 ContentPresenter 上，
+             指针会穿透到后面的 TaskRow / NavPill，触发异常 :pointerover。 -->
         <Grid IsVisible="{Binding IsDueDatePopupOpen}" ZIndex="100">
             <Button HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    Opacity="0.45"
-                    Background="#000000"
-                    Command="{Binding CloseDueDatePopupCommand}" />
+                    Command="{Binding CloseDueDatePopupCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
             <Border Classes="SettingsCard"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -705,6 +724,60 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- 未设关闭默认时的选择层（spec-close-to-tray）：不另开 Window，避免再占一条生命周期 -->
+        <Grid IsVisible="{Binding IsClosePromptOpen}" ZIndex="110">
+            <Button HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Command="{Binding DismissClosePromptCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <Border Classes="SettingsCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MinWidth="360"
+                    Padding="24"
+                    Background="{DynamicResource SurfaceBrush}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="关闭窗口" Classes="SectionTitle" />
+                    <StackPanel Spacing="8">
+                        <RadioButton GroupName="ClosePromptChoice"
+                                     Content="最小化到托盘"
+                                     IsChecked="{Binding ClosePromptChoice, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=MinimizeToTray, Mode=TwoWay}" />
+                        <RadioButton GroupName="ClosePromptChoice"
+                                     Content="直接退出"
+                                     IsChecked="{Binding ClosePromptChoice, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Exit, Mode=TwoWay}" />
+                    </StackPanel>
+                    <CheckBox Content="设为默认"
+                              IsChecked="{Binding RememberCloseAction, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="取消"
+                                Command="{Binding DismissClosePromptCommand}" />
+                        <Button Classes="PrimaryAction"
+                                Content="确认"
+                                Command="{Binding ConfirmClosePromptCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 启动失败可见提示：无控制台，不能只写日志 -->
+        <Border IsVisible="{Binding HasInitializationError}"
+                ZIndex="120"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Margin="16"
+                Padding="16,12"
+                Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="8">
+            <TextBlock Text="{Binding InitializationError}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource DangerBrush}" />
+        </Border>
 
         <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->
         <Canvas x:Name="RevealCanvas" IsHitTestVisible="False" IsVisible="False" ClipToBounds="True">

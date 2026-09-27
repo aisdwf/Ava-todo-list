@@ -4,16 +4,22 @@
 
 - **ID**: spec-task-complete-before-archive
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: superseded
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-16
-- **Last Updated**: 2026-09-23
+- **Last Updated**: 2026-09-26
+
+> **Redirect**: Superseded by [spec-project-managed-tasks[DONE]](./spec-project-managed-tasks[DONE].md). Do NOT implement from this file.
+
+> 用户 2026-09-26 推翻全局任务归档：「归档在项目分类的情况下完全没有意义」。
+> 完成套件（划线/降权/置底）与就地取消勾选被新 SPEC 保留；`IsArchived` 与「已完成归档」视图被废除。
 
 > ## ✅ 开工许可（rule-spec-review-gate）
 >
 > **用户已确认（2026-09-23）在 `feature/quick-window-standalone` 分支按 1→2→3 顺序开工。
 > 本 SPEC 为第 2 份，状态 `in-progress`。**
 > D1/D2/D3/D4 已裁决，见 §2.4。
+> **终态（2026-09-26）**：已被 `spec-project-managed-tasks` 取代，本文件不可执行。
 
 **上游依据**：
 - design-interaction-principles §7.3（用户抱怨勾选后瞬间进归档）

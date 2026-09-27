@@ -13,7 +13,7 @@ public enum SettingsSection
     /// <summary>外观：命名主题与窗口材质。</summary>
     Appearance,
 
-    /// <summary>通用：功能相关设置，目前仅默认到期偏移。</summary>
+    /// <summary>通用：功能相关设置，含到期偏移、关闭窗口策略与彻底退出。</summary>
     General,
 
     /// <summary>关于。</summary>

@@ -5,7 +5,7 @@ using Xunit;
 namespace FlowTask.Tests;
 
 /// <summary>
-/// 覆盖项目仓储，重点是删除项目时的任务保全语义。
+/// 覆盖项目仓储，重点是删除项目时级联物理删除其下任务（R-2.7）。
 /// </summary>
 public class SqliteProjectRepositoryTests : IDisposable
 {
@@ -154,14 +154,10 @@ public class SqliteProjectRepositoryTests : IDisposable
     }
 
     /// <summary>
-    /// <b>核心保全语义</b>：删除项目绝不删除其下任务，仅清空归属。
+    /// <b>级联删除</b>：删除项目必须物理删除其下任务，而不是改挂 Default。
     /// </summary>
-    /// <remarks>
-    /// 任务是用户的核心资产，项目只是它的一个可选属性；
-    /// 删除属性不应销毁拥有该属性的实体（design-domain-contract §2.2）。
-    /// </remarks>
     [Fact]
-    public async Task Delete_KeepsTasksAndClearsAssignment()
+    public async Task Delete_PhysicallyDeletesTasks()
     {
         await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
         var project = NewProject("建错的项目");
@@ -173,19 +169,26 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Equal(2, affected);
         Assert.Null(await _projects.GetByIdAsync(project.Id));
+        Assert.Null(await _tasks.GetByIdAsync(taskA.Id));
+        Assert.Null(await _tasks.GetByIdAsync(taskB.Id));
+    }
 
-        var storedA = await _tasks.GetByIdAsync(taskA.Id);
-        var storedB = await _tasks.GetByIdAsync(taskB.Id);
+    /// <summary>
+    /// 历史软删行也随项目物理清掉，不留指向已删项目的孤儿行。
+    /// </summary>
+    [Fact]
+    public async Task Delete_AlsoRemovesSoftDeletedRows()
+    {
+        var project = NewProject("含软删");
+        await _projects.SaveProjectAsync(project);
+        var ghost = TaskItemFactory.Create(_clock, "旧软删", projectId: project.Id);
+        ghost.IsDeleted = true;
+        await _tasks.SaveTaskAsync(ghost);
 
-        // 任务必须存在
-        Assert.NotNull(storedA);
-        Assert.NotNull(storedB);
-        // 且改挂 Default（R-2.6）
-        Assert.Equal(DefaultProject.Id, storedA.ProjectId);
-        Assert.Equal(DefaultProject.Id, storedB.ProjectId);
-        // 未被误标记为删除
-        Assert.False(storedA.IsDeleted);
-        Assert.False(storedB.IsDeleted);
+        var affected = await _projects.DeleteAsync(project.Id);
+
+        Assert.Equal(1, affected);
+        Assert.Null(await _tasks.GetByIdAsync(ghost.Id));
     }
 
     /// <summary>
@@ -199,7 +202,7 @@ public class SqliteProjectRepositoryTests : IDisposable
         await _projects.SaveProjectAsync(target);
         await _projects.SaveProjectAsync(other);
 
-        await AddTaskAsync("将失去归属", target.Id);
+        await AddTaskAsync("将被一并删除", target.Id);
         var kept = await AddTaskAsync("归属不变", other.Id);
 
         await _projects.DeleteAsync(target.Id);
@@ -247,9 +250,9 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Equal(2, await _projects.CountTasksAsync(project.Id));
 
-        await _tasks.SoftDeleteAsync(toDelete.Id);
+        await _tasks.PermanentDeleteAsync(toDelete.Id);
 
-        // 软删除的任务不计入影响提示
+        // 物理删除的任务不计入影响提示
         Assert.Equal(1, await _projects.CountTasksAsync(project.Id));
     }
 
@@ -290,5 +293,83 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Single(unassigned);
         Assert.Equal("没归属的", unassigned[0].Title);
+    }
+
+    /// <summary>
+    /// 种子 Default 不得顺带改写 <c>ProjectId IS NULL</c>：那是启动迁移，不是每次打开小窗。
+    /// </summary>
+    [Fact]
+    public async Task EnsureDefaultProject_DoesNotMigrateNullTasks()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        Assert.NotNull(await _projects.GetByIdAsync(DefaultProject.Id));
+        Assert.Null((await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    [Fact]
+    public async Task MigrateNullProjectIdsToDefault_AssignsDefault()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        await _projects.MigrateNullProjectIdsToDefaultAsync();
+
+        Assert.Equal(DefaultProject.Id, (await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultProject_ConcurrentInserts_DoNotThrowAndKeepSingleRow()
+    {
+        var other = new SqliteProjectRepository(_dbPath);
+        var t1 = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var t2 = new DateTime(2026, 3, 10, 9, 0, 0, DateTimeKind.Utc);
+
+        await Task.WhenAll(
+            _projects.EnsureDefaultProjectAsync(t1),
+            other.EnsureDefaultProjectAsync(t2));
+
+        var all = await _projects.GetAllProjectsAsync();
+        Assert.Single(all);
+        Assert.Equal(DefaultProject.Id, all[0].Id);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultProject_SecondCall_DoesNotOverwriteCreatedAt()
+    {
+        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var second = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _projects.EnsureDefaultProjectAsync(first);
+        await _projects.EnsureDefaultProjectAsync(second);
+
+        var stored = await _projects.GetByIdAsync(DefaultProject.Id);
+        Assert.Equal(first, stored!.CreatedAt);
+    }
+
+    [Fact]
+    public async Task SaveProject_RejectsDuplicateNameIncludingArchived()
+    {
+        var live = NewProject("工作");
+        await _projects.SaveProjectAsync(live);
+        await _projects.SetArchivedAsync(live.Id, true);
+
+        var clash = NewProject("工作");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _projects.SaveProjectAsync(clash));
+        Assert.Contains("已被使用", ex.Message, StringComparison.Ordinal);
+        Assert.True(await _projects.NameIsTakenAsync("工作", exceptId: null));
+        Assert.False(await _projects.NameIsTakenAsync("工作", exceptId: live.Id));
+    }
+
+    [Fact]
+    public async Task NextSortOrder_UsesMaxPlusOneAfterArchive()
+    {
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+        var first = NewProject("甲", sortOrder: 1);
+        await _projects.SaveProjectAsync(first);
+        await _projects.SetArchivedAsync(first.Id, true);
+
+        Assert.Equal(2, await _projects.NextSortOrderAsync());
     }
 }

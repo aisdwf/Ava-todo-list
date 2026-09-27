@@ -17,7 +17,7 @@ namespace FlowTask.Tests;
 ///   导致视图模式与数据筛选纠缠（spec-editorial-and-ripple-theme 已修正），此处不得重犯。
 ///   </description></item>
 ///   <item><description>
-///   删除项目误删任务 —— 任务是核心资产，绝不能随项目消失。
+    ///   删除项目必须级联删除其下任务 —— 项目是任务的家，家没了任务一起走（R-2.7）。
 ///   </description></item>
 /// </list>
 /// </remarks>
@@ -105,6 +105,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
+        Assert.Equal(ProjectName.Validate("   "), vm.CreateProjectError);
+        Assert.True(vm.HasCreateProjectError);
     }
 
     [AvaloniaFact]
@@ -116,6 +118,7 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
+        Assert.Equal(ProjectName.Validate(vm.NewProjectName), vm.CreateProjectError);
     }
 
     [AvaloniaFact]
@@ -130,6 +133,65 @@ public class ProjectInteractionTests : IDisposable
 
         Assert.Empty(vm.NewProjectName);
         Assert.False(vm.IsCreatingProject);
+        Assert.False(vm.HasCreateProjectError);
+    }
+
+    [AvaloniaFact]
+    public async Task CreateProject_TypingClearsError()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "   ";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        Assert.True(vm.HasCreateProjectError);
+
+        vm.NewProjectName = "甲";
+        Assert.False(vm.HasCreateProjectError);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Blank_CollapsesWithoutCreatingOrHint()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "  ";
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsCreatingProject);
+        Assert.Empty(vm.NewProjectName);
+        Assert.False(vm.HasCreateProjectError);
+        Assert.Empty(UserProjects(vm));
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Overlong_ShowsErrorAndKeepsForm()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        var tooLong = new string('x', ProjectName.MaxLength + 1);
+        vm.NewProjectName = tooLong;
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsCreatingProject);
+        Assert.Equal(tooLong, vm.NewProjectName);
+        Assert.Equal(ProjectName.Validate(tooLong), vm.CreateProjectError);
+        Assert.Empty(UserProjects(vm));
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmCreateProjectOnLeave_Valid_CreatesAndCollapses()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.ToggleCreateProjectCommand.Execute(null);
+        vm.NewProjectName = "外部确认";
+
+        await vm.ConfirmCreateProjectOnLeaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsCreatingProject);
+        Assert.Equal("外部确认", SoleUserProject(vm).Name);
+        Assert.False(vm.HasCreateProjectError);
     }
 
     /// <summary>
@@ -167,7 +229,6 @@ public class ProjectInteractionTests : IDisposable
         await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
 
         Assert.False(vm.IsActiveFilterSelected);
-        Assert.False(vm.IsCompletedFilterSelected);
         Assert.NotNull(vm.SelectedProject);
     }
 
@@ -183,7 +244,7 @@ public class ProjectInteractionTests : IDisposable
         await vm.SelectProjectCommand.ExecuteAsync(SoleUserProject(vm));
         Assert.NotNull(vm.SelectedProject);
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
         Assert.Null(vm.SelectedProject);
     }
@@ -273,9 +334,6 @@ public class ProjectInteractionTests : IDisposable
 
         AssertExactlyOneActive(vm); // 初始：全部任务
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        AssertExactlyOneActive(vm);
-
         await vm.SelectProjectCommand.ExecuteAsync(project);
         AssertExactlyOneActive(vm);
 
@@ -287,7 +345,6 @@ public class ProjectInteractionTests : IDisposable
             var activeCount = new[]
             {
                 vm.IsActiveFilterSelected,
-                vm.IsCompletedFilterSelected,
                 vm.SelectedProject is not null
             }.Count(flag => flag);
 
@@ -317,10 +374,10 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 未选中具体项目（全部任务视图）时新建任务，行为保持不变：不推断归属。
+    /// 未选中具体项目（全部任务视图）时新建任务，落入 Default（R-2.6），不再写 null。
     /// </summary>
     [AvaloniaFact]
-    public async Task AddTask_WithoutProjectSelected_StaysUnassigned()
+    public async Task AddTask_WithoutProjectSelected_AssignsDefault()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "甲项目";
@@ -330,7 +387,9 @@ public class ProjectInteractionTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var created = Assert.Single(vm.Tasks, t => t.Task.Title == "未选中项目时新建");
-        Assert.Null(created.Task.ProjectId);
+        Assert.Equal(DefaultProject.Id, created.Task.ProjectId);
+        Assert.DoesNotContain(vm.ProjectChoices, c => c.DisplayName == "未归属");
+        Assert.All(vm.ProjectChoices, c => Assert.False(string.IsNullOrEmpty(c.ProjectId)));
     }
 
     /// <summary>
@@ -549,6 +608,48 @@ public class ProjectInteractionTests : IDisposable
         Assert.Equal(project.Id, stored!.ProjectId);
     }
 
+    /// <summary>
+    /// 归档项目下的任务仍出现在全部任务看板；只改标题保存时不得把归属写成 null。
+    /// </summary>
+    /// <remarks>
+    /// 编辑候选原先只含活跃项目，<c>BeginEdit</c> 找不到归属就落到「未归属」，
+    /// <c>SaveEdit</c> 无条件写回 <c>ProjectId</c>，任务被静默清空后再被 Default 迁移。
+    /// </remarks>
+    [AvaloniaFact]
+    public async Task SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "待归档";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = SoleUserProject(vm);
+        var projectId = project.Id;
+        var colorHex = project.Project.ColorHex;
+
+        vm.NewTaskTitle = "归档项目下的任务";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        var taskId = vm.Tasks[0].Task.Id;
+        await vm.AssignProjectAsync(vm.Tasks[0].Task, projectId);
+
+        await vm.ArchiveProjectCommand.ExecuteAsync(project);
+
+        var row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
+        Assert.Equal(projectId, row.Task.ProjectId);
+        Assert.Equal(colorHex, row.ProjectColorHex);
+
+        await vm.ToggleEditCommand.ExecuteAsync(row);
+        Assert.Equal(projectId, row.EditProject.ProjectId);
+        Assert.Same(
+            row.EditProject,
+            Assert.Single(vm.ProjectChoices, c => c.ProjectId == projectId));
+
+        row.EditTitle = "只改标题";
+        await vm.SaveEditCommand.ExecuteAsync(row);
+
+        var stored = await _repo.GetByIdAsync(taskId);
+        Assert.Equal(projectId, stored!.ProjectId);
+        Assert.Equal("只改标题", stored.Title);
+    }
+
     // ==================== 删除 ====================
 
     /// <summary>
@@ -626,17 +727,17 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// <b>核心保全语义</b>：删除项目后任务仍在，仅退回未归属。
+    /// <b>级联删除</b>：确认后任务物理消失，不再改挂 Default。
     /// </summary>
     [AvaloniaFact]
-    public async Task ConfirmDeleteProject_KeepsTasksAndClearsAssignment()
+    public async Task ConfirmDeleteProject_DeletesTasks()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "建错的项目";
         await vm.CreateProjectCommand.ExecuteAsync(null);
         var project = SoleUserProject(vm);
 
-        vm.NewTaskTitle = "不该丢失的任务";
+        vm.NewTaskTitle = "应随项目删除";
         await vm.AddTaskCommand.ExecuteAsync(null);
         var taskId = vm.Tasks[0].Task.Id;
         await vm.AssignProjectAsync(vm.Tasks[0].Task, project.Id);
@@ -645,12 +746,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
 
         Assert.Empty(UserProjects(vm));
-
-        var stored = await _repo.GetByIdAsync(taskId);
-        Assert.NotNull(stored);
-        Assert.Equal("不该丢失的任务", stored.Title);
-        Assert.Equal(DefaultProject.Id, stored.ProjectId);
-        Assert.False(stored.IsDeleted);
+        Assert.Null(await _repo.GetByIdAsync(taskId));
+        Assert.DoesNotContain(vm.Tasks, t => t.Task.Id == taskId);
     }
 
     /// <summary>

@@ -55,7 +55,7 @@ This document serves as the master navigation map for developers and AI agents.
 | :--- | :--- |
 | [`workflow-methodology.md`](./rules/workflow-methodology.md) | 任务分类、Complex Step 0-6、执行节奏硬规则、错误处理对照表 |
 | [`docs-conventions.md`](./rules/docs-conventions.md) | SPEC 目录（area 子目录）、命名、状态机、新鲜度阈值的唯一权威 |
-| [`commit-conventions.md`](./rules/commit-conventions.md) | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` 约定 |
+| [`commit-conventions.md`](./rules/commit-conventions.md) | 第一行 type 摘要、正文 `Why:`/`What:`、归因分类、`TEMP_PATCH`、commit-msg hook |
 | [`project-rules.md`](./rules/project-rules.md) | FlowTask 项目专属业务/技术/架构规则（宪法 Article 7） |
 | [`technical-rules.md`](./rules/technical-rules.md) | 强制性技术/架构分解规则（如 ViewModel 命令拆分） |
 
@@ -86,31 +86,24 @@ This document serves as the master navigation map for developers and AI agents.
 | [`README.md`](./rules/README.md) | 规则库索引、**改动前 30 秒防呆清单** | — |
 | `workflow-methodology.md` | 任务分类、Complex Step 0-6、执行节奏硬规则、错误处理对照表 | BLOCK |
 | `docs-conventions.md` | SPEC 目录（area 子目录）/命名/状态机/新鲜度阈值的唯一权威 | BLOCK |
-| `commit-conventions.md` | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` | BLOCK |
+| `commit-conventions.md` | 第一行 type 摘要、正文 `Why:`/`What:`、`TEMP_PATCH`、commit-msg hook | BLOCK |
 | `project-rules.md` | FlowTask 项目专属业务/技术/架构规则 | — |
 | `rule-code-standards.md` | C# 12 / Avalonia 11 编码与注释规范 | BLOCK |
 | `technical-rules.md` | 强制性技术/架构分解规则（如 ViewModel 命令拆分） | BLOCK |
 | `rule-spec-review-gate.md` | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（事故记录） | BLOCK |
 | `rule-no-invented-user-behavior.md` | 交互设计严禁凭推理产出用户行为假设（事故记录） | BLOCK |
 | `rule-doc-boundary.md` | 文档类型边界（design vs spec）与命名规范（事故记录） | BLOCK |
+| `rule-spec-complete-before-merge.md` | SPEC + 代码应在任务分支上完成后再合入 `dev`；未关闭的 SPEC 按期限警告 | WARN（过期后 BLOCK） |
+| `rule-commit-msg-layout.md` | 第一行 type 摘要，Why/What 只写正文；禁止抄错误 git log（事故记录） | BLOCK |
 
 ### 2.4 `specs/` (功能规格与工作记忆，按 area 子目录组织)
 
-| 文件名 | Area | 作用简述 | 状态 |
-| :--- | :--- | :--- | :--- |
-| [`README.md`](./specs/README.md) | — | SPEC 管理规范、7 种状态、**新会话接手入口**、索引与跨 SPEC 待办 | — |
-| `spec-mvvm-infrastructure[DONE].md` | infrastructure | MVVM 基础设施与 SQLite 持久化 | `done` |
-| `spec-fluent-ui[SUPERSEDED].md` | visual-theme | Windows 11 Fluent 2 界面 | `superseded` |
-| `spec-editorial-and-ripple-theme[DONE].md` | visual-theme | Editorial 排版、水波纹昼夜切换、外观个性化 | `done` |
-| `spec-task-contract-and-clock[DONE].md` | task-domain | 任务数据契约扩展、IClock 时区整改、编辑闭环 | `done` |
-| `spec-tag-entity[DONE].md` | task-domain | 标签实体化与设置页管理（含数据迁移） | `done` |
-| `spec-due-date-calendar[DONE].md` | task-domain | 到期日三来源录入、日历、偏移设置 | `done` |
-| `spec-task-complete-before-archive[DRAFT].md` | task-domain | 完成≠归档；手动归档；勾选容错 | `draft` |
-| `spec-classification-ui[DONE].md` | main-window | 项目侧边栏、任务行分类呈现、校验值对象 | `done`（交互设计已被实测证伪） |
-| `spec-sidebar-selection-consolidation[DONE].md` | main-window | 侧边栏选中机制收敛（纯结构整改） | `done` |
-| `spec-quick-window-hotkey-capture[IN-PROGRESS].md` | quick-capture | 全局热键显隐 + `@项目` `#标签` 捕捉补全 | `in-progress` |
-| `spec-quick-window-single-project-list[DRAFT].md` | quick-capture | 小窗单项目列表 + 勾选 | `draft` |
-| `spec-doc-restructure[DONE].md` | docs-system | 文档体系重构：类型边界归位 + 编号清理 | `done` |
+索引由脚本生成并 gitignore，**不要**提交，也**不要**在本文件里手抄 SPEC 清单。新工作树第一件事是跑生成脚本。
+
+| 文件 | 作用 |
+| :--- | :--- |
+| [`specs/README.md`](./specs/README.md) | 本地生成索引（gitignore）：area、数量、状态。新工作树第一件事：`powershell -File scripts/build-spec-index.ps1` |
+| `specs/<area>/spec-<feature>[STATUS].md` | 各 SPEC 正文（工作记忆）。规则见 [`docs-conventions.md`](./rules/docs-conventions.md) |
 
 ### 2.5 `adr/` (架构决策记录)
 
@@ -130,6 +123,7 @@ This document serves as the master navigation map for developers and AI agents.
 | 文件名 | 作用简述 | 核心内容 |
 | :--- | :--- | :--- |
 | [`README.md`](./analysis/README.md) | 技术分析与方案调研目录指引 | 方案调研与可行性报告归档 |
+| [`analysis-codegraph-code-audit.md`](./analysis/analysis-codegraph-code-audit.md) | 基于 Codegraph 的代码潜在问题扫描（2026-09-27，`dev@695d741`） | 高 / 中 / 低三级问题清单、良好实践与处置顺序 |
 
 ### 2.7b `technical/` (与功能开发进度无关的技术资料)
 
@@ -186,13 +180,13 @@ This document serves as the master navigation map for developers and AI agents.
 -->
 
 - **顶层受控目录数**：`13` 个（新增 `technical/`）
-- **Markdown 文档总数**：`55` 篇（截至 2026-09-17，新增 `technical-rules.md` 与 `technical/` 目录后重计）
+- **Markdown 文档总数**：`66` 篇（截至 2026-09-27；不含已 gitignore 的 `ai-workflow/`）
 
 | 目录 | 篇数 | 构成 |
 | :--- | :--- | :--- |
-| `specs/` | 13 | README + 12 份 SPEC（6 个 area 子目录） |
-| `rules/` | 10 | README + 9 条规则（5 张机器权威规则卡 + 4 条事故记录） |
-| `ai-workflow/` | 7 | 总览 + 6 篇体系文章（已 gitignore，不计入版本库） |
+| `specs/` | 28 | README + 27 份 SPEC（7 个 area 子目录） |
+| `rules/` | 12 | README + 11 条规则卡 |
+| `ai-workflow/` | — | 总览 + 6 篇体系文章（已 gitignore，不计入版本库与总数） |
 | `archived/` | 6 | README + 5 份已归档 design（均含重定向） |
 | `templates/` | 5 | README + 4 个标准工程模板 |
 | `design/` | 4 | README + 3 份设计约束（视觉 / 契约 / 交互） |
@@ -200,7 +194,7 @@ This document serves as the master navigation map for developers and AI agents.
 | `technical/` | 2 | README + 1 篇 Avalonia 架构参考调研 |
 | `requirements/` | 1 | REQUIREMENTS（需求基线，无 README） |
 | `trobleshooting/` | 1 | README（尚无故障手册） |
-| `analysis/` | 1 | README（尚无调研报告） |
+| `analysis/` | 2 | README + 1 篇代码扫描报告 |
 | `refenence/` | 1 | README（尚无外部参考） |
 | `pending-delete/` | 1 | README（缓冲区为空） |
 | `docs/` 根索引 | 1 | 本文件 |

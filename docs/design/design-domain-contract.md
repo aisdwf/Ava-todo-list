@@ -60,7 +60,8 @@ V2 读取行数 = 1
 | `DueDate` | `DateTime?` | 到期日（**日历日**语义，见 §3） |
 | `CreatedAt` | `DateTime` | 创建时刻（**UTC**，见 §3） |
 | `CompletedAt` | `DateTime?` | 完成时刻（**UTC**） |
-| `IsDeleted` | `bool` | 软删除标记 |
+| `IsDeleted` | `bool` | 历史软删除标记。查询仍排除此类行；**新的删除路径改为物理删除**（R-4.4） |
+| `IsArchived` / `ArchivedAt` | `bool` / `DateTime?` | **已停用**（2026-09-26）。列保留，查询不再过滤。见 spec-project-managed-tasks |
 | `Description` | `string?` | **已废弃**，见 §2.4 |
 
 ### 2.2 不变量
@@ -80,7 +81,7 @@ V2 读取行数 = 1
 UI **严禁**对其做视觉标记、警告或催促补全。
 
 `ProjectId` **不可为 null**（2026-09-16）：以系统种子项目 **Default** 承接「不想填」。
-历史 `ProjectId IS NULL` 须迁移到 Default。删除用户项目时，其下任务改挂 Default（不再置 null）。
+历史 `ProjectId IS NULL` 须迁移到 Default。删除用户项目时，其下任务**一并物理删除**（2026-09-27；不再改挂 Default）。
 
 ### 2.4 `Description` 已废弃
 
@@ -166,22 +167,28 @@ UI **严禁**对其做视觉标记、警告或催促补全。
 | 操作 | 语义 | 对其下任务的影响 |
 | :--- | :--- | :--- |
 | **归档项目** | 项目不再活跃，历史归属有保留价值 | 任务保留，`ProjectId` **不变** |
-| **归档已完成任务** | 将某项目下已完成项移入归档视图（2026-09-16） | 任务 `IsArchived=true`，**保留 `ProjectId`**（不是拆掉项目来源） |
-| **删除项目** | 项目建错或不再需要 | 任务**保留**，`ProjectId` 改挂 **Default**（不可 null） |
+| **删除项目** | 项目建错或不再需要 | **物理删除**其下全部任务，再删除项目行 |
+| **删除任务** | 用户点行内 `X` | **物理删除**该行（已完成与未完成同一入口） |
 
-**核心不变量：删除项目绝不删除其下任务。**
-任务是用户的核心资产，项目只是它的一个可选属性 ——
-删除属性不应销毁拥有该属性的实体。
+> **任务归档已废除（2026-09-26）**：「归档已完成任务 / `TaskItem.IsArchived` / 全局已完成归档视图」由
+> [spec-project-managed-tasks](../specs/task-domain/spec-project-managed-tasks[DONE].md) 取代。
+> 已完成任务留在所属项目与全部任务看板中，用完成套件降权。
+>
+> **删除项目改挂 Default 已废除（2026-09-27）**：由
+> [spec-delete-project-cascade-tasks](../specs/task-domain/spec-delete-project-cascade-tasks[DONE].md) 取代。
 
-实现要求：以**单个事务**完成「置空关联任务的 `ProjectId`」
-与「删除项目行」，避免中途失败留下悬空外键。
+**核心不变量：删除用户项目会级联物理删除其下任务。**
+确认条必须先告知将删除的任务条数。系统 Default 不可删。
+
+实现要求：以**单个事务**完成「`DELETE FROM Tasks WHERE ProjectId = ?`」
+与「删除项目行」，避免中途失败留下指向已不存在项目的孤儿行。
 
 > **注意**：`RunInTransactionAsync` 的回调签名是 `Action<SQLiteConnection>`
 > —— 传入**同步**连接。回调内误用异步 API 会脱离事务边界，
 > **原子性静默失效且不报错**。
 
-**项目本身无软删除标记** —— 那会引出「项目回收站」，
-而任务不被销毁已消除删除操作的主要风险。
+**项目本身无软删除标记** —— 那会引出「项目回收站」。
+不可逆删除的闸门是确认条，不是把任务改挂到 Default。
 
 ### 4.3 标签：受管理的预设集合（已废弃）
 

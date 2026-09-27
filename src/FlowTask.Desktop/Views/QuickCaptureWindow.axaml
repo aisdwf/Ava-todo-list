@@ -32,7 +32,7 @@
             BorderThickness="1"
             ClipToBounds="True">
 
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="20,18,20,14">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20,18,20,14">
 
             <!-- 贯穿式主输入：无内框，靠字号建立焦点 -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
@@ -47,35 +47,13 @@
                          x:Name="InputBox"
                          Classes="EditorialInput"
                          Text="{Binding InputText, Mode=TwoWay}"
-                         Watermark="灵感…  @项目  #标签"
+                         Watermark="Something to do..."
                          VerticalAlignment="Center" />
             </Grid>
 
-            <!-- @/# 补全列表：仅在有候选时显示 -->
-            <Border Grid.Row="1"
-                    Margin="32,8,0,0"
-                    IsVisible="{Binding IsCompletionOpen}"
-                    Background="{DynamicResource FloatingSurfaceBrush}"
-                    BorderBrush="{DynamicResource HairlineStrongBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    MaxHeight="96">
-                <ListBox x:Name="CompletionList"
-                         ItemsSource="{Binding CompletionItems}"
-                         SelectedIndex="{Binding SelectedCompletionIndex, Mode=TwoWay}"
-                         Background="Transparent"
-                         BorderThickness="0">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Margin="8,4" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Border>
-
-            <!-- 单项目切换下拉 (spec-quick-window-single-project-list D1)：
-                 切换即联动下方任务列表重新查询，不通过 @ 补全间接触发，避免输入语法与列表状态耦合 -->
-            <ComboBox Grid.Row="2"
+            <!-- 项目下拉是小窗唯一的项目上下文 (spec-quick-window-single-project-list §7)：
+                 同时决定下方列表与新建任务归属；Ctrl+Tab / Ctrl+Shift+Tab 循环切换 -->
+            <ComboBox Grid.Row="1"
                       Margin="0,14,0,0"
                       HorizontalAlignment="Stretch"
                       ItemsSource="{Binding Projects}"
@@ -95,7 +73,7 @@
             </ComboBox>
 
             <!-- 单项目任务列表：查看 + 勾选，不打开主窗即可完成（R-1.1/R-1.2/R-1.4） -->
-            <Grid Grid.Row="3" Margin="0,10,0,0">
+            <Grid Grid.Row="2" Margin="0,10,0,0">
                 <TextBlock Text="这个项目还没有任务"
                            Classes="CaptionText"
                            HorizontalAlignment="Center"
@@ -115,7 +93,7 @@
                                     <Grid ColumnDefinitions="Auto,*">
                                         <CheckBox Grid.Column="0"
                                                   Classes="RingCheck"
-                                                  IsChecked="{Binding Task.IsCompleted, Mode=TwoWay}"
+                                                  IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,12,0"
                                                   Command="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).ToggleTaskCompleteCommand}"
@@ -125,7 +103,7 @@
                                                    Text="{Binding Task.Title}"
                                                    FontSize="14"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Classes.QuickCaptureCompleted="{Binding Task.IsCompleted}"
+                                                   Classes.QuickCaptureCompleted="{Binding IsCompleted}"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center" />
                                     </Grid>
@@ -137,7 +115,7 @@
             </Grid>
 
             <!-- 底部：优先级分段选择 + 快捷键指引 -->
-            <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                     <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P1"
                                  IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
@@ -150,6 +128,11 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                             Spacing="8" VerticalAlignment="Center">
                     <Border Classes="KeyCap">
+                        <TextBlock Text="Ctrl+Tab" />
+                    </Border>
+                    <TextBlock Text="切换项目" Classes="CaptionText" VerticalAlignment="Center" />
+
+                    <Border Classes="KeyCap" Margin="6,0,0,0">
                         <TextBlock Text="↵" />
                     </Border>
                     <TextBlock Text="保存" Classes="CaptionText" VerticalAlignment="Center" />

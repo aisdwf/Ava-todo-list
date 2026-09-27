@@ -1,0 +1,4 @@
+feat: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+Why: design wrong — placeholder used only to exceed the subject length cap.
+What: This message must be rejected for a 100-plus-character subject.

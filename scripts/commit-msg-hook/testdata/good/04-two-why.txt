@@ -1,0 +1,5 @@
+feat: inherit selected project on task creation
+
+Why: design wrong — AddTaskViewModel.ExecuteAsync never received the selected project id.
+Why: design wrong — the tag feature was reversed after real usage.
+What: Pass SelectedProject.Id into task creation and remove tag code.

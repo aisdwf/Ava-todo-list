@@ -23,22 +23,7 @@ public class SqliteProjectRepository : IProjectRepository
     /// </param>
     public SqliteProjectRepository(string? dbPath = null)
     {
-        if (string.IsNullOrEmpty(dbPath))
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var folder = Path.Combine(appData, "FlowTask");
-            Directory.CreateDirectory(folder);
-            dbPath = Path.Combine(folder, "flowtask.db");
-        }
-        else
-        {
-            var dbDir = Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
-            {
-                Directory.CreateDirectory(dbDir);
-            }
-        }
-
+        dbPath = DatabaseLocation.Resolve(dbPath);
         _db = new SQLiteAsyncConnection(dbPath);
     }
 
@@ -116,10 +101,34 @@ public class SqliteProjectRepository : IProjectRepository
 
         project.Name = ProjectName.Normalize(project.Name);
 
+        if (await NameIsTakenAsync(project.Name, project.Id))
+        {
+            throw new InvalidOperationException($"项目名称「{project.Name}」已被使用。");
+        }
+
         var existing = await GetByIdAsync(project.Id);
         return existing is null
             ? await _db.InsertAsync(project)
             : await _db.UpdateAsync(project);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> NextSortOrderAsync()
+    {
+        await InitializeAsync();
+        var max = await _db.ExecuteScalarAsync<int?>("SELECT MAX(SortOrder) FROM Projects");
+        return (max ?? -1) + 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> NameIsTakenAsync(string name, string? exceptId)
+    {
+        await InitializeAsync();
+        var normalized = ProjectName.Normalize(name);
+        var rows = await _db.Table<Project>().ToListAsync();
+        return rows.Any(p =>
+            p.Id != exceptId
+            && string.Equals(ProjectName.Normalize(p.Name), normalized, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
@@ -142,8 +151,8 @@ public class SqliteProjectRepository : IProjectRepository
     /// 原子性静默失效且不报任何错。此处必须使用同步 <c>Execute</c> / <c>Delete</c>。
     /// </para>
     /// <para>
-    /// 以 SQL 直接批量置空而非逐条 <c>Update</c>：避免先查询再回写的读改写竞态，
-    /// 且单条语句天然原子。
+    /// 以 SQL 直接批量删除该项目下全部任务行，再删项目：避免逐条往返，
+    /// 且单条语句天然原子（R-2.7）。
     /// </para>
     /// </remarks>
     public async Task<int> DeleteAsync(string id)
@@ -159,10 +168,8 @@ public class SqliteProjectRepository : IProjectRepository
 
         await _db.RunInTransactionAsync(conn =>
         {
-            // R-2.6：删除用户项目后改挂 Default，不再置 null
             affectedTasks = conn.Execute(
-                "UPDATE Tasks SET ProjectId = ? WHERE ProjectId = ?",
-                DefaultProject.Id,
+                "DELETE FROM Tasks WHERE ProjectId = ?",
                 id);
 
             conn.Delete<Project>(id);
@@ -175,13 +182,24 @@ public class SqliteProjectRepository : IProjectRepository
     public async Task EnsureDefaultProjectAsync(DateTime createdAtUtc)
     {
         await InitializeAsync();
+        var seed = DefaultProject.CreateSeed(createdAtUtc);
+        await _db.ExecuteAsync(
+            """
+            INSERT OR IGNORE INTO Projects (Id, Name, ColorHex, SortOrder, IsArchived, CreatedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            seed.Id,
+            seed.Name,
+            seed.ColorHex,
+            seed.SortOrder,
+            seed.IsArchived,
+            seed.CreatedAt);
+    }
 
-        var existing = await GetByIdAsync(DefaultProject.Id);
-        if (existing is null)
-        {
-            await _db.InsertAsync(DefaultProject.CreateSeed(createdAtUtc));
-        }
-
+    /// <inheritdoc />
+    public async Task MigrateNullProjectIdsToDefaultAsync()
+    {
+        await InitializeAsync();
         await _db.ExecuteAsync(
             "UPDATE Tasks SET ProjectId = ? WHERE ProjectId IS NULL AND IsDeleted = 0",
             DefaultProject.Id);

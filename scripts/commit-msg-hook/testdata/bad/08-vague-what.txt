@@ -1,0 +1,4 @@
+fix: hide delete on the Default project
+
+Why: code wrong — Default row still exposed delete; ConfirmDelete threw for DefaultProject.Id.
+What: fix

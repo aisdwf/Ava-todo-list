@@ -405,6 +405,31 @@ public class AppearanceCoordinatorTests
         }
     }
 
+    [Fact]
+    public void ParseIsDark_TreatsOneAndTrueAsDark()
+    {
+        Assert.True(AppearanceCoordinator.ParseIsDark("1"));
+        Assert.True(AppearanceCoordinator.ParseIsDark("true"));
+        Assert.True(AppearanceCoordinator.ParseIsDark("TRUE"));
+    }
+
+    [Fact]
+    public void ParseIsDark_TreatsZeroAndFalseAsLight()
+    {
+        Assert.False(AppearanceCoordinator.ParseIsDark("0"));
+        Assert.False(AppearanceCoordinator.ParseIsDark("false"));
+        Assert.False(AppearanceCoordinator.ParseIsDark("FALSE"));
+    }
+
+    [Fact]
+    public void ParseIsDark_UnknownOrMissing_UsesFallback()
+    {
+        Assert.True(AppearanceCoordinator.ParseIsDark(null));
+        Assert.True(AppearanceCoordinator.ParseIsDark(""));
+        Assert.True(AppearanceCoordinator.ParseIsDark("maybe"));
+        Assert.False(AppearanceCoordinator.ParseIsDark("maybe", fallback: false));
+    }
+
     private static SolidColorBrush GetBrush(IResourceDictionary resources, string key, ThemeVariant variant)
     {
         Assert.True(resources.TryGetResource(key, variant, out var value), $"{key} not found for {variant}");
