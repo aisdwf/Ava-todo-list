@@ -35,7 +35,14 @@ public interface IProjectRepository
     Task<int> CountTasksAsync(string projectId);
 
     /// <summary>
-    /// 确保 Default 项目存在，并将历史 <c>ProjectId IS NULL</c> 的任务迁到 Default。
+    /// 确保 Default 项目存在。不迁移 <c>ProjectId IS NULL</c> 的任务
+    /// （那一步只在主窗启动，见 <see cref="MigrateNullProjectIdsToDefaultAsync"/>）。
     /// </summary>
     Task EnsureDefaultProjectAsync(DateTime createdAtUtc);
+
+    /// <summary>
+    /// 将历史 <c>ProjectId IS NULL</c> 的未删除任务改挂 Default（R-2.6）。
+    /// 仅主窗启动路径调用，避免小窗打开时改写刚编辑过的归属。
+    /// </summary>
+    Task MigrateNullProjectIdsToDefaultAsync();
 }

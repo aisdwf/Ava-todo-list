@@ -243,13 +243,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly ObservableCollection<TaskRowViewModel> _tasks = new();
 
     /// <summary>
-    /// 编辑态「所属项目」下拉的候选项，首项恒为「未归属」。
+    /// 编辑态「所属项目」下拉的候选项，与侧边栏活跃项目同源（另含正在编辑的归档归属）。
     /// </summary>
     /// <remarks>
-    /// 「未归属」作为一等候选项而非以 <c>null</c> 表达：
-    /// 依零必填原则它是正常的默认状态，用户须能主动选回该状态。
+    /// R-2.6 以 Default 取代「未归属」，不再插入 <c>null</c> 候选项。
     /// </remarks>
-    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.None };
+    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.Default };
 
     /// <summary>任务流为空，用于驱动空状态提示。</summary>
     public bool IsTaskStreamEmpty => Tasks.Count == 0;
@@ -360,8 +359,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         await LoadAppearanceAsync();
         await LoadCloseActionAsync();
 
-        // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
+        // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
+        // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
+        await _projectRepository.MigrateNullProjectIdsToDefaultAsync();
 
         await LoadProjectsAsync();
         await LoadTasksAsync();
@@ -440,7 +441,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         // 候选项与项目列表保持同源，避免两份表示漂移（Article 6）
         ProjectChoices.Clear();
-        ProjectChoices.Add(ProjectChoice.None);
         foreach (var project in projects)
         {
             ProjectChoices.Add(new ProjectChoice(project.Id, project.Name));
@@ -789,7 +789,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 变更任务所属项目。
     /// </summary>
     /// <param name="item">目标任务。</param>
-    /// <param name="projectId">目标项目 Id；<c>null</c> 表示移出项目回到未归属状态。</param>
+    /// <param name="projectId">目标项目 Id；<c>null</c> 或空串改挂 Default（R-2.6）。</param>
     public async Task AssignProjectAsync(TaskItem? item, string? projectId)
     {
         if (item is null)
@@ -797,7 +797,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        item.ProjectId = projectId;
+        item.ProjectId = string.IsNullOrEmpty(projectId) ? DefaultProject.Id : projectId;
         await _repository.SaveTaskAsync(item);
         await LoadTasksAsync();
     }

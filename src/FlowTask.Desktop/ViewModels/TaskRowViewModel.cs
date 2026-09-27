@@ -8,26 +8,25 @@ namespace FlowTask.Desktop.ViewModels;
 /// 编辑态中「所属项目」下拉的候选项。
 /// </summary>
 /// <remarks>
-/// 需要一个表示「未归属」的候选项，而 <c>null</c> 无法作为 ComboBox 的可选条目
-/// 被正常显示与选中。此包装使「未归属」成为一个显式、可选择的一等选项 ——
-/// 这与零必填原则一致：未归属不是缺失状态，而是正常的默认状态。
+/// ComboBox 需要对象实例作为条目。R-2.6 以 Default 取代「未归属」，
+/// 故候选项的 <see cref="ProjectId"/> 必须是真实项目，不再用 <c>null</c> 表示空归属。
 /// </remarks>
 public sealed class ProjectChoice
 {
-    /// <summary>项目 Id；<c>null</c> 表示未归属。</summary>
-    public string? ProjectId { get; }
+    /// <summary>项目 Id；必为已存在项目（含 Default 与当前任务所属的归档项目）。</summary>
+    public string ProjectId { get; }
 
     /// <summary>下拉中显示的名称。</summary>
     public string DisplayName { get; }
 
-    public ProjectChoice(string? projectId, string displayName)
+    public ProjectChoice(string projectId, string displayName)
     {
         ProjectId = projectId;
         DisplayName = displayName;
     }
 
-    /// <summary>「未归属」候选项。</summary>
-    public static ProjectChoice None { get; } = new(null, "未归属");
+    /// <summary>Default 候选项，与 <see cref="DefaultProject"/> 同源（Article 6）。</summary>
+    public static ProjectChoice Default { get; } = new(DefaultProject.Id, DefaultProject.Name);
 }
 
 /// <summary>
@@ -79,7 +78,7 @@ public partial class TaskRowViewModel : ViewModelBase
 
     /// <summary>编辑缓冲：所属项目。</summary>
     [ObservableProperty]
-    private ProjectChoice _editProject = ProjectChoice.None;
+    private ProjectChoice _editProject = ProjectChoice.Default;
 
     /// <summary>所属项目名，用于色条的悬浮提示。</summary>
     [ObservableProperty]
@@ -110,7 +109,7 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 构造任务行。
     /// </summary>
     /// <param name="task">任务实体。</param>
-    /// <param name="project">所属项目；<c>null</c> 表示未归属。</param>
+    /// <param name="project">所属项目；查找失败时为 <c>null</c>（色条不画，编辑时回落到 Default）。</param>
     public TaskRowViewModel(TaskItem task, Project? project)
     {
         Task = task;
@@ -145,9 +144,8 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <param name="projectChoices">可选项目列表，用于定位当前归属对应的候选项。</param>
     /// <remarks>
     /// 侧边栏候选只含未归档项目。全部任务看板仍会列出归档项目下的任务；
-    /// 若此处找不到当前 <see cref="TaskItem.ProjectId"/> 就回落到
-    /// <see cref="ProjectChoice.None"/>，ComboBox 与保存路径会把归属写成 null。
-    /// 所以把当前归属补进候选（同一实例，供 ComboBox 引用相等），而不是假装「未归属」。
+    /// 找不到当前归属时补进候选（同一实例，供 ComboBox 引用相等）。
+    /// 历史 <c>ProjectId == null</c> 的行回落到 Default，不再提供「未归属」。
     /// </remarks>
     public void BeginEdit(IList<ProjectChoice> projectChoices)
     {
@@ -163,7 +161,9 @@ public partial class TaskRowViewModel : ViewModelBase
             projectChoices.Add(match);
         }
 
-        EditProject = match ?? ProjectChoice.None;
+        EditProject = match
+                      ?? projectChoices.FirstOrDefault(c => c.ProjectId == DefaultProject.Id)
+                      ?? ProjectChoice.Default;
         IsEditing = true;
     }
 

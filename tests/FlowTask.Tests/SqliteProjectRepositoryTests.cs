@@ -291,4 +291,29 @@ public class SqliteProjectRepositoryTests : IDisposable
         Assert.Single(unassigned);
         Assert.Equal("没归属的", unassigned[0].Title);
     }
+
+    /// <summary>
+    /// 种子 Default 不得顺带改写 <c>ProjectId IS NULL</c>：那是启动迁移，不是每次打开小窗。
+    /// </summary>
+    [Fact]
+    public async Task EnsureDefaultProject_DoesNotMigrateNullTasks()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        Assert.NotNull(await _projects.GetByIdAsync(DefaultProject.Id));
+        Assert.Null((await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    [Fact]
+    public async Task MigrateNullProjectIdsToDefault_AssignsDefault()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        await _projects.MigrateNullProjectIdsToDefaultAsync();
+
+        Assert.Equal(DefaultProject.Id, (await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
 }

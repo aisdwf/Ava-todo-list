@@ -68,7 +68,7 @@
 ### 高优先级
 
 - [x] **H1** 编辑已归档项目下的任务时，未改项目下拉不得把 `ProjectId` 写成 null；补回归测试
-- [ ] **H2** 按 R-2.6 移除或改写 `ProjectChoice.None`；`EnsureDefaultProjectAsync` 的 null→Default 迁移只留在启动路径
+- [x] **H2** 按 R-2.6 移除或改写 `ProjectChoice.None`；`EnsureDefaultProjectAsync` 的 null→Default 迁移只留在启动路径
 - [ ] **H3** 注册 UI / Task / AppDomain 未处理异常；日志写入 `%LOCALAPPDATA%\FlowTask\logs`；`InitializeAsync` 失败有可见提示；fire-and-forget 统一记录异常
 - [ ] **H4** `GlobalHotkeyService.TryStart` 用事件/`TaskCompletionSource` 等待注册结果（带超时）；`_registered` 正确发布；`WndProc` 透传真实 `hWnd`（需运行验证）
 
@@ -98,9 +98,9 @@
 
 ### 2026-09-27
 
-- Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。
+- Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 1 下一步 H2（移除 `ProjectChoice.None`；null→Default 迁移只留启动路径）。
+- Current resume point: 阶段 2，H3（全局异常兜底与日志）。
 
 ## Verification
 

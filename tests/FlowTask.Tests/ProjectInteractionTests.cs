@@ -374,10 +374,10 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 未选中具体项目（全部任务视图）时新建任务，行为保持不变：不推断归属。
+    /// 未选中具体项目（全部任务视图）时新建任务，落入 Default（R-2.6），不再写 null。
     /// </summary>
     [AvaloniaFact]
-    public async Task AddTask_WithoutProjectSelected_StaysUnassigned()
+    public async Task AddTask_WithoutProjectSelected_AssignsDefault()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "甲项目";
@@ -387,7 +387,9 @@ public class ProjectInteractionTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var created = Assert.Single(vm.Tasks, t => t.Task.Title == "未选中项目时新建");
-        Assert.Null(created.Task.ProjectId);
+        Assert.Equal(DefaultProject.Id, created.Task.ProjectId);
+        Assert.DoesNotContain(vm.ProjectChoices, c => c.DisplayName == "未归属");
+        Assert.All(vm.ProjectChoices, c => Assert.False(string.IsNullOrEmpty(c.ProjectId)));
     }
 
     /// <summary>

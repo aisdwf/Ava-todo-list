@@ -1,4 +1,5 @@
 using FlowTask.Core.Enums;
+using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
@@ -516,9 +517,25 @@ public class MainViewModelTests : IDisposable
         await vm.AssignProjectAsync(task, "proj-42");
         Assert.Equal("proj-42", (await _repo.GetByIdAsync(task.Id))!.ProjectId);
 
-        // 置空回到未归属状态 —— 这是正常的默认状态，不是数据缺失
+        // R-2.6：不再允许写回 null，「清空」改挂 Default
         await vm.AssignProjectAsync(task, null);
-        Assert.Null((await _repo.GetByIdAsync(task.Id))!.ProjectId);
+        Assert.Equal(DefaultProject.Id, (await _repo.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    /// <summary>
+    /// 主窗启动才把历史 <c>ProjectId IS NULL</c> 迁到 Default。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task InitializeAsync_MigratesNullProjectIdsToDefault()
+    {
+        var orphan = TaskItemFactory.Create(_clock, "历史未归属");
+        await _repo.SaveTaskAsync(orphan);
+        Assert.Null(orphan.ProjectId);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(DefaultProject.Id, (await _repo.GetByIdAsync(orphan.Id))!.ProjectId);
     }
 
     /// <summary>

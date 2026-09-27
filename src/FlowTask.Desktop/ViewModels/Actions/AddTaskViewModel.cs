@@ -33,7 +33,12 @@ public sealed class AddTaskViewModel
             return;
         }
 
-        var task = TaskItemFactory.Create(_clock, title, priority, projectId: projectId, dueDate: dueDate);
+        var task = TaskItemFactory.Create(
+            _clock,
+            title,
+            priority,
+            projectId: projectId ?? DefaultProject.Id,
+            dueDate: dueDate);
         await _taskRepository.SaveTaskAsync(task);
         resetInput();
         await reloadTasks();

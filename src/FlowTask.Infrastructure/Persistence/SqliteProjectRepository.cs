@@ -181,7 +181,12 @@ public class SqliteProjectRepository : IProjectRepository
         {
             await _db.InsertAsync(DefaultProject.CreateSeed(createdAtUtc));
         }
+    }
 
+    /// <inheritdoc />
+    public async Task MigrateNullProjectIdsToDefaultAsync()
+    {
+        await InitializeAsync();
         await _db.ExecuteAsync(
             "UPDATE Tasks SET ProjectId = ? WHERE ProjectId IS NULL AND IsDeleted = 0",
             DefaultProject.Id);

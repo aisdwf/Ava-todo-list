@@ -110,7 +110,7 @@ public class QuickCaptureViewModelTests : IDisposable
     [AvaloniaFact]
     public async Task ToggleTaskComplete_KeepsTaskVisibleAndStrikesThrough()
     {
-        var task = TaskItemFactory.Create(_clock, "打卡");
+        var task = TaskItemFactory.Create(_clock, "打卡", projectId: DefaultProject.Id);
         await _taskRepo.SaveTaskAsync(task);
 
         var vm = CreateViewModel();
@@ -138,5 +138,20 @@ public class QuickCaptureViewModelTests : IDisposable
 
         Assert.Single(vm.Tasks);
         Assert.Equal("买菜", vm.Tasks[0].Task.Title);
+    }
+
+    /// <summary>
+    /// 打开小窗只确保 Default 存在，不得把历史 null 归属改写成 Default。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task PrepareAsync_DoesNotMigrateNullProjectIds()
+    {
+        var orphan = TaskItemFactory.Create(_clock, "历史未归属");
+        await _taskRepo.SaveTaskAsync(orphan);
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        Assert.Null((await _taskRepo.GetByIdAsync(orphan.Id))!.ProjectId);
     }
 }
