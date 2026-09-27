@@ -98,6 +98,9 @@ public partial class MainWindow : Window
         // 因此昼夜切换后必须按当前材质档位重建底色。
         vm.ThemeApplied += () => AppearanceCoordinator.RefreshMaterialBackground(this, vm.SelectedMaterial.Id);
 
+        // 构造时立刻套材质：等 Opened / InitializeAsync 会让首帧先画出 XAML 默认底。
+        AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
+
         // 主题按钮不绑定命令：主题必须在水波纹覆盖全屏后才切换，
         // 否则用户会先看到底层界面突变、再看到遮罩扩散，动效失去意义。
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
@@ -142,8 +145,6 @@ public partial class MainWindow : Window
         try
         {
             await vm.InitializeAsync();
-            AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
-            AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
             ArmMidnightRefresh(vm);
         }
         catch (Exception ex)

@@ -681,6 +681,39 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task LoadAppearanceAsync_RestoresPersistedAppearanceWithoutInitialize()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.LoadAppearanceAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+        Assert.Equal("Solid", vm.SelectedMaterial.Id);
+        Assert.False(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_DoesNotReloadAppearanceAfterStartupLoad()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.LoadAppearanceAsync();
+
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "anthropic");
+        await vm.InitializeAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+    }
+
+    [AvaloniaFact]
     public async Task AppearanceChanges_RoundTripAcrossViewModelInstances()
     {
         var vm = CreateViewModel();

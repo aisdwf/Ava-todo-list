@@ -18,12 +18,12 @@ powershell -File scripts/build-spec-index.ps1
 | :--- | ---: |
 | `draft` | 0 |
 | `in-progress` | 4 |
-| `done` | 20 |
+| `done` | 21 |
 | `done-refactored` | 0 |
 | `superseded` | 2 |
 | `archived` | 0 |
 | `obsolete` | 1 |
-| 合计 | 27 |
+| 合计 | 28 |
 
 ## Area
 
@@ -35,7 +35,7 @@ powershell -File scripts/build-spec-index.ps1
 | [`packaging/`](./packaging/) | 1 |
 | [`quick-capture/`](./quick-capture/) | 3 |
 | [`task-domain/`](./task-domain/) | 6 |
-| [`visual-theme/`](./visual-theme/) | 5 |
+| [`visual-theme/`](./visual-theme/) | 6 |
 
 ## 进行中
 
@@ -108,5 +108,6 @@ powershell -File scripts/build-spec-index.ps1
 | [spec-editorial-and-ripple-theme](./visual-theme/spec-editorial-and-ripple-theme[DONE].md) | 大开大合排版质感、水波纹昼夜切换与个性化外观设置规范 | `done` |
 | [spec-fluent-ui](./visual-theme/spec-fluent-ui[SUPERSEDED].md) | FlowTask Windows 11 Fluent 2 设计语言与视窗风格重构 | `superseded` |
 | [spec-settings-master-detail-and-theme-presets](./visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md) | 设置页改为主从式独立页面 + 可扩展命名主题预设 | `done` |
+| [spec-startup-theme-no-flash](./visual-theme/spec-startup-theme-no-flash[DONE].md) | 启动时直接呈现已保存的风格预设 | `done` |
 | [spec-unified-svg-icons](./visual-theme/spec-unified-svg-icons[DONE].md) | 统一描边图标并移除更换颜色 | `done` |
 
