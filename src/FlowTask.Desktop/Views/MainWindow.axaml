@@ -767,6 +767,20 @@
             </Border>
         </Grid>
 
+        <!-- 启动失败可见提示：无控制台，不能只写日志 -->
+        <Border IsVisible="{Binding HasInitializationError}"
+                ZIndex="120"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Margin="16"
+                Padding="16,12"
+                Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="8">
+            <TextBlock Text="{Binding InitializationError}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource DangerBrush}" />
+        </Border>
+
         <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->
         <Canvas x:Name="RevealCanvas" IsHitTestVisible="False" IsVisible="False" ClipToBounds="True">
             <Ellipse x:Name="RevealCircle" Width="0" Height="0" Opacity="0" RenderTransform="scale(0)" />

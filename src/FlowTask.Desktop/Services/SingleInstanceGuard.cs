@@ -69,7 +69,9 @@ public sealed class SingleInstanceGuard : IDisposable
     {
         _listenCts = new CancellationTokenSource();
         var token = _listenCts.Token;
-        _ = Task.Run(() => ListenLoop(onReplaceRequested, token), token);
+        LoggedTasks.FireAndForget(
+            Task.Run(() => ListenLoop(onReplaceRequested, token), token),
+            "SingleInstance ListenLoop");
     }
 
     /// <inheritdoc />

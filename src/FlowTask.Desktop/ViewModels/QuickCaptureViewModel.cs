@@ -8,6 +8,7 @@ using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Core.Ordering;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
@@ -157,7 +158,9 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return;
         }
 
-        _ = ChangeSelectedProjectCommand.ExecuteAsync(value);
+        LoggedTasks.FireAndForget(
+            ChangeSelectedProjectCommand.ExecuteAsync(value),
+            "QuickCapture OnSelectedProjectChanged");
     }
 
     [RelayCommand]

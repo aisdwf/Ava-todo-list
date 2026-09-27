@@ -43,6 +43,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            UnhandledExceptionGuard.Install();
+
             // 托盘 Hide 主窗后窗口仍存在；退出必须显式 Shutdown，不能靠「最后一个窗口关完」。
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 

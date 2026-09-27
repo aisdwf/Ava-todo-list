@@ -58,6 +58,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     public Task TaskListRefreshTask { get; private set; } = Task.CompletedTask;
 
+    /// <summary>启动加载失败时的可见文案；成功则为 null。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasInitializationError))]
+    private string? _initializationError;
+
+    /// <summary>驱动主窗顶部错误条显隐。</summary>
+    public bool HasInitializationError => !string.IsNullOrEmpty(InitializationError);
+
     /// <summary>
     /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="ViewSelection"/> 的取值位。
     /// </summary>
@@ -354,18 +362,32 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     public async Task InitializeAsync()
     {
-        await _settingsRepository.InitializeAsync();
-        DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
-        await LoadAppearanceAsync();
-        await LoadCloseActionAsync();
+        try
+        {
+            await _settingsRepository.InitializeAsync();
+            DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
+            await LoadAppearanceAsync();
+            await LoadCloseActionAsync();
 
-        // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
-        // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
-        await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
-        await _projectRepository.MigrateNullProjectIdsToDefaultAsync();
+            // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
+            // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
+            await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
+            await _projectRepository.MigrateNullProjectIdsToDefaultAsync();
 
-        await LoadProjectsAsync();
-        await LoadTasksAsync();
+            await LoadProjectsAsync();
+            await LoadTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            ReportInitializationFailure(ex);
+        }
+    }
+
+    /// <summary>记录启动失败并露出可见文案。日志在无控制台的 WinExe 里是唯一诊断。</summary>
+    public void ReportInitializationFailure(Exception exception)
+    {
+        AppLog.Write("InitializeAsync", exception);
+        InitializationError = "无法加载任务数据。详情已写入本地日志。";
     }
 
     /// <summary>
@@ -533,7 +555,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             CurrentSelection,
             () => IsSettingsOpen = false,
             selection => CurrentSelection = selection,
-            () => _ = LoadTasksAsync());
+            () => LoggedTasks.FireAndForget(LoadTasksAsync(), "ChangeFilter LoadTasks"));
 
     /// <summary>
     /// 按当前筛选载入任务，并同步侧边栏计数。
@@ -1099,7 +1121,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        AppearancePersistTask = PersistAppearanceAsync();
+        AppearancePersistTask = LoggedTasks.Observe(PersistAppearanceAsync(), "PersistAppearance");
     }
 
     partial void OnCloseActionChanged(CloseActionKind? value)
@@ -1109,9 +1131,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        CloseActionPersistTask = _settingsRepository.SetAsync(
-            CloseBehaviorCoordinator.SettingsKey,
-            CloseBehaviorCoordinator.ToStorage(kind));
+        CloseActionPersistTask = LoggedTasks.Observe(
+            PersistCloseActionAsync(kind),
+            "PersistCloseAction");
     }
 
     private async Task PersistAppearanceAsync()
@@ -1126,9 +1148,27 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             await _settingsRepository.SetAsync(
                 AppearanceCoordinator.IsDarkSettingsKey, IsDarkTheme ? "1" : "0");
         }
+        catch (Exception ex)
+        {
+            AppLog.Write("PersistAppearance", ex);
+        }
         finally
         {
             _appearancePersistGate.Release();
+        }
+    }
+
+    private async Task PersistCloseActionAsync(CloseActionKind kind)
+    {
+        try
+        {
+            await _settingsRepository.SetAsync(
+                CloseBehaviorCoordinator.SettingsKey,
+                CloseBehaviorCoordinator.ToStorage(kind));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("PersistCloseAction", ex);
         }
     }
 
@@ -1146,7 +1186,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        TaskListRefreshTask = UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id));
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id)),
+            "TaskSavedMessage");
     }
 
     /// <summary>
@@ -1174,7 +1216,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadTasksAsync());
+        => Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => LoggedTasks.FireAndForget(LoadTasksAsync(), "TaskDeletedMessage"));
 
     /// <summary>
     /// 小窗可能在保存时新建项目，须连同侧边栏一并刷新。

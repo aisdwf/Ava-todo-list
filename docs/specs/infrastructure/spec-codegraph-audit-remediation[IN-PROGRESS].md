@@ -69,7 +69,7 @@
 
 - [x] **H1** 编辑已归档项目下的任务时，未改项目下拉不得把 `ProjectId` 写成 null；补回归测试
 - [x] **H2** 按 R-2.6 移除或改写 `ProjectChoice.None`；`EnsureDefaultProjectAsync` 的 null→Default 迁移只留在启动路径
-- [ ] **H3** 注册 UI / Task / AppDomain 未处理异常；日志写入 `%LOCALAPPDATA%\FlowTask\logs`；`InitializeAsync` 失败有可见提示；fire-and-forget 统一记录异常
+- [x] **H3** 注册 UI / Task / AppDomain 未处理异常；日志写入 `%LOCALAPPDATA%\FlowTask\logs`；`InitializeAsync` 失败有可见提示；fire-and-forget 统一记录异常
 - [ ] **H4** `GlobalHotkeyService.TryStart` 用事件/`TaskCompletionSource` 等待注册结果（带超时）；`_registered` 正确发布；`WndProc` 透传真实 `hWnd`（需运行验证）
 
 ### 中优先级

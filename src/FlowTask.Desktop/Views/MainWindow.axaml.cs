@@ -126,14 +126,28 @@ public partial class MainWindow : Window
 
         Closing += OnMainWindowClosing;
 
-        Opened += async (_, _) =>
+        Opened += (_, _) => LoggedTasks.FireAndForget(OnOpenedAsync(), "MainWindow.Opened");
+    }
+
+    private async Task OnOpenedAsync()
+    {
+        if (DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        try
         {
             // 先读库再刷窗，否则首帧会用字段默认值（深色 / 默认主题 / Mica）闪一下。
             await vm.LoadAppearanceAsync();
             AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
             AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
             await vm.InitializeAsync();
-        };
+        }
+        catch (Exception ex)
+        {
+            vm.ReportInitializationFailure(ex);
+        }
     }
 
     /// <summary>
@@ -301,12 +315,14 @@ public partial class MainWindow : Window
     /// <summary>
     /// 供进程级热键回调：切到 UI 线程后显隐小窗（spec-quick-window-hotkey-capture）。
     /// </summary>
-    public void ToggleQuickCaptureFromHotkey() => _ = ToggleQuickCaptureWindowAsync();
+    public void ToggleQuickCaptureFromHotkey()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromHotkey");
 
     /// <summary>
     /// 唤起或隐藏快捷小窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
-    private void ToggleQuickCaptureWindow() => _ = ToggleQuickCaptureWindowAsync();
+    private void ToggleQuickCaptureWindow()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureWindow");
 
     private async Task ToggleQuickCaptureWindowAsync()
     {

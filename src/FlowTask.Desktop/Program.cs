@@ -12,7 +12,7 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        Console.WriteLine("[FlowTask] Starting application...");
+        AppLog.Write("Starting application");
         using var instance = SingleInstanceGuard.AcquireOrReplacePrevious();
         try
         {
@@ -20,7 +20,8 @@ sealed class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FlowTask Error] {ex}");
+            AppLog.Write("Fatal startup", ex);
+            Environment.ExitCode = 1;
         }
     }
 
