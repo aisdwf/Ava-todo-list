@@ -23,7 +23,6 @@ public sealed class CreateProjectViewModel
     /// </summary>
     public async Task ExecuteAsync(
         string name,
-        int sortOrder,
         Action clearAndCollapse,
         Func<Task> reloadProjects,
         Action<string> onInvalid)
@@ -35,9 +34,17 @@ public sealed class CreateProjectViewModel
             return;
         }
 
+        var normalized = ProjectName.Normalize(name);
+        if (await _projectRepository.NameIsTakenAsync(normalized, exceptId: null))
+        {
+            onInvalid("项目名称已存在。");
+            return;
+        }
+
+        var sortOrder = await _projectRepository.NextSortOrderAsync();
         var project = new Project
         {
-            Name = ProjectName.Normalize(name),
+            Name = normalized,
             SortOrder = sortOrder,
             ColorHex = AppearanceCoordinator.PickPaletteColor(sortOrder),
             CreatedAt = _clock.UtcNow
@@ -53,7 +60,6 @@ public sealed class CreateProjectViewModel
     /// </summary>
     public Task ExecuteOnLeaveAsync(
         string name,
-        int sortOrder,
         Action collapse,
         Func<Task> reloadProjects,
         Action<string> onInvalid)
@@ -64,6 +70,6 @@ public sealed class CreateProjectViewModel
             return Task.CompletedTask;
         }
 
-        return ExecuteAsync(name, sortOrder, collapse, reloadProjects, onInvalid);
+        return ExecuteAsync(name, collapse, reloadProjects, onInvalid);
     }
 }

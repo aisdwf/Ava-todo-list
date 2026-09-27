@@ -344,4 +344,29 @@ public class SqliteProjectRepositoryTests : IDisposable
         var stored = await _projects.GetByIdAsync(DefaultProject.Id);
         Assert.Equal(first, stored!.CreatedAt);
     }
+
+    [Fact]
+    public async Task SaveProject_RejectsDuplicateNameIncludingArchived()
+    {
+        var live = NewProject("工作");
+        await _projects.SaveProjectAsync(live);
+        await _projects.SetArchivedAsync(live.Id, true);
+
+        var clash = NewProject("工作");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _projects.SaveProjectAsync(clash));
+        Assert.Contains("已被使用", ex.Message, StringComparison.Ordinal);
+        Assert.True(await _projects.NameIsTakenAsync("工作", exceptId: null));
+        Assert.False(await _projects.NameIsTakenAsync("工作", exceptId: live.Id));
+    }
+
+    [Fact]
+    public async Task NextSortOrder_UsesMaxPlusOneAfterArchive()
+    {
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+        var first = NewProject("甲", sortOrder: 1);
+        await _projects.SaveProjectAsync(first);
+        await _projects.SetArchivedAsync(first.Id, true);
+
+        Assert.Equal(2, await _projects.NextSortOrderAsync());
+    }
 }

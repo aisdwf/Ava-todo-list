@@ -170,6 +170,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private int _defaultDueOffsetDays = DueDateOffset.DefaultDays;
 
+    /// <summary>设置页里的到期偏移编辑缓冲；点保存才写回 <see cref="DefaultDueOffsetDays"/>。</summary>
+    [ObservableProperty]
+    private int _editingDefaultDueOffsetDays = DueDateOffset.DefaultDays;
+
     /// <summary>
     /// 主窗关闭默认策略；<c>null</c> 表示未设默认，点 X 须询问（spec-close-to-tray）。
     /// </summary>
@@ -360,6 +364,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         {
             await _settingsRepository.InitializeAsync();
             DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
+            EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
             await LoadAppearanceAsync();
             await LoadCloseActionAsync();
 
@@ -684,15 +689,16 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 保存默认到期偏移设置。
     /// </summary>
     [RelayCommand]
-    private async Task SaveDefaultDueOffsetAsync(int days)
+    private async Task SaveDefaultDueOffsetAsync()
     {
-        if (!DueDateOffset.IsValid(days))
+        if (!DueDateOffset.IsValid(EditingDefaultDueOffsetDays))
         {
-            // 非法偏移不写库，也不改内存里的当前值。
+            // 非法偏移不写库，也不改已保存的当前值。
             return;
         }
 
-        await _settingsRepository.SetDefaultDueOffsetDaysAsync(days);
+        await _settingsRepository.SetDefaultDueOffsetDaysAsync(EditingDefaultDueOffsetDays);
+        DefaultDueOffsetDays = EditingDefaultDueOffsetDays;
     }
 
     /// <summary>
@@ -903,7 +909,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private async Task CreateProjectAsync()
         => await new CreateProjectViewModel(_projectRepository, _clock).ExecuteAsync(
             NewProjectName,
-            _projects.Count,
             CollapseCreateProject,
             LoadProjectsAsync,
             error => CreateProjectError = error);
@@ -921,7 +926,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         await new CreateProjectViewModel(_projectRepository, _clock).ExecuteOnLeaveAsync(
             NewProjectName,
-            _projects.Count,
             CollapseCreateProject,
             LoadProjectsAsync,
             error => CreateProjectError = error);
@@ -1084,6 +1088,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         if (IsSettingsOpen)
         {
             SelectedSettingsSection = SettingsSection.Appearance;
+            EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
         }
     }
 

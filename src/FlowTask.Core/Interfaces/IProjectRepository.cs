@@ -18,6 +18,12 @@ public interface IProjectRepository
     /// <summary>新增或更新项目。</summary>
     Task<int> SaveProjectAsync(Project project);
 
+    /// <summary>下一个 SortOrder：全表 MAX + 1，避免归档/删除后撞序。</summary>
+    Task<int> NextSortOrderAsync();
+
+    /// <summary>名称是否已被其它项目占用（含归档，大小写不敏感）。</summary>
+    Task<bool> NameIsTakenAsync(string name, string? exceptId);
+
     /// <summary>设置归档状态。任务归属不受影响。</summary>
     Task<int> SetArchivedAsync(string id, bool isArchived);
 

@@ -27,6 +27,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     private readonly IClock _clock;
 
     private List<Project> _projects = [];
+    private List<Project> _allProjects = [];
 
     /// <summary>切换项目时抑制联动查询，避免 <see cref="PrepareAsync"/> 恢复上次项目时触发一次多余的重复加载。</summary>
     private bool _suppressProjectSelectionReload;
@@ -106,7 +107,8 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     public async Task PrepareAsync()
     {
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
-        _projects = await _projectRepository.GetActiveProjectsAsync();
+        _allProjects = await _projectRepository.GetAllProjectsAsync();
+        _projects = _allProjects.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
         RefreshCompletion();
 
         await RefreshProjectChoicesAsync();
@@ -351,7 +353,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return DefaultProject.Id;
         }
 
-        var match = _projects.FirstOrDefault(p =>
+        var match = _allProjects.FirstOrDefault(p =>
             string.Equals(
                 ProjectName.Normalize(p.Name),
                 ProjectName.Normalize(projectName),
@@ -369,11 +371,12 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         var project = new Project
         {
             Name = ProjectName.Normalize(projectName),
-            SortOrder = _projects.Count,
-            ColorHex = AppearanceCoordinator.PickPaletteColor(_projects.Count),
+            SortOrder = await _projectRepository.NextSortOrderAsync(),
+            ColorHex = AppearanceCoordinator.PickPaletteColor(_allProjects.Count),
             CreatedAt = _clock.UtcNow
         };
         await _projectRepository.SaveProjectAsync(project);
+        _allProjects.Add(project);
         _projects.Add(project);
         return project.Id;
     }

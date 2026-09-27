@@ -101,10 +101,34 @@ public class SqliteProjectRepository : IProjectRepository
 
         project.Name = ProjectName.Normalize(project.Name);
 
+        if (await NameIsTakenAsync(project.Name, project.Id))
+        {
+            throw new InvalidOperationException($"项目名称「{project.Name}」已被使用。");
+        }
+
         var existing = await GetByIdAsync(project.Id);
         return existing is null
             ? await _db.InsertAsync(project)
             : await _db.UpdateAsync(project);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> NextSortOrderAsync()
+    {
+        await InitializeAsync();
+        var max = await _db.ExecuteScalarAsync<int?>("SELECT MAX(SortOrder) FROM Projects");
+        return (max ?? -1) + 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> NameIsTakenAsync(string name, string? exceptId)
+    {
+        await InitializeAsync();
+        var normalized = ProjectName.Normalize(name);
+        var rows = await _db.Table<Project>().ToListAsync();
+        return rows.Any(p =>
+            p.Id != exceptId
+            && string.Equals(ProjectName.Normalize(p.Name), normalized, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />

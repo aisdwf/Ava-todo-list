@@ -34,8 +34,24 @@ public sealed class CommitRenameProjectViewModel
             return;
         }
 
+        var normalized = ProjectName.Normalize(project.RenameBuffer);
+        if (await _projectRepository.NameIsTakenAsync(normalized, project.Id))
+        {
+            project.CancelRename();
+            return;
+        }
+
+        var previousName = project.Project.Name;
         project.Project.Name = ProjectName.Normalize(project.RenameBuffer);
-        await _projectRepository.SaveProjectAsync(project.Project);
+        try
+        {
+            await _projectRepository.SaveProjectAsync(project.Project);
+        }
+        catch
+        {
+            project.Project.Name = previousName;
+            throw;
+        }
 
         project.SyncFromEntity();
         project.CancelRename();

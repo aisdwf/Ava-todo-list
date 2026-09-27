@@ -154,4 +154,23 @@ public class QuickCaptureViewModelTests : IDisposable
 
         Assert.Null((await _taskRepo.GetByIdAsync(orphan.Id))!.ProjectId);
     }
+
+    [AvaloniaFact]
+    public async Task SaveAsync_AtMentionMatchesArchivedProjectInsteadOfCreatingDuplicate()
+    {
+        var archived = new Project { Name = "旧项", CreatedAt = _clock.UtcNow };
+        await _projectRepo.SaveProjectAsync(archived);
+        await _projectRepo.SetArchivedAsync(archived.Id, true);
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+        Assert.DoesNotContain(vm.Projects, p => p.Id == archived.Id);
+
+        vm.InputText = "续上 @旧项";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        var stored = (await _taskRepo.GetAllActiveTasksAsync()).Single(t => t.Title == "续上");
+        Assert.Equal(archived.Id, stored.ProjectId);
+        Assert.Single(await _projectRepo.GetAllProjectsAsync(), p => p.Name == "旧项");
+    }
 }

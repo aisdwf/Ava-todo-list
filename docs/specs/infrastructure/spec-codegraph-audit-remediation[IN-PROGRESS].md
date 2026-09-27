@@ -90,7 +90,7 @@
 - [x] **L3** 托盘跨午夜后刷新到期文案 / 逾期样式（或可注入时钟）
 - [x] **L4** 启动路径只调用一次 `LoadAppearanceAsync`
 - [x] **L5** 落库成功后再回写实体，或写入失败时回滚（编辑 / 到期日 / 重命名 / 勾选）
-- [ ] **L6** 项目名唯一性校验；`SortOrder` 取 `MAX+1`；`@项目` 匹配含归档
+- [x] **L6** 项目名唯一性校验；`SortOrder` 取 `MAX+1`；`@项目` 匹配含归档
 - [ ] **L7** 默认到期偏移改为编辑缓冲，点保存才写回属性与仓储
 - [ ] **L8** 抽出热键注册等待、关闭策略分派等可测逻辑并补单测
 
@@ -100,7 +100,7 @@
 
 - Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 7，L5（写入失败回滚）。
+- Current resume point: 阶段 7，L6（项目名唯一与 SortOrder）。
 
 ## Verification
 
