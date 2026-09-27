@@ -43,6 +43,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private bool _suppressAppearancePersist;
     private bool _suppressCloseActionPersist;
     private bool _suppressTaskSavedReload;
+    private int _tasksLoadGeneration;
 
     [ObservableProperty]
     private bool _isDarkTheme = true;
@@ -563,14 +564,26 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task LoadTasksAsync()
     {
+        var generation = Interlocked.Increment(ref _tasksLoadGeneration);
+
         // 项目筛选优先于 VIEWS 筛选：二者现由同一状态量表达为互斥的不同取值
         var items = CurrentSelection.Kind == ViewSelectionKind.Project
             ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
             : await _repository.GetAllActiveTasksAsync();
 
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
         // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
         // 查找表必须含归档项目，否则色条为空、编辑候选也对不上归属。
         var allProjects = await _projectRepository.GetAllProjectsAsync();
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
         var projectLookup = allProjects.ToDictionary(p => p.Id);
 
         _tasks.Clear();
@@ -1216,8 +1229,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(
-            () => LoggedTasks.FireAndForget(LoadTasksAsync(), "TaskDeletedMessage"));
+    {
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(() => LoadTasksAsync()),
+            "TaskDeletedMessage");
+    }
 
     /// <summary>
     /// 小窗可能在保存时新建项目，须连同侧边栏一并刷新。

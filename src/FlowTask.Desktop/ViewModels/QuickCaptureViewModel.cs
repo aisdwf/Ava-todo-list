@@ -35,6 +35,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     /// 本窗口正在从自己的勾选命令重载列表时跳过总线，避免与 <c>reloadTasks</c> 并发重建同一集合。
     /// </summary>
     private bool _suppressTaskSavedReload;
+    private int _tasksLoadGeneration;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -175,8 +176,14 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     /// </summary>
     private async Task LoadTasksForSelectedProjectAsync()
     {
+        var generation = Interlocked.Increment(ref _tasksLoadGeneration);
         var projectId = SelectedProject?.Id ?? DefaultProject.Id;
         var items = await _taskRepository.GetTasksByProjectAsync(projectId);
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
         var ordered = TaskListOrder.Sort(items);
 
         var project = _projects.FirstOrDefault(p => p.Id == projectId);
