@@ -27,13 +27,8 @@ public static class CaptureInputParser
     /// 解析输入文本。
     /// </summary>
     /// <param name="raw">原始输入。</param>
-    /// <param name="knownProjects">保留参数以兼容调用方；匹配/创建由调用方负责。</param>
-    public static Result Parse(
-        string? raw,
-        IEnumerable<string> knownProjects)
+    public static Result Parse(string? raw)
     {
-        _ = knownProjects;
-
         if (string.IsNullOrWhiteSpace(raw))
         {
             return new Result(string.Empty, null);

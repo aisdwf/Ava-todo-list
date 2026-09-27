@@ -68,10 +68,6 @@ public partial class TaskRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _editTitle = string.Empty;
 
-    /// <summary>编辑缓冲：到期日文本（`yyyy-MM-dd`，空串表示未安排）。</summary>
-    [ObservableProperty]
-    private string _editDueDate = string.Empty;
-
     /// <summary>编辑缓冲：优先级。</summary>
     [ObservableProperty]
     private TaskPriority _editPriority;
@@ -163,7 +159,6 @@ public partial class TaskRowViewModel : ViewModelBase
     public void BeginEdit(IList<ProjectChoice> projectChoices)
     {
         EditTitle = Task.Title;
-        EditDueDate = Task.DueDate?.ToString("yyyy-MM-dd") ?? string.Empty;
         EditPriority = Task.Priority;
 
         var match = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId);

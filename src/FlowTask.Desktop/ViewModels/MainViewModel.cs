@@ -21,10 +21,7 @@ namespace FlowTask.Desktop.ViewModels;
 public enum TaskFilter
 {
     /// <summary>全部任务看板。</summary>
-    Active,
-
-    /// <summary>历史残留；无读取路径，L2 删除。</summary>
-    Settings
+    Active
 }
 
 /// <summary>
@@ -812,7 +809,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
 
     /// <summary>
-    /// 变更任务所属项目。
+    /// 变更任务所属项目。测试与无 UI 绑定的指派入口共用此方法。
     /// </summary>
     /// <param name="item">目标任务。</param>
     /// <param name="projectId">目标项目 Id；<c>null</c> 或空串改挂 Default（R-2.6）。</param>

@@ -85,8 +85,8 @@
 
 ### 低优先级
 
-- [ ] **L1** 仓储提供按项目 `GROUP BY` 计数，去掉 `RefreshCountsAsync` / `LoadProjectsAsync` 的 N+1
-- [ ] **L2** 清理死代码，或在对应 SPEC 写明保留理由：`TaskFilter.Settings`、`CurrentFilter`、`knownProjects`、测试专用 `AssignProjectAsync`/`SetDueDateAsync`、`EditDueDate`、`IsDeleted`、两个 `Class1.cs`、无查询的 Title `[Indexed]`
+- [x] **L1** 仓储提供按项目 `GROUP BY` 计数，去掉 `RefreshCountsAsync` / `LoadProjectsAsync` 的 N+1
+- [x] **L2** 清理死代码：`TaskFilter.Settings`、`knownProjects`、`EditDueDate`、两个 `Class1.cs`、Title `[Indexed]`。保留理由：`CurrentFilter` 供绑定/测试派生；`AssignProjectAsync`/`SetDueDateAsync` 为测试与无 UI 入口；`IsDeleted` 仍过滤历史行
 - [ ] **L3** 托盘跨午夜后刷新到期文案 / 逾期样式（或可注入时钟）
 - [ ] **L4** 启动路径只调用一次 `LoadAppearanceAsync`
 - [ ] **L5** 落库成功后再回写实体，或写入失败时回滚（编辑 / 到期日 / 重命名 / 勾选）
@@ -100,7 +100,7 @@
 
 - Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 7，L1（GROUP BY 计数）。
+- Current resume point: 阶段 7，L3（到期日午夜刷新）。
 
 ## Verification
 

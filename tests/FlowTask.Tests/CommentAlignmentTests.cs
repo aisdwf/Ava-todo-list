@@ -32,6 +32,20 @@ public class CommentAlignmentTests
         Assert.Contains("不改内存里的当前值", text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TemplateClass1Files_AreRemoved()
+    {
+        var root = FindRepoRoot();
+        Assert.False(File.Exists(Path.Combine(root, "src", "FlowTask.Core", "Class1.cs")));
+        Assert.False(File.Exists(Path.Combine(root, "src", "FlowTask.Infrastructure", "Class1.cs")));
+    }
+
+    [Fact]
+    public void TaskFilter_HasNoSettingsMember()
+    {
+        Assert.DoesNotContain("Settings", Enum.GetNames<FlowTask.Desktop.ViewModels.TaskFilter>());
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

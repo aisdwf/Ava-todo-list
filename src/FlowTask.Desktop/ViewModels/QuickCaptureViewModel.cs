@@ -256,9 +256,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     [RelayCommand]
     private async Task SaveAsync()
     {
-        var parsed = CaptureInputParser.Parse(
-            InputText,
-            _projects.Select(p => p.Name));
+        var parsed = CaptureInputParser.Parse(InputText);
 
         if (!TaskTitle.IsValid(parsed.Title))
         {
