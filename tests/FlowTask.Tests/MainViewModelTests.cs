@@ -835,4 +835,19 @@ public class MainViewModelTests : IDisposable
         vm.IsDueDatePopupOpen = false;
         Assert.False(vm.IsBlockingOverlayOpen);
     }
+
+    [AvaloniaFact]
+    public async Task EditingDueOffset_DoesNotApplyUntilSave()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Equal(DueDateOffset.DefaultDays, vm.DefaultDueOffsetDays);
+
+        vm.EditingDefaultDueOffsetDays = 7;
+        Assert.Equal(DueDateOffset.DefaultDays, vm.DefaultDueOffsetDays);
+
+        await vm.SaveDefaultDueOffsetCommand.ExecuteAsync(null);
+        Assert.Equal(7, vm.DefaultDueOffsetDays);
+        Assert.Equal(7, await new SqliteAppSettingsRepository(_dbPath).GetDefaultDueOffsetDaysAsync());
+    }
 }

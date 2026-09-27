@@ -29,7 +29,7 @@ public class CommentAlignmentTests
         var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "FlowTask.Desktop", "ViewModels", "MainViewModel.cs"));
         Assert.Contains("改挂 Default", text, StringComparison.Ordinal);
         Assert.DoesNotContain("置空退回未归属", text, StringComparison.Ordinal);
-        Assert.Contains("不改内存里的当前值", text, StringComparison.Ordinal);
+        Assert.Contains("不改已保存的当前值", text, StringComparison.Ordinal);
     }
 
     [Fact]

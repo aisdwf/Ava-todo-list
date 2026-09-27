@@ -621,13 +621,12 @@
                                                            Minimum="1"
                                                            Maximum="30"
                                                            Increment="1"
-                                                           Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
+                                                           Value="{Binding EditingDefaultDueOffsetDays, Mode=TwoWay}" />
                                             <Button Grid.Column="1"
                                                     Classes="PrimaryAction"
                                                     Margin="10,0,0,0"
                                                     Content="保存"
-                                                    Command="{Binding SaveDefaultDueOffsetCommand}"
-                                                    CommandParameter="{Binding DefaultDueOffsetDays}" />
+                                                    Command="{Binding SaveDefaultDueOffsetCommand}" />
                                         </Grid>
                                     </StackPanel>
 
