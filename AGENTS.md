@@ -62,7 +62,7 @@ This entry file alone is **not** sufficient to act on.
 | Install git hooks | `powershell -File scripts/install-git-hooks.ps1` |
 | Test commit-msg hook | `powershell -File scripts/commit-msg-hook/test-commit-msg.ps1` |
 
-Baseline: build 0 warnings / 0 errors; tests 163 passing. Do not regress below this baseline.
+Baseline: build 0 warnings / 0 errors; tests 218 passing. Do not regress below this baseline.
 
 ---
 

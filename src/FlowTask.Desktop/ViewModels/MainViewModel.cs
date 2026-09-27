@@ -16,17 +16,14 @@ namespace FlowTask.Desktop.ViewModels;
 /// 任务视图筛选维度。
 /// </summary>
 /// <remarks>
-/// 为什么独立成枚举：原实现以裸字符串 "All" / "Today" / "Completed" / "Settings" 表示筛选，
-/// 把"设置页"混入任务筛选枚举，导致视图模式与数据筛选两个正交概念被耦合在同一状态里
-/// （Article 10）。此处只保留真正的任务筛选维度，设置页由 <see cref="MainViewModel.IsSettingsOpen"/>
-/// 独立表达。
+/// 设置页由 <see cref="MainViewModel.IsSettingsOpen"/> 独立表达，不进入本枚举。
 /// </remarks>
 public enum TaskFilter
 {
     /// <summary>全部任务看板。</summary>
     Active,
 
-    /// <summary>设置。</summary>
+    /// <summary>历史残留；无读取路径，L2 删除。</summary>
     Settings
 }
 
@@ -692,7 +689,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         if (!DueDateOffset.IsValid(days))
         {
-            // 无效值时恢复到当前值
+            // 非法偏移不写库，也不改内存里的当前值。
             return;
         }
 
@@ -1027,7 +1024,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 确认删除项目。
     /// </summary>
     /// <remarks>
-    /// <b>其下任务不会被删除</b>，仅 <c>ProjectId</c> 置空退回未归属状态 ——
+    /// <b>其下任务不会被删除</b>，仅改挂 Default（R-2.6）——
     /// 任务是用户的核心资产，项目只是它的一个可选属性（design-domain-contract §2.2）。
     /// 该语义由 <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
     /// <para>
