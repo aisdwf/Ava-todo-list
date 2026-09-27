@@ -12,7 +12,6 @@ public class TaskItem
     [PrimaryKey]
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    [Indexed]
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
@@ -25,20 +24,12 @@ public class TaskItem
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
 
     /// <summary>
-    /// 所属项目 Id；<c>null</c> 表示未归属任何项目。
+    /// 所属项目 Id。未指定时由写入路径落到 <see cref="DefaultProject"/>（R-2.6），
+    /// 历史库中的 <c>null</c> 仅在主窗启动迁移里改挂 Default。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>null</c> 是**默认且完全正常**的状态，不是「数据不完整」——
-    /// 零必填是本产品的最高原则，UI 不得对其做任何催促或标记（design-domain-contract §1、§3.3）。
-    /// </para>
-    /// <para>
-    /// 一个任务只能属于一个项目；标签维度由 <c>TaskTags</c> 关联表独立承担。
-    /// </para>
-    /// <para>
-    /// 项目被删除时此字段置 <c>null</c>（任务本身永不随项目删除），
+    /// 一个任务只能属于一个项目。项目被删除时改挂 Default，任务本身永不随项目删除。
     /// 归档时保持不变。见 <c>IProjectRepository.DeleteAsync</c>。
-    /// </para>
     /// </remarks>
     [Indexed]
     public string? ProjectId { get; set; }
@@ -84,5 +75,8 @@ public class TaskItem
     /// <summary>已停用。随 <see cref="IsArchived"/> 一同不再读写。</summary>
     public DateTime? ArchivedAt { get; set; }
 
+    /// <summary>
+    /// 遗留软删列。写入路径只做物理删除，不再置 true；查询仍排除 <c>IsDeleted = 1</c> 的历史行。
+    /// </summary>
     public bool IsDeleted { get; set; }
 }

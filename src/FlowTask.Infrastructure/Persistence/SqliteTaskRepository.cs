@@ -23,23 +23,7 @@ public class SqliteTaskRepository : ITaskRepository
     public SqliteTaskRepository(IClock clock, string? dbPath = null)
     {
         _clock = clock;
-
-        if (string.IsNullOrEmpty(dbPath))
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var folder = Path.Combine(appData, "FlowTask");
-            Directory.CreateDirectory(folder);
-            dbPath = Path.Combine(folder, "flowtask.db");
-        }
-        else
-        {
-            var dbDir = Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
-            {
-                Directory.CreateDirectory(dbDir);
-            }
-        }
-
+        dbPath = DatabaseLocation.Resolve(dbPath);
         _db = new SQLiteAsyncConnection(dbPath);
     }
 
@@ -148,6 +132,39 @@ public class SqliteTaskRepository : ITaskRepository
         return await _db.Table<TaskItem>()
                         .Where(t => t.Id == id)
                         .FirstOrDefaultAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<int> CountActiveTasksAsync()
+    {
+        await InitializeAsync();
+        return await _db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Tasks WHERE IsDeleted = 0");
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, int>> CountTasksGroupedByProjectAsync()
+    {
+        await InitializeAsync();
+        var rows = await _db.QueryAsync<ProjectTaskCountRow>(
+            "SELECT ProjectId, COUNT(*) AS TaskCount FROM Tasks WHERE IsDeleted = 0 GROUP BY ProjectId");
+        var map = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            if (row.ProjectId is null)
+            {
+                continue;
+            }
+
+            map[row.ProjectId] = row.TaskCount;
+        }
+
+        return map;
+    }
+
+    private sealed class ProjectTaskCountRow
+    {
+        public string? ProjectId { get; set; }
+        public int TaskCount { get; set; }
     }
 
     /// <inheritdoc />

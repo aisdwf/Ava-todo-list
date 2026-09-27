@@ -12,15 +12,24 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        Console.WriteLine("[FlowTask] Starting application...");
+        AppLog.Write("Starting application");
         using var instance = SingleInstanceGuard.AcquireOrReplacePrevious();
+        if (instance is null)
+        {
+            AppLog.Write(SingleInstancePolicy.FailureMessage);
+            NativeUserAlert.Show(SingleInstancePolicy.FailureMessage);
+            Environment.ExitCode = 1;
+            return;
+        }
+
         try
         {
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FlowTask Error] {ex}");
+            AppLog.Write("Fatal startup", ex);
+            Environment.ExitCode = 1;
         }
     }
 

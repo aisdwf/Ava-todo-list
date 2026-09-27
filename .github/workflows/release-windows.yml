@@ -48,6 +48,11 @@ jobs:
           }
           echo "value=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Build and test with warnings as errors
+        run: |
+          dotnet build FlowTask.sln -c Release -p:TreatWarningsAsErrors=true --nologo
+          dotnet test FlowTask.sln -c Release --no-build --nologo
+
       - name: Publish win-x64 single-file
         shell: pwsh
         run: >

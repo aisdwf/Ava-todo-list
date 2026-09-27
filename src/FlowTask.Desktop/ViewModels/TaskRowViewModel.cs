@@ -8,26 +8,25 @@ namespace FlowTask.Desktop.ViewModels;
 /// 编辑态中「所属项目」下拉的候选项。
 /// </summary>
 /// <remarks>
-/// 需要一个表示「未归属」的候选项，而 <c>null</c> 无法作为 ComboBox 的可选条目
-/// 被正常显示与选中。此包装使「未归属」成为一个显式、可选择的一等选项 ——
-/// 这与零必填原则一致：未归属不是缺失状态，而是正常的默认状态。
+/// ComboBox 需要对象实例作为条目。R-2.6 以 Default 取代「未归属」，
+/// 故候选项的 <see cref="ProjectId"/> 必须是真实项目，不再用 <c>null</c> 表示空归属。
 /// </remarks>
 public sealed class ProjectChoice
 {
-    /// <summary>项目 Id；<c>null</c> 表示未归属。</summary>
-    public string? ProjectId { get; }
+    /// <summary>项目 Id；必为已存在项目（含 Default 与当前任务所属的归档项目）。</summary>
+    public string ProjectId { get; }
 
     /// <summary>下拉中显示的名称。</summary>
     public string DisplayName { get; }
 
-    public ProjectChoice(string? projectId, string displayName)
+    public ProjectChoice(string projectId, string displayName)
     {
         ProjectId = projectId;
         DisplayName = displayName;
     }
 
-    /// <summary>「未归属」候选项。</summary>
-    public static ProjectChoice None { get; } = new(null, "未归属");
+    /// <summary>Default 候选项，与 <see cref="DefaultProject"/> 同源（Article 6）。</summary>
+    public static ProjectChoice Default { get; } = new(DefaultProject.Id, DefaultProject.Name);
 }
 
 /// <summary>
@@ -69,17 +68,13 @@ public partial class TaskRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _editTitle = string.Empty;
 
-    /// <summary>编辑缓冲：到期日文本（`yyyy-MM-dd`，空串表示未安排）。</summary>
-    [ObservableProperty]
-    private string _editDueDate = string.Empty;
-
     /// <summary>编辑缓冲：优先级。</summary>
     [ObservableProperty]
     private TaskPriority _editPriority;
 
     /// <summary>编辑缓冲：所属项目。</summary>
     [ObservableProperty]
-    private ProjectChoice _editProject = ProjectChoice.None;
+    private ProjectChoice _editProject = ProjectChoice.Default;
 
     /// <summary>所属项目名，用于色条的悬浮提示。</summary>
     [ObservableProperty]
@@ -110,7 +105,7 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 构造任务行。
     /// </summary>
     /// <param name="task">任务实体。</param>
-    /// <param name="project">所属项目；<c>null</c> 表示未归属。</param>
+    /// <param name="project">所属项目；查找失败时为 <c>null</c>（色条不画，编辑时回落到 Default）。</param>
     public TaskRowViewModel(TaskItem task, Project? project)
     {
         Task = task;
@@ -119,6 +114,19 @@ public partial class TaskRowViewModel : ViewModelBase
     }
 
     partial void OnIsCompletedChanged(bool value) => Task.IsCompleted = value;
+
+    /// <summary>
+    /// 用仓储读回的整行更新本行。归属项目变了则返回 false，由调用方整表重载以刷新色条。
+    /// </summary>
+    public void ApplyPersisted(TaskItem persisted)
+    {
+        Task.Title = persisted.Title;
+        Task.Priority = persisted.Priority;
+        Task.DueDate = persisted.DueDate;
+        Task.CompletedAt = persisted.CompletedAt;
+        IsCompleted = persisted.IsCompleted;
+        RefreshDerivedFlags();
+    }
 
     /// <summary>
     /// 用仓储读回的完成态更新本行。保留同一行实例，供已渲染的勾选圈接收通知。
@@ -143,14 +151,27 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 以实体当前值填充编辑缓冲并展开面板。
     /// </summary>
     /// <param name="projectChoices">可选项目列表，用于定位当前归属对应的候选项。</param>
-    public void BeginEdit(IEnumerable<ProjectChoice> projectChoices)
+    /// <remarks>
+    /// 侧边栏候选只含未归档项目。全部任务看板仍会列出归档项目下的任务；
+    /// 找不到当前归属时补进候选（同一实例，供 ComboBox 引用相等）。
+    /// 历史 <c>ProjectId == null</c> 的行回落到 Default，不再提供「未归属」。
+    /// </remarks>
+    public void BeginEdit(IList<ProjectChoice> projectChoices)
     {
         EditTitle = Task.Title;
-        EditDueDate = Task.DueDate?.ToString("yyyy-MM-dd") ?? string.Empty;
         EditPriority = Task.Priority;
-        EditProject = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId)
-                      ?? ProjectChoice.None;
 
+        var match = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId);
+        if (match is null && Task.ProjectId is not null)
+        {
+            var label = string.IsNullOrEmpty(ProjectName) ? Task.ProjectId : ProjectName;
+            match = new ProjectChoice(Task.ProjectId, label);
+            projectChoices.Add(match);
+        }
+
+        EditProject = match
+                      ?? projectChoices.FirstOrDefault(c => c.ProjectId == DefaultProject.Id)
+                      ?? ProjectChoice.Default;
         IsEditing = true;
     }
 

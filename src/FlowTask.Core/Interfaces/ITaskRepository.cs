@@ -36,6 +36,12 @@ public interface ITaskRepository
 
     Task<TaskItem?> GetByIdAsync(string id);
 
+    /// <summary>未删除任务总数，供侧边栏「全部」计数，避免为 Count 拉整表。</summary>
+    Task<int> CountActiveTasksAsync();
+
+    /// <summary>按 <see cref="TaskItem.ProjectId"/> 分组的未删除任务数。</summary>
+    Task<IReadOnlyDictionary<string, int>> CountTasksGroupedByProjectAsync();
+
     /// <summary>
     /// 新增或更新任务。
     /// </summary>

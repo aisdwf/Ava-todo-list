@@ -5,14 +5,10 @@ namespace FlowTask.Tests;
 
 public class CaptureInputParserTests
 {
-    private static readonly string[] Projects = ["FlowTask", "Default", "家务"];
-
     [Fact]
     public void Parse_ExtractsProject_LeavesTitle()
     {
-        var result = CaptureInputParser.Parse(
-            "修登录 @FlowTask",
-            Projects);
+        var result = CaptureInputParser.Parse("修登录 @FlowTask");
 
         Assert.Equal("修登录", result.Title);
         Assert.Equal("FlowTask", result.ProjectName);
@@ -21,9 +17,7 @@ public class CaptureInputParserTests
     [Fact]
     public void Parse_UnknownProjectToken_StrippedForCreate_NotLeftInTitle()
     {
-        var result = CaptureInputParser.Parse(
-            "灵感 @不存在的项目 后续",
-            Projects);
+        var result = CaptureInputParser.Parse("灵感 @不存在的项目 后续");
 
         Assert.Equal("灵感 后续", result.Title);
         Assert.Equal("不存在的项目", result.ProjectName);
@@ -32,7 +26,7 @@ public class CaptureInputParserTests
     [Fact]
     public void Parse_NoSigils_TitleOnly()
     {
-        var result = CaptureInputParser.Parse("只是一句话", Projects);
+        var result = CaptureInputParser.Parse("只是一句话");
 
         Assert.Equal("只是一句话", result.Title);
         Assert.Null(result.ProjectName);
@@ -41,7 +35,7 @@ public class CaptureInputParserTests
     [Fact]
     public void Parse_MatchesProjectIgnoreCase_ViaNormalize()
     {
-        var result = CaptureInputParser.Parse("x @flowtask", Projects);
+        var result = CaptureInputParser.Parse("x @flowtask");
 
         Assert.Equal("x", result.Title);
         Assert.Equal("flowtask", result.ProjectName);
@@ -50,7 +44,7 @@ public class CaptureInputParserTests
     [Fact]
     public void Parse_DoubleAt_StaysInTitle_NotProject()
     {
-        var result = CaptureInputParser.Parse("ping @@FlowTask", Projects);
+        var result = CaptureInputParser.Parse("ping @@FlowTask");
 
         Assert.Equal("ping @@FlowTask", result.Title);
         Assert.Null(result.ProjectName);
@@ -59,7 +53,7 @@ public class CaptureInputParserTests
     [Fact]
     public void Parse_HashToken_StaysInTitle_NotParsedAsSigil()
     {
-        var result = CaptureInputParser.Parse("note #紧急", Projects);
+        var result = CaptureInputParser.Parse("note #紧急");
 
         Assert.Equal("note #紧急", result.Title);
         Assert.Null(result.ProjectName);

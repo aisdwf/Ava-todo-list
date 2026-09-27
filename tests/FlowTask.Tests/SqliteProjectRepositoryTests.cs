@@ -291,4 +291,82 @@ public class SqliteProjectRepositoryTests : IDisposable
         Assert.Single(unassigned);
         Assert.Equal("没归属的", unassigned[0].Title);
     }
+
+    /// <summary>
+    /// 种子 Default 不得顺带改写 <c>ProjectId IS NULL</c>：那是启动迁移，不是每次打开小窗。
+    /// </summary>
+    [Fact]
+    public async Task EnsureDefaultProject_DoesNotMigrateNullTasks()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        Assert.NotNull(await _projects.GetByIdAsync(DefaultProject.Id));
+        Assert.Null((await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    [Fact]
+    public async Task MigrateNullProjectIdsToDefault_AssignsDefault()
+    {
+        var task = await AddTaskAsync("历史未归属", null);
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+
+        await _projects.MigrateNullProjectIdsToDefaultAsync();
+
+        Assert.Equal(DefaultProject.Id, (await _tasks.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultProject_ConcurrentInserts_DoNotThrowAndKeepSingleRow()
+    {
+        var other = new SqliteProjectRepository(_dbPath);
+        var t1 = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var t2 = new DateTime(2026, 3, 10, 9, 0, 0, DateTimeKind.Utc);
+
+        await Task.WhenAll(
+            _projects.EnsureDefaultProjectAsync(t1),
+            other.EnsureDefaultProjectAsync(t2));
+
+        var all = await _projects.GetAllProjectsAsync();
+        Assert.Single(all);
+        Assert.Equal(DefaultProject.Id, all[0].Id);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultProject_SecondCall_DoesNotOverwriteCreatedAt()
+    {
+        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var second = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _projects.EnsureDefaultProjectAsync(first);
+        await _projects.EnsureDefaultProjectAsync(second);
+
+        var stored = await _projects.GetByIdAsync(DefaultProject.Id);
+        Assert.Equal(first, stored!.CreatedAt);
+    }
+
+    [Fact]
+    public async Task SaveProject_RejectsDuplicateNameIncludingArchived()
+    {
+        var live = NewProject("工作");
+        await _projects.SaveProjectAsync(live);
+        await _projects.SetArchivedAsync(live.Id, true);
+
+        var clash = NewProject("工作");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _projects.SaveProjectAsync(clash));
+        Assert.Contains("已被使用", ex.Message, StringComparison.Ordinal);
+        Assert.True(await _projects.NameIsTakenAsync("工作", exceptId: null));
+        Assert.False(await _projects.NameIsTakenAsync("工作", exceptId: live.Id));
+    }
+
+    [Fact]
+    public async Task NextSortOrder_UsesMaxPlusOneAfterArchive()
+    {
+        await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
+        var first = NewProject("甲", sortOrder: 1);
+        await _projects.SaveProjectAsync(first);
+        await _projects.SetArchivedAsync(first.Id, true);
+
+        Assert.Equal(2, await _projects.NextSortOrderAsync());
+    }
 }

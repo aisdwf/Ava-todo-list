@@ -8,6 +8,7 @@ using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Core.Ordering;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
@@ -15,7 +16,7 @@ namespace FlowTask.Desktop.ViewModels;
 /// <summary>
 /// 快捷小窗：热键显隐 + <c>@项目</c> 解析与补全（spec-quick-window-hotkey-capture）。
 /// </summary>
-public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
+public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>
 {
     /// <summary>记忆上次在小窗选择项目的设置键（spec-quick-window-single-project-list §2.4）。</summary>
     private const string LastProjectSettingsKey = "QuickWindow.LastProjectId";
@@ -26,14 +27,15 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     private readonly IClock _clock;
 
     private List<Project> _projects = [];
+    private List<Project> _allProjects = [];
 
     /// <summary>切换项目时抑制联动查询，避免 <see cref="PrepareAsync"/> 恢复上次项目时触发一次多余的重复加载。</summary>
     private bool _suppressProjectSelectionReload;
 
     /// <summary>
-    /// 本窗口正在从自己的勾选命令重载列表时跳过总线，避免与 <c>reloadTasks</c> 并发重建同一集合。
+    /// 本窗口自己发出的总线消息通过 Origin 跳过，避免与命令内的 reload 并发重建同一集合。
     /// </summary>
-    private bool _suppressTaskSavedReload;
+    private int _tasksLoadGeneration;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -96,6 +98,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         _clock = clock;
 
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
+        WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
     }
 
     /// <summary>
@@ -104,7 +107,8 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     public async Task PrepareAsync()
     {
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
-        _projects = await _projectRepository.GetActiveProjectsAsync();
+        _allProjects = await _projectRepository.GetAllProjectsAsync();
+        _projects = _allProjects.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
         RefreshCompletion();
 
         await RefreshProjectChoicesAsync();
@@ -157,7 +161,9 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return;
         }
 
-        _ = ChangeSelectedProjectCommand.ExecuteAsync(value);
+        LoggedTasks.FireAndForget(
+            ChangeSelectedProjectCommand.ExecuteAsync(value),
+            "QuickCapture OnSelectedProjectChanged");
     }
 
     [RelayCommand]
@@ -172,8 +178,14 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     /// </summary>
     private async Task LoadTasksForSelectedProjectAsync()
     {
+        var generation = Interlocked.Increment(ref _tasksLoadGeneration);
         var projectId = SelectedProject?.Id ?? DefaultProject.Id;
         var items = await _taskRepository.GetTasksByProjectAsync(projectId);
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
         var ordered = TaskListOrder.Sort(items);
 
         var project = _projects.FirstOrDefault(p => p.Id == projectId);
@@ -192,28 +204,29 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     /// </summary>
     [RelayCommand]
     private async Task ToggleTaskCompleteAsync(TaskItem? item)
-    {
-        _suppressTaskSavedReload = true;
-        try
-        {
-            await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
-                .ExecuteAsync(item, LoadTasksForSelectedProjectAsync);
-        }
-        finally
-        {
-            _suppressTaskSavedReload = false;
-        }
-    }
+        => await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
+            .ExecuteAsync(item, LoadTasksForSelectedProjectAsync, this);
 
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
     {
-        if (_suppressTaskSavedReload)
+        if (ReferenceEquals(message.Origin, this))
         {
             return;
         }
 
         TaskListRefreshTask = UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id));
+    }
+
+    /// <inheritdoc />
+    public void Receive(TaskDeletedMessage message)
+    {
+        if (ReferenceEquals(message.Origin, this))
+        {
+            return;
+        }
+
+        TaskListRefreshTask = UiThread.RunAsync(() => LoadTasksForSelectedProjectAsync());
     }
 
     /// <summary>
@@ -245,9 +258,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     [RelayCommand]
     private async Task SaveAsync()
     {
-        var parsed = CaptureInputParser.Parse(
-            InputText,
-            _projects.Select(p => p.Name));
+        var parsed = CaptureInputParser.Parse(InputText);
 
         if (!TaskTitle.IsValid(parsed.Title))
         {
@@ -258,16 +269,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
 
         var task = TaskItemFactory.Create(_clock, parsed.Title, Priority, projectId);
         await _taskRepository.SaveTaskAsync(task);
-
-        _suppressTaskSavedReload = true;
-        try
-        {
-            WeakReferenceMessenger.Default.Send(new TaskSavedMessage(task));
-        }
-        finally
-        {
-            _suppressTaskSavedReload = false;
-        }
+        TaskChangeBus.Saved(task, this);
 
         // 新任务落在当前小窗选中的项目时立即刷新列表，不需要关闭再重开才能看到（Q7）
         if (projectId == (SelectedProject?.Id ?? DefaultProject.Id))
@@ -351,7 +353,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return DefaultProject.Id;
         }
 
-        var match = _projects.FirstOrDefault(p =>
+        var match = _allProjects.FirstOrDefault(p =>
             string.Equals(
                 ProjectName.Normalize(p.Name),
                 ProjectName.Normalize(projectName),
@@ -369,11 +371,12 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         var project = new Project
         {
             Name = ProjectName.Normalize(projectName),
-            SortOrder = _projects.Count,
-            ColorHex = AppearanceCoordinator.PickPaletteColor(_projects.Count),
+            SortOrder = await _projectRepository.NextSortOrderAsync(),
+            ColorHex = AppearanceCoordinator.PickPaletteColor(_allProjects.Count),
             CreatedAt = _clock.UtcNow
         };
         await _projectRepository.SaveProjectAsync(project);
+        _allProjects.Add(project);
         _projects.Add(project);
         return project.Id;
     }

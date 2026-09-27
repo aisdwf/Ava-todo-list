@@ -18,6 +18,12 @@ public interface IProjectRepository
     /// <summary>新增或更新项目。</summary>
     Task<int> SaveProjectAsync(Project project);
 
+    /// <summary>下一个 SortOrder：全表 MAX + 1，避免归档/删除后撞序。</summary>
+    Task<int> NextSortOrderAsync();
+
+    /// <summary>名称是否已被其它项目占用（含归档，大小写不敏感）。</summary>
+    Task<bool> NameIsTakenAsync(string name, string? exceptId);
+
     /// <summary>设置归档状态。任务归属不受影响。</summary>
     Task<int> SetArchivedAsync(string id, bool isArchived);
 
@@ -35,7 +41,14 @@ public interface IProjectRepository
     Task<int> CountTasksAsync(string projectId);
 
     /// <summary>
-    /// 确保 Default 项目存在，并将历史 <c>ProjectId IS NULL</c> 的任务迁到 Default。
+    /// 确保 Default 项目存在。不迁移 <c>ProjectId IS NULL</c> 的任务
+    /// （那一步只在主窗启动，见 <see cref="MigrateNullProjectIdsToDefaultAsync"/>）。
     /// </summary>
     Task EnsureDefaultProjectAsync(DateTime createdAtUtc);
+
+    /// <summary>
+    /// 将历史 <c>ProjectId IS NULL</c> 的未删除任务改挂 Default（R-2.6）。
+    /// 仅主窗启动路径调用，避免小窗打开时改写刚编辑过的归属。
+    /// </summary>
+    Task MigrateNullProjectIdsToDefaultAsync();
 }

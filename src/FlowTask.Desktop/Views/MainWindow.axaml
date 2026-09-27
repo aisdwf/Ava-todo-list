@@ -356,7 +356,7 @@
                                                Foreground="{DynamicResource TextPrimaryBrush}"
                                                Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
                                     <TextBlock Classes="CaptionText"
-                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='其下 {0} 条任务不会被删除，将退回「未归属」。此操作不可撤销。'}" />
+                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='其下 {0} 条任务不会被删除，将改挂 Default。此操作不可撤销。'}" />
                                 </StackPanel>
 
                                 <Button Grid.Column="1" Margin="12,0,8,0"
@@ -621,13 +621,12 @@
                                                            Minimum="1"
                                                            Maximum="30"
                                                            Increment="1"
-                                                           Value="{Binding DefaultDueOffsetDays, Mode=TwoWay}" />
+                                                           Value="{Binding EditingDefaultDueOffsetDays, Mode=TwoWay}" />
                                             <Button Grid.Column="1"
                                                     Classes="PrimaryAction"
                                                     Margin="10,0,0,0"
                                                     Content="保存"
-                                                    Command="{Binding SaveDefaultDueOffsetCommand}"
-                                                    CommandParameter="{Binding DefaultDueOffsetDays}" />
+                                                    Command="{Binding SaveDefaultDueOffsetCommand}" />
                                         </Grid>
                                     </StackPanel>
 
@@ -766,6 +765,20 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- 启动失败可见提示：无控制台，不能只写日志 -->
+        <Border IsVisible="{Binding HasInitializationError}"
+                ZIndex="120"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Margin="16"
+                Padding="16,12"
+                Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="8">
+            <TextBlock Text="{Binding InitializationError}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource DangerBrush}" />
+        </Border>
 
         <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->
         <Canvas x:Name="RevealCanvas" IsHitTestVisible="False" IsVisible="False" ClipToBounds="True">

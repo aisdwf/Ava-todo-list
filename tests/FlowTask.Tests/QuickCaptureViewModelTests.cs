@@ -110,7 +110,7 @@ public class QuickCaptureViewModelTests : IDisposable
     [AvaloniaFact]
     public async Task ToggleTaskComplete_KeepsTaskVisibleAndStrikesThrough()
     {
-        var task = TaskItemFactory.Create(_clock, "打卡");
+        var task = TaskItemFactory.Create(_clock, "打卡", projectId: DefaultProject.Id);
         await _taskRepo.SaveTaskAsync(task);
 
         var vm = CreateViewModel();
@@ -138,5 +138,39 @@ public class QuickCaptureViewModelTests : IDisposable
 
         Assert.Single(vm.Tasks);
         Assert.Equal("买菜", vm.Tasks[0].Task.Title);
+    }
+
+    /// <summary>
+    /// 打开小窗只确保 Default 存在，不得把历史 null 归属改写成 Default。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task PrepareAsync_DoesNotMigrateNullProjectIds()
+    {
+        var orphan = TaskItemFactory.Create(_clock, "历史未归属");
+        await _taskRepo.SaveTaskAsync(orphan);
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        Assert.Null((await _taskRepo.GetByIdAsync(orphan.Id))!.ProjectId);
+    }
+
+    [AvaloniaFact]
+    public async Task SaveAsync_AtMentionMatchesArchivedProjectInsteadOfCreatingDuplicate()
+    {
+        var archived = new Project { Name = "旧项", CreatedAt = _clock.UtcNow };
+        await _projectRepo.SaveProjectAsync(archived);
+        await _projectRepo.SetArchivedAsync(archived.Id, true);
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+        Assert.DoesNotContain(vm.Projects, p => p.Id == archived.Id);
+
+        vm.InputText = "续上 @旧项";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        var stored = (await _taskRepo.GetAllActiveTasksAsync()).Single(t => t.Title == "续上");
+        Assert.Equal(archived.Id, stored.ProjectId);
+        Assert.Single(await _projectRepo.GetAllProjectsAsync(), p => p.Name == "旧项");
     }
 }

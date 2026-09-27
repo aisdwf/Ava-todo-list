@@ -13,6 +13,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Converters;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 
@@ -68,6 +69,7 @@ public partial class MainWindow : Window
     /// 新建项目非法提示的自动消失计时。展示时长不是业务门闩，只服务「短暂」这一观感。
     /// </summary>
     private DispatcherTimer? _createProjectErrorTimer;
+    private DispatcherTimer? _midnightTimer;
 
     /// <summary>
     /// 设计器与 XAML 预览专用构造函数。
@@ -125,15 +127,29 @@ public partial class MainWindow : Window
         vm.PropertyChanged += OnMainViewModelPropertyChanged;
 
         Closing += OnMainWindowClosing;
+        Closed += (_, _) => _midnightTimer?.Stop();
 
-        Opened += async (_, _) =>
+        Opened += (_, _) => LoggedTasks.FireAndForget(OnOpenedAsync(), "MainWindow.Opened");
+    }
+
+    private async Task OnOpenedAsync()
+    {
+        if (DataContext is not MainViewModel vm)
         {
-            // 先读库再刷窗，否则首帧会用字段默认值（深色 / 默认主题 / Mica）闪一下。
-            await vm.LoadAppearanceAsync();
+            return;
+        }
+
+        try
+        {
+            await vm.InitializeAsync();
             AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
             AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
-            await vm.InitializeAsync();
-        };
+            ArmMidnightRefresh(vm);
+        }
+        catch (Exception ex)
+        {
+            vm.ReportInitializationFailure(ex);
+        }
     }
 
     /// <summary>
@@ -159,14 +175,29 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() => ApplyClosePolicy(vm));
     }
 
+    private void ArmMidnightRefresh(MainViewModel vm)
+    {
+        _midnightTimer?.Stop();
+        _midnightTimer = new DispatcherTimer
+        {
+            Interval = MidnightRefresh.DelayUntilNextMidnight(DateTime.Now)
+        };
+        _midnightTimer.Tick += (_, _) =>
+        {
+            LoggedTasks.FireAndForget(vm.RefreshTasksCommand.ExecuteAsync(null), "MidnightRefresh");
+            ArmMidnightRefresh(vm);
+        };
+        _midnightTimer.Start();
+    }
+
     private static void ApplyClosePolicy(MainViewModel vm)
     {
-        switch (vm.CloseAction)
+        switch (ClosePolicyDispatcher.Decide(vm.CloseAction))
         {
-            case CloseActionKind.MinimizeToTray:
+            case ClosePolicyEffect.HideToTray:
                 App.CurrentApp?.HideMainToTray();
                 break;
-            case CloseActionKind.Exit:
+            case ClosePolicyEffect.Exit:
                 App.CurrentApp?.RequestExit();
                 break;
             default:
@@ -301,12 +332,14 @@ public partial class MainWindow : Window
     /// <summary>
     /// 供进程级热键回调：切到 UI 线程后显隐小窗（spec-quick-window-hotkey-capture）。
     /// </summary>
-    public void ToggleQuickCaptureFromHotkey() => _ = ToggleQuickCaptureWindowAsync();
+    public void ToggleQuickCaptureFromHotkey()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromHotkey");
 
     /// <summary>
     /// 唤起或隐藏快捷小窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
-    private void ToggleQuickCaptureWindow() => _ = ToggleQuickCaptureWindowAsync();
+    private void ToggleQuickCaptureWindow()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureWindow");
 
     private async Task ToggleQuickCaptureWindowAsync()
     {

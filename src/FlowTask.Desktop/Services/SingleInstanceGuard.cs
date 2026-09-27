@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 
 namespace FlowTask.Desktop.Services;
 
@@ -15,8 +16,6 @@ public sealed class SingleInstanceGuard : IDisposable
     /// <summary>旧进程监听替换请求的管道名。</summary>
     public const string PipeName = "FlowTask.SingleInstance.Pipe";
 
-    private const string ReplaceCommand = "replace";
-
     private static readonly TimeSpan GracefulWait = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan AfterKillWait = TimeSpan.FromSeconds(2);
     private static readonly string[] ProcessNames = ["FlowTask", "FlowTask.Desktop"];
@@ -31,12 +30,12 @@ public sealed class SingleInstanceGuard : IDisposable
         _ownsMutex = ownsMutex;
     }
 
-    /// <summary>当前进程持有的守卫；未抢到锁时为 null，启动路径仍继续以免 exe 打不开。</summary>
+    /// <summary>当前进程持有的守卫；未抢到锁时为 null，调用方必须退出。</summary>
     public static SingleInstanceGuard? Current { get; private set; }
 
     /// <summary>
-    /// 成为唯一实例。若已有实例，先请它彻底退出；超时则强杀其它 FlowTask 进程。
-    /// 仍拿不到锁时返回 null，调用方照常启动。
+    /// 成为唯一实例。若已有实例，先请它彻底退出；超时则只强杀同一可执行文件路径的进程。
+    /// 仍拿不到锁时返回 null，调用方失败退出。
     /// </summary>
     public static SingleInstanceGuard? AcquireOrReplacePrevious()
     {
@@ -69,7 +68,9 @@ public sealed class SingleInstanceGuard : IDisposable
     {
         _listenCts = new CancellationTokenSource();
         var token = _listenCts.Token;
-        _ = Task.Run(() => ListenLoop(onReplaceRequested, token), token);
+        LoggedTasks.FireAndForget(
+            Task.Run(() => ListenLoop(onReplaceRequested, token), token),
+            "SingleInstance ListenLoop");
     }
 
     /// <inheritdoc />
@@ -120,7 +121,7 @@ public sealed class SingleInstanceGuard : IDisposable
             using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
             client.Connect(800);
             using var writer = new StreamWriter(client) { AutoFlush = true };
-            writer.WriteLine(ReplaceCommand);
+            writer.WriteLine(SingleInstancePolicy.FormatReplaceLine(CurrentExecutablePath() ?? string.Empty));
         }
         catch (Exception)
         {
@@ -131,6 +132,7 @@ public sealed class SingleInstanceGuard : IDisposable
     private static void KillOtherFlowTaskProcesses()
     {
         var self = Environment.ProcessId;
+        var selfPath = CurrentExecutablePath();
         foreach (var name in ProcessNames)
         {
             Process[] processes;
@@ -148,6 +150,11 @@ public sealed class SingleInstanceGuard : IDisposable
                 try
                 {
                     if (process.Id == self)
+                    {
+                        continue;
+                    }
+
+                    if (!SingleInstancePolicy.CanKillProcess(selfPath, TryGetProcessPath(process)))
                     {
                         continue;
                     }
@@ -180,9 +187,10 @@ public sealed class SingleInstanceGuard : IDisposable
                     PipeOptions.Asynchronous);
 
                 await server.WaitForConnectionAsync(token).ConfigureAwait(false);
+                var clientPath = TryGetPipeClientPath(server);
                 using var reader = new StreamReader(server);
                 var line = await reader.ReadLineAsync(token).ConfigureAwait(false);
-                if (string.Equals(line, ReplaceCommand, StringComparison.OrdinalIgnoreCase))
+                if (SingleInstancePolicy.IsAuthorizedReplace(line, CurrentExecutablePath(), clientPath))
                 {
                     onReplaceRequested();
                     return;
@@ -210,4 +218,40 @@ public sealed class SingleInstanceGuard : IDisposable
             }
         }
     }
+
+    private static string? CurrentExecutablePath()
+        => Environment.ProcessPath;
+
+    private static string? TryGetProcessPath(Process process)
+    {
+        try
+        {
+            return process.MainModule?.FileName;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static string? TryGetPipeClientPath(NamedPipeServerStream server)
+    {
+        try
+        {
+            if (!GetNamedPipeClientProcessId(server.SafePipeHandle.DangerousGetHandle(), out var pid) || pid == 0)
+            {
+                return null;
+            }
+
+            using var process = Process.GetProcessById((int)pid);
+            return TryGetProcessPath(process);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint clientProcessId);
 }

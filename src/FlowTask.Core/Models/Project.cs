@@ -45,7 +45,7 @@ public class Project
     ///   </description></item>
     ///   <item><description>
     ///   <b>删除</b>：项目建错或不再需要，归属信息无价值。
-    ///   其下任务的 <c>ProjectId</c> 置 <c>null</c>，**任务本身永不被删除**。
+    ///   其下任务改挂 Default（R-2.6），**任务本身永不被删除**。
     ///   </description></item>
     /// </list>
     /// 项目本身无软删除标记：那会引出「项目回收站」，

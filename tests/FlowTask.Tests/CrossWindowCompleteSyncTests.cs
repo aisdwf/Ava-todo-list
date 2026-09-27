@@ -97,4 +97,54 @@ public class CrossWindowCompleteSyncTests : IDisposable
         Assert.NotNull(quickRow.Task.CompletedAt);
         Assert.True(quickRow.Task.IsCompleted);
     }
+
+    [AvaloniaFact]
+    public async Task MainAdd_AppearsInQuickList()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+        await quick.PrepareAsync();
+
+        main.NewTaskTitle = "跨窗新增";
+        await main.AddTaskCommand.ExecuteAsync(null);
+        await quick.TaskListRefreshTask;
+
+        Assert.Equal("跨窗新增", Assert.Single(quick.Tasks).Task.Title);
+        Assert.Equal("跨窗新增", Assert.Single(main.Tasks).Task.Title);
+    }
+
+    [AvaloniaFact]
+    public async Task MainDelete_RemovesFromQuickList()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+
+        var task = TaskItemFactory.Create(_clock, "跨窗删除", projectId: DefaultProject.Id);
+        await _taskRepo.SaveTaskAsync(task);
+        await main.RefreshTasksCommand.ExecuteAsync(null);
+        await quick.PrepareAsync();
+        Assert.Single(quick.Tasks);
+
+        await main.DeleteTaskCommand.ExecuteAsync(main.Tasks[0].Task);
+        await quick.TaskListRefreshTask;
+
+        Assert.Empty(quick.Tasks);
+        Assert.Empty(main.Tasks);
+    }
+
+    [AvaloniaFact]
+    public async Task OwnWrite_DoesNotTreatBusEchoAsPeerRefresh()
+    {
+        var main = CreateMain();
+        await main.InitializeAsync();
+        var before = main.TaskListRefreshTask;
+
+        main.NewTaskTitle = "本窗写入";
+        await main.AddTaskCommand.ExecuteAsync(null);
+
+        Assert.Same(before, main.TaskListRefreshTask);
+        Assert.Equal("本窗写入", Assert.Single(main.Tasks).Task.Title);
+    }
 }

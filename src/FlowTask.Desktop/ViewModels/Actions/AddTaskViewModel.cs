@@ -1,6 +1,7 @@
 using FlowTask.Core.Enums;
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -26,15 +27,22 @@ public sealed class AddTaskViewModel
         DateTime? dueDate,
         string? projectId,
         Action resetInput,
-        Func<Task> reloadTasks)
+        Func<Task> reloadTasks,
+        object origin)
     {
         if (!TaskTitle.IsValid(title))
         {
             return;
         }
 
-        var task = TaskItemFactory.Create(_clock, title, priority, projectId: projectId, dueDate: dueDate);
+        var task = TaskItemFactory.Create(
+            _clock,
+            title,
+            priority,
+            projectId: projectId ?? DefaultProject.Id,
+            dueDate: dueDate);
         await _taskRepository.SaveTaskAsync(task);
+        TaskChangeBus.Saved(task, origin);
         resetInput();
         await reloadTasks();
     }
