@@ -7,14 +7,14 @@ using FlowTask.Core.Interfaces;
 using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Core.Ordering;
-using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
 
 /// <summary>
-/// 快捷小窗：热键显隐 + <c>@项目</c> 解析与补全（spec-quick-window-hotkey-capture）。
+/// 快捷小窗：单项目列表 + 勾选 + 录入。项目下拉是唯一的项目上下文，
+/// 列表展示与新建归属都跟随它（spec-quick-window-single-project-list §7，R-1.9）。
 /// </summary>
 public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>
 {
@@ -27,7 +27,6 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     private readonly IClock _clock;
 
     private List<Project> _projects = [];
-    private List<Project> _allProjects = [];
 
     /// <summary>切换项目时抑制联动查询，避免 <see cref="PrepareAsync"/> 恢复上次项目时触发一次多余的重复加载。</summary>
     private bool _suppressProjectSelectionReload;
@@ -43,21 +42,12 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     [ObservableProperty]
     private TaskPriority _priority = TaskPriority.Medium;
 
-    [ObservableProperty]
-    private bool _isCompletionOpen;
-
-    [ObservableProperty]
-    private int _selectedCompletionIndex;
-
-    /// <summary>当前补全候选（项目名，不含 <c>@</c>）。</summary>
-    public ObservableCollection<string> CompletionItems { get; } = [];
-
     /// <summary>
     /// 项目下拉候选（含系统 Default），驱动小窗单项目列表切换（D1：下拉）。
     /// </summary>
     public ObservableCollection<ProjectItemViewModel> Projects { get; } = [];
 
-    /// <summary>当前选中项目；驱动任务列表查询与「记忆上次项目」持久化。</summary>
+    /// <summary>当前选中项目；驱动任务列表查询、新建归属与「记忆上次项目」持久化。</summary>
     [ObservableProperty]
     private ProjectItemViewModel? _selectedProject;
 
@@ -79,9 +69,6 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
 
     /// <summary>请求关闭浮窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestClose;
-
-    /// <summary>请求将输入框光标移到指定位置（补全接受后跟到词尾）。</summary>
-    public event Action<int>? RequestSetCaret;
 
     /// <summary>
     /// 构造快捷小窗视图模型。
@@ -107,23 +94,17 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     public async Task PrepareAsync()
     {
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
-        _allProjects = await _projectRepository.GetAllProjectsAsync();
-        _projects = _allProjects.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
-        RefreshCompletion();
+        await ReloadActiveProjectsAsync();
 
-        await RefreshProjectChoicesAsync();
-    }
-
-    partial void OnInputTextChanged(string value) => RefreshCompletion();
-
-    /// <summary>
-    /// 重建项目下拉候选并恢复上次选中项，同时载入对应任务列表。
-    /// </summary>
-    private async Task RefreshProjectChoicesAsync()
-    {
         var lastProjectId = await _settingsRepository.GetAsync(LastProjectSettingsKey);
         RebuildProjectChoices(lastProjectId);
         await LoadTasksForSelectedProjectAsync();
+    }
+
+    private async Task ReloadActiveProjectsAsync()
+    {
+        var all = await _projectRepository.GetAllProjectsAsync();
+        _projects = all.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
     }
 
     /// <summary>
@@ -141,10 +122,16 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         var restored = Projects.FirstOrDefault(p => p.Id == preferredProjectId)
                        ?? Projects.FirstOrDefault(p => p.Id == DefaultProject.Id);
 
+        SelectProjectSilently(restored);
+    }
+
+    /// <summary>改选中项但不触发 <see cref="OnSelectedProjectChanged"/> 的 fire-and-forget 联动。</summary>
+    private void SelectProjectSilently(ProjectItemViewModel? project)
+    {
         _suppressProjectSelectionReload = true;
         try
         {
-            SelectedProject = restored;
+            SelectedProject = project;
         }
         finally
         {
@@ -178,6 +165,32 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     {
         await _settingsRepository.SetAsync(LastProjectSettingsKey, value?.Id ?? DefaultProject.Id);
         await LoadTasksForSelectedProjectAsync();
+    }
+
+    /// <summary>切到下一个项目，末尾回到首项（D6：<c>Ctrl+Tab</c>）。</summary>
+    [RelayCommand]
+    private Task SelectNextProjectAsync() => CycleProjectAsync(1);
+
+    /// <summary>切到上一个项目，首项回到末尾（D6：<c>Ctrl+Shift+Tab</c>）。</summary>
+    [RelayCommand]
+    private Task SelectPreviousProjectAsync() => CycleProjectAsync(-1);
+
+    /// <remarks>
+    /// 静默改选中项后直接 await 切换命令，而不是依赖属性回调的 fire-and-forget，
+    /// 使键盘切换的调用方（及测试）能拿到确定的完成点。
+    /// </remarks>
+    private async Task CycleProjectAsync(int step)
+    {
+        if (Projects.Count == 0)
+        {
+            return;
+        }
+
+        var current = SelectedProject is null ? 0 : Math.Max(0, Projects.IndexOf(SelectedProject));
+        var next = Projects[((current + step) % Projects.Count + Projects.Count) % Projects.Count];
+
+        SelectProjectSilently(next);
+        await ChangeSelectedProjectAsync(next);
     }
 
     /// <summary>
@@ -243,9 +256,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     private async Task HandlePeerTaskDeletedAsync()
     {
         var preferred = SelectedProject?.Id;
-        _allProjects = await _projectRepository.GetAllProjectsAsync();
-        _projects = _allProjects.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
-        RefreshCompletion();
+        await ReloadActiveProjectsAsync();
         RebuildProjectChoices(preferred);
         if (SelectedProject?.Id != preferred)
         {
@@ -280,34 +291,20 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     }
 
     /// <summary>
-    /// 保存捕捉项并关闭浮窗。空白标题静默忽略。
-    /// 未知 <c>@</c> 在保存时创建实体（R-1.8）。
+    /// 保存到当前下拉项目并留在小窗（D4/D5）：输入清空、列表立即出现新任务，可连续录入。
+    /// 空白标题静默忽略。
     /// </summary>
+    /// <remarks>与主窗创建栏共用 <see cref="AddTaskViewModel"/>，不另写一套创建不变量。</remarks>
     [RelayCommand]
     private async Task SaveAsync()
-    {
-        var parsed = CaptureInputParser.Parse(InputText);
-
-        if (!TaskTitle.IsValid(parsed.Title))
-        {
-            return;
-        }
-
-        var projectId = await ResolveOrCreateProjectAsync(parsed.ProjectName);
-
-        var task = TaskItemFactory.Create(_clock, parsed.Title, Priority, projectId);
-        await _taskRepository.SaveTaskAsync(task);
-        TaskChangeBus.Saved(task, this);
-
-        // 新任务落在当前小窗选中的项目时立即刷新列表，不需要关闭再重开才能看到（Q7）
-        if (projectId == (SelectedProject?.Id ?? DefaultProject.Id))
-        {
-            await LoadTasksForSelectedProjectAsync();
-        }
-
-        ResetInput();
-        RequestClose?.Invoke();
-    }
+        => await new AddTaskViewModel(_taskRepository, _clock).ExecuteAsync(
+            InputText,
+            Priority,
+            dueDate: null,
+            SelectedProject?.Id,
+            ResetInput,
+            LoadTasksForSelectedProjectAsync,
+            this);
 
     [RelayCommand]
     private void Cancel()
@@ -316,129 +313,9 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         RequestClose?.Invoke();
     }
 
-    /// <summary>接受当前补全项，替换正在输入的 <c>@</c> token。</summary>
-    [RelayCommand]
-    private void AcceptCompletion()
-    {
-        if (!IsCompletionOpen || CompletionItems.Count == 0)
-        {
-            return;
-        }
-
-        var index = Math.Clamp(SelectedCompletionIndex, 0, CompletionItems.Count - 1);
-        AcceptCompletionChoice(CompletionItems[index]);
-    }
-
-    /// <summary>接受指定补全项（鼠标点选）。</summary>
-    [RelayCommand]
-    private void AcceptCompletionChoice(string? choice)
-    {
-        if (string.IsNullOrEmpty(choice))
-        {
-            return;
-        }
-
-        if (!CaptureInputParser.TryGetCompletionToken(
-                InputText, InputText.Length, out _, out var tokenStart))
-        {
-            return;
-        }
-
-        var prefix = InputText[..tokenStart];
-        InputText = $"{prefix}@{choice} ";
-        IsCompletionOpen = false;
-        CompletionItems.Clear();
-        RequestSetCaret?.Invoke(InputText.Length);
-    }
-
-    [RelayCommand]
-    private void SelectNextCompletion()
-    {
-        if (CompletionItems.Count == 0)
-        {
-            return;
-        }
-
-        SelectedCompletionIndex = (SelectedCompletionIndex + 1) % CompletionItems.Count;
-    }
-
-    [RelayCommand]
-    private void SelectPreviousCompletion()
-    {
-        if (CompletionItems.Count == 0)
-        {
-            return;
-        }
-
-        SelectedCompletionIndex =
-            (SelectedCompletionIndex - 1 + CompletionItems.Count) % CompletionItems.Count;
-    }
-
-    private async Task<string> ResolveOrCreateProjectAsync(string? projectName)
-    {
-        if (projectName is null)
-        {
-            return DefaultProject.Id;
-        }
-
-        var match = _allProjects.FirstOrDefault(p =>
-            string.Equals(
-                ProjectName.Normalize(p.Name),
-                ProjectName.Normalize(projectName),
-                StringComparison.OrdinalIgnoreCase));
-        if (match is not null)
-        {
-            return match.Id;
-        }
-
-        if (!ProjectName.IsValid(projectName))
-        {
-            return DefaultProject.Id;
-        }
-
-        var project = new Project
-        {
-            Name = ProjectName.Normalize(projectName),
-            SortOrder = await _projectRepository.NextSortOrderAsync(),
-            ColorHex = AppearanceCoordinator.PickPaletteColor(_allProjects.Count),
-            CreatedAt = _clock.UtcNow
-        };
-        await _projectRepository.SaveProjectAsync(project);
-        _allProjects.Add(project);
-        _projects.Add(project);
-        return project.Id;
-    }
-
-    private void RefreshCompletion()
-    {
-        CompletionItems.Clear();
-        IsCompletionOpen = false;
-        SelectedCompletionIndex = 0;
-
-        if (!CaptureInputParser.TryGetCompletionToken(
-                InputText, InputText.Length, out var prefix, out _))
-        {
-            return;
-        }
-
-        foreach (var name in _projects
-                     .Select(p => p.Name)
-                     .Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                     .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                     .Take(8))
-        {
-            CompletionItems.Add(name);
-        }
-
-        IsCompletionOpen = CompletionItems.Count > 0;
-    }
-
     private void ResetInput()
     {
         InputText = string.Empty;
         Priority = TaskPriority.Medium;
-        CompletionItems.Clear();
-        IsCompletionOpen = false;
-        SelectedCompletionIndex = 0;
     }
 }
