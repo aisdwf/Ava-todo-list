@@ -93,7 +93,7 @@ This document serves as the master navigation map for developers and AI agents.
 | `rule-spec-review-gate.md` | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（事故记录） | BLOCK |
 | `rule-no-invented-user-behavior.md` | 交互设计严禁凭推理产出用户行为假设（事故记录） | BLOCK |
 | `rule-doc-boundary.md` | 文档类型边界（design vs spec）与命名规范（事故记录） | BLOCK |
-| `rule-spec-complete-before-merge.md` | SPEC + 代码必须在任务分支上完成后再合入 `dev` | BLOCK |
+| `rule-spec-complete-before-merge.md` | SPEC + 代码应在任务分支上完成后再合入 `dev`；未关闭的 SPEC 按期限警告 | WARN（过期后 BLOCK） |
 | `rule-commit-msg-layout.md` | 第一行 type 摘要，Why/What 只写正文；禁止抄错误 git log（事故记录） | BLOCK |
 
 ### 2.4 `specs/` (功能规格与工作记忆，按 area 子目录组织)

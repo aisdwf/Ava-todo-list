@@ -65,7 +65,7 @@ AI 会话开始任务前必须先读这四份（见 `AGENTS.md` Gate 2）：
 | :--- | :--- | :--- | :--- |
 | [rule-code-standards](./rule-code-standards.md) | architecture / process | BLOCK | C# 12 / Avalonia 11 编码与注释规范 |
 | [rule-spec-review-gate](./rule-spec-review-gate.md) | process | BLOCK | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（机制已上移至 `workflow-methodology.md`） |
-| [rule-spec-complete-before-merge](./rule-spec-complete-before-merge.md) | process | BLOCK | SPEC + 代码必须在任务分支上完成后再合入 `dev` |
+| [rule-spec-complete-before-merge](./rule-spec-complete-before-merge.md) | process | WARN（过期后 BLOCK） | SPEC + 代码应在任务分支上完成后再合入 `dev`；未关闭的 SPEC 按期限警告，过期须所有者延期或跳过 |
 | [rule-commit-msg-layout](./rule-commit-msg-layout.md) | process | BLOCK | 第一行是 type 摘要，Why/What 只写正文；禁止抄 `git log` 里错误 subject（机制已上移至 `commit-conventions.md` + hook） |
 | [rule-no-invented-user-behavior](./rule-no-invented-user-behavior.md) | process | BLOCK | 交互设计严禁凭推理产出用户行为假设 |
 | [rule-doc-boundary](./rule-doc-boundary.md) | process | BLOCK | 文档类型边界（design vs spec）与命名规范（机制已上移至 `docs-conventions.md`） |

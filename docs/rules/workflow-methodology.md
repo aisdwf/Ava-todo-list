@@ -85,7 +85,8 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 ### Step 5 — Docs review → `[DONE]` (on the task branch)
 
 - Close the SPEC on the same `feature/*` or `bugfix/*` branch as the code.
-  Do not leave it `[IN-PROGRESS]` and close it later on `dev`.
+  Do not leave it `[IN-PROGRESS]` and close it later on `dev`, unless the owner
+  chooses to merge it open (deadline gate in `rule-spec-complete-before-merge.md` §3).
 - Sync docs with code (constitution: co-maintain).
 - Redirect superseded docs.
 - When acceptance and checklist are complete, set header status to `[DONE]` (or the appropriate terminal tag) **and rename** to `spec-<feature>[DONE].md` (or matching terminal tag).

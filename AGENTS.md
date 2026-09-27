@@ -77,7 +77,7 @@ Baseline: build 0 warnings / 0 errors; tests 272 passing. Do not regress below t
 | [docs/rules/project-rules.md](./docs/rules/project-rules.md) | FlowTask-specific business/technical/architecture rules |
 | [docs/rules/technical-rules.md](./docs/rules/technical-rules.md) | Mandatory technical/architecture decomposition rules (e.g. ViewModel command decomposition) |
 | [docs/rules/rule-spec-review-gate.md](./docs/rules/rule-spec-review-gate.md) | Incident record: SPEC review gate was skipped twice, causing full rework |
-| [docs/rules/rule-spec-complete-before-merge.md](./docs/rules/rule-spec-complete-before-merge.md) | Incident record: SPEC + code must be finished on the task branch before merging `dev` |
+| [docs/rules/rule-spec-complete-before-merge.md](./docs/rules/rule-spec-complete-before-merge.md) | Incident record: finish SPEC + code on the task branch before merging `dev`; open SPECs follow a deadline gate |
 | [docs/rules/rule-commit-msg-layout.md](./docs/rules/rule-commit-msg-layout.md) | Incident record: Why/What stuffed into the git subject; hook is the gate |
 | [docs/rules/rule-no-invented-user-behavior.md](./docs/rules/rule-no-invented-user-behavior.md) | Incident record: interaction decisions invented without user evidence |
 | [docs/rules/rule-doc-boundary.md](./docs/rules/rule-doc-boundary.md) | design vs spec type boundary and naming rules |

@@ -319,7 +319,7 @@ Terminal documents are retained for traceability. Do not silently delete them.
 - Duplicate SPECs must be merged or explicitly superseded.
 - Unowned open questions and TODOs are prohibited.
 
-These thresholds (14 / 30 days) are this project's canonical values. Changing them requires updating this file and any checker in the same change.
+These thresholds (14 / 30 days) are this project's canonical values. Changing them requires updating this file and any checker in the same change. Known checker: container `scripts/lib/Common.ps1` (`$SpecThresholdDays`, not in git).
 
 ---
 
@@ -333,7 +333,7 @@ These thresholds (14 / 30 days) are this project's canonical values. Changing th
 - `powershell -File scripts/build-spec-index.ps1 -Check` exits non-zero if the local file is missing or stale.
 - The index lists area folders, status counts, in-progress SPECs, and every SPEC file. It is not a workflow manual, session handoff, command list, or cross-SPEC backlog.
 - Workflow, gates, and commands live in `AGENTS.md` and `docs/rules/`. Deferred work stays in the owning SPEC.
-- Close the SPEC on the task branch before merging `dev` (see `rule-spec-complete-before-merge.md`).
+- Close the SPEC on the task branch before merging `dev` (see `rule-spec-complete-before-merge.md`; open SPECs are merged only within their deadline or by owner deferral).
 
 ---
 
