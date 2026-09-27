@@ -278,8 +278,8 @@ Rules:
 3. Update `Last Updated` with the applicable current date.
 4. Add any required redirect or reason.
 5. Update every relative-path reference to the renamed file across `docs/` and code comments in the same change.
-6. Run `powershell -File scripts/build-spec-index.ps1` in the same change. Do not hand-edit `docs/specs/README.md`.
-7. Commit the rename, metadata change, redirect, reference updates, and regenerated index together.
+6. Run `powershell -File scripts/build-spec-index.ps1` so the **local** index matches disk. Do not commit `docs/specs/README.md` (gitignored).
+7. Commit the rename, metadata change, redirect, and reference updates together.
 
 ---
 
@@ -325,13 +325,15 @@ These thresholds (14 / 30 days) are this project's canonical values. Changing th
 
 ## Index convention (`docs/specs/README.md`)
 
-- `docs/specs/README.md` is **generated**. Do not hand-edit it.
+- `docs/specs/README.md` is **generated** and **gitignored**. Do not hand-edit it. Do not commit it.
 - Generator: `powershell -File scripts/build-spec-index.ps1`
-- After any SPEC add, rename, area move, or status change, run the generator in the same change.
-- `powershell -File scripts/build-spec-index.ps1 -Check` exits non-zero if the file is stale.
+- **New worktree / new branch — mandatory first task:** immediately after `git worktree add` and `codegraph init -y`, run the generator **in that worktree**. The index is local (same class of artifact as `.codegraph/`). Do not skip this and later search around a missing README.
+- After any SPEC add, rename, area move, or status change, run the generator locally so the working copy matches disk.
+- After merging into a worktree (`dev` included), regenerate the local index: SPEC files arrived via git; the gitignored README did not.
+- `powershell -File scripts/build-spec-index.ps1 -Check` exits non-zero if the local file is missing or stale.
 - The index lists area folders, status counts, in-progress SPECs, and every SPEC file. It is not a workflow manual, session handoff, command list, or cross-SPEC backlog.
 - Workflow, gates, and commands live in `AGENTS.md` and `docs/rules/`. Deferred work stays in the owning SPEC.
-- Close the SPEC on the task branch before merging into `dev` (see `rule-spec-complete-before-merge.md`).
+- Close the SPEC on the task branch before merging `dev` (see `rule-spec-complete-before-merge.md`).
 
 ---
 
@@ -347,9 +349,9 @@ When project tooling is added, SPEC checks should validate:
 - `[IN-PROGRESS]` contains a staged plan, checklist, progress log, and resume point;
 - terminal states contain required redirects or reasons;
 - stale thresholds are reported;
-- `docs/specs/README.md` matches physical files (`scripts/build-spec-index.ps1 -Check`).
+- `docs/specs/README.md` is generated locally (`scripts/build-spec-index.ps1`). It is gitignored; `-Check` only validates the working copy.
 
-`powershell -File scripts/build-spec-index.ps1 -Check` is the index freshness gate. `docs/rules/rule-doc-boundary.md` §4 still covers naming and type-boundary `grep` checks. Run both before every commit that touches `docs/`.
+`powershell -File scripts/build-spec-index.ps1 -Check` is the local index freshness check. `docs/rules/rule-doc-boundary.md` §4 still covers naming and type-boundary `grep` checks. Run both when touching `docs/`; do not commit the generated README.
 
 ---
 

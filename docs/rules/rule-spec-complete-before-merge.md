@@ -32,9 +32,10 @@ Closing a SPEC on `dev` after merge is recovery, not the path.
 ## 2. Mandates
 
 1. Do SPEC and code on the same `feature/*` or `bugfix/*` branch.
-2. After owner preview passes: close the SPEC (`[DONE]`, rename, regenerate
-   `docs/specs/README.md` with `scripts/build-spec-index.ps1`) and commit it
-   **with** the code on that branch.
+2. After owner preview passes: close the SPEC (`[DONE]`, rename) and commit it
+   **with** the code on that branch. Regenerate the local
+   `docs/specs/README.md` with `scripts/build-spec-index.ps1`; do not commit
+   that file (gitignored).
 3. Only then merge into `dev`.
 4. Do not merge an `[IN-PROGRESS]` SPEC and close it afterwards on `dev`.
 5. Do not split “code on the feature branch, SPEC bookkeeping on `dev`.”

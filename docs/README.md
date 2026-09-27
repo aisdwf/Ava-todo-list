@@ -98,11 +98,11 @@ This document serves as the master navigation map for developers and AI agents.
 
 ### 2.4 `specs/` (功能规格与工作记忆，按 area 子目录组织)
 
-索引由脚本生成，**不要**在本文件或 `specs/README.md` 里手抄 SPEC 清单。
+索引由脚本生成并 gitignore，**不要**提交，也**不要**在本文件里手抄 SPEC 清单。新工作树第一件事是跑生成脚本。
 
 | 文件 | 作用 |
 | :--- | :--- |
-| [`specs/README.md`](./specs/README.md) | 生成索引：area、数量、状态。命令：`powershell -File scripts/build-spec-index.ps1` |
+| [`specs/README.md`](./specs/README.md) | 本地生成索引（gitignore）：area、数量、状态。新工作树第一件事：`powershell -File scripts/build-spec-index.ps1` |
 | `specs/<area>/spec-<feature>[STATUS].md` | 各 SPEC 正文（工作记忆）。规则见 [`docs-conventions.md`](./rules/docs-conventions.md) |
 
 ### 2.5 `adr/` (架构决策记录)

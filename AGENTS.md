@@ -58,7 +58,7 @@ This entry file alone is **not** sufficient to act on.
 | Build | `export DOTNET_ROOT="$HOME/.dotnet"; export PATH="$DOTNET_ROOT:$PATH"; export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1; dotnet build FlowTask.sln -v q --nologo` |
 | Test | `dotnet test FlowTask.sln --nologo -v q` |
 | Run (manual verification only, not a functional check) | `./run.sh` |
-| Docs index | `powershell -File scripts/build-spec-index.ps1` |
+| Docs index | `powershell -File scripts/build-spec-index.ps1` (local, gitignored; **mandatory first task** on a new worktree) |
 | Install git hooks | `powershell -File scripts/install-git-hooks.ps1` |
 | Test commit-msg hook | `powershell -File scripts/commit-msg-hook/test-commit-msg.ps1` |
 
@@ -82,7 +82,7 @@ Baseline: build 0 warnings / 0 errors; tests 272 passing. Do not regress below t
 | [docs/rules/rule-no-invented-user-behavior.md](./docs/rules/rule-no-invented-user-behavior.md) | Incident record: interaction decisions invented without user evidence |
 | [docs/rules/rule-doc-boundary.md](./docs/rules/rule-doc-boundary.md) | design vs spec type boundary and naming rules |
 | [docs/rules/rule-code-standards.md](./docs/rules/rule-code-standards.md) | C# 12 / Avalonia 11 coding and comment standards |
-| [docs/specs/README.md](./docs/specs/README.md) | Generated SPEC index (counts and status; do not hand-edit) |
+| [docs/specs/README.md](./docs/specs/README.md) | Generated SPEC index (local, gitignored; run the Docs index command) |
 | [docs/ai-workflow/](./docs/ai-workflow/) | Deep methodology rationale (private, gitignored; not required to operate the repo) |
 
 ---

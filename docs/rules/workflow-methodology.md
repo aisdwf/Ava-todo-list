@@ -66,7 +66,7 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - **Wait** for explicit confirmation. Silence, no reply, or the owner discussing something else does **not** count as confirmation.
 - Only then flip status to `[IN-PROGRESS]` **and rename** the file to `spec-<feature>[IN-PROGRESS].md`.
 - **Iron rule:** once implementation starts, status must not remain `[DRAFT]`.
-- Run `powershell -File scripts/build-spec-index.ps1` in the same change. Do not hand-edit `docs/specs/README.md`.
+- Run `powershell -File scripts/build-spec-index.ps1` locally. Do not hand-edit or commit `docs/specs/README.md` (gitignored).
 
 ### Step 3 — Staged execution
 
@@ -89,7 +89,7 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - Sync docs with code (constitution: co-maintain).
 - Redirect superseded docs.
 - When acceptance and checklist are complete, set header status to `[DONE]` (or the appropriate terminal tag) **and rename** to `spec-<feature>[DONE].md` (or matching terminal tag).
-- Run `powershell -File scripts/build-spec-index.ps1` in the same change. Do not hand-edit `docs/specs/README.md`.
+- Run `powershell -File scripts/build-spec-index.ps1` locally. Do not hand-edit or commit `docs/specs/README.md` (gitignored).
 - See `docs/rules/rule-spec-complete-before-merge.md`.
 
 ### Step 6 — Commit only after owner verification; then merge

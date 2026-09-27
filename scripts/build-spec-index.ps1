@@ -10,6 +10,12 @@ $ErrorActionPreference = "Stop"
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
 function Get-RepoRoot {
+    # Script lives at <worktree>/scripts/build-spec-index.ps1.
+    # Prefer that path so invoking the script by full path from another cwd
+    # still writes into that worktree (new-branch first task).
+    if ($PSScriptRoot) {
+        return (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    }
     $root = (git rev-parse --show-toplevel).Trim()
     if (-not $root) { throw "not inside a git work tree" }
     return $root
