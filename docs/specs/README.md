@@ -16,21 +16,21 @@ powershell -File scripts/build-spec-index.ps1
 
 | 状态 | 数量 |
 | :--- | ---: |
-| `draft` | 0 |
+| `draft` | 1 |
 | `in-progress` | 4 |
 | `done` | 19 |
 | `done-refactored` | 0 |
 | `superseded` | 2 |
 | `archived` | 0 |
 | `obsolete` | 1 |
-| 合计 | 26 |
+| 合计 | 27 |
 
 ## Area
 
 | Area | SPEC 数 |
 | :--- | ---: |
 | [`docs-system/`](./docs-system/) | 2 |
-| [`infrastructure/`](./infrastructure/) | 1 |
+| [`infrastructure/`](./infrastructure/) | 2 |
 | [`main-window/`](./main-window/) | 8 |
 | [`packaging/`](./packaging/) | 1 |
 | [`quick-capture/`](./quick-capture/) | 3 |
@@ -41,6 +41,7 @@ powershell -File scripts/build-spec-index.ps1
 
 | SPEC | Area | 主题 | 状态 |
 | :--- | :--- | :--- | :--- |
+| [spec-codegraph-audit-remediation](./infrastructure/spec-codegraph-audit-remediation[DRAFT].md) | infrastructure | Codegraph 扫描问题的整改清单 | `draft` |
 | [spec-create-task-inherits-selected-project](./main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md) | main-window | 新建任务继承当前选中项目 | `in-progress` |
 | [spec-quick-window-hotkey-capture](./quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) | quick-capture | 快捷键显隐 + 小窗捕捉（@项目补全） | `in-progress` |
 | [spec-quick-window-single-project-list](./quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md) | quick-capture | 小窗单项目列表 + 勾选 | `in-progress` |
@@ -59,6 +60,7 @@ powershell -File scripts/build-spec-index.ps1
 
 | SPEC | 主题 | 状态 |
 | :--- | :--- | :--- |
+| [spec-codegraph-audit-remediation](./infrastructure/spec-codegraph-audit-remediation[DRAFT].md) | Codegraph 扫描问题的整改清单 | `draft` |
 | [spec-mvvm-infrastructure](./infrastructure/spec-mvvm-infrastructure[DONE].md) | FlowTask (跨平台待办与快速捕捉应用) 核心骨架与基础设施 | `done` |
 
 ### [main-window/](./main-window/)

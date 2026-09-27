@@ -123,6 +123,7 @@ This document serves as the master navigation map for developers and AI agents.
 | 文件名 | 作用简述 | 核心内容 |
 | :--- | :--- | :--- |
 | [`README.md`](./analysis/README.md) | 技术分析与方案调研目录指引 | 方案调研与可行性报告归档 |
+| [`analysis-codegraph-code-audit.md`](./analysis/analysis-codegraph-code-audit.md) | 基于 Codegraph 的代码潜在问题扫描（2026-09-27，`dev@695d741`） | 高 / 中 / 低三级问题清单、良好实践与处置顺序 |
 
 ### 2.7b `technical/` (与功能开发进度无关的技术资料)
 
@@ -179,13 +180,13 @@ This document serves as the master navigation map for developers and AI agents.
 -->
 
 - **顶层受控目录数**：`13` 个（新增 `technical/`）
-- **Markdown 文档总数**：`55` 篇（截至 2026-09-17，新增 `technical-rules.md` 与 `technical/` 目录后重计）
+- **Markdown 文档总数**：`66` 篇（截至 2026-09-27，新增 `spec-codegraph-audit-remediation[DRAFT].md` 后按校验命令重计；不含已 gitignore 的 `ai-workflow/`）
 
 | 目录 | 篇数 | 构成 |
 | :--- | :--- | :--- |
-| `specs/` | 13 | README + 12 份 SPEC（6 个 area 子目录） |
-| `rules/` | 10 | README + 9 条规则（5 张机器权威规则卡 + 4 条事故记录） |
-| `ai-workflow/` | 7 | 总览 + 6 篇体系文章（已 gitignore，不计入版本库） |
+| `specs/` | 28 | README + 27 份 SPEC（7 个 area 子目录） |
+| `rules/` | 12 | README + 11 条规则卡 |
+| `ai-workflow/` | — | 总览 + 6 篇体系文章（已 gitignore，不计入版本库与总数） |
 | `archived/` | 6 | README + 5 份已归档 design（均含重定向） |
 | `templates/` | 5 | README + 4 个标准工程模板 |
 | `design/` | 4 | README + 3 份设计约束（视觉 / 契约 / 交互） |
@@ -193,7 +194,7 @@ This document serves as the master navigation map for developers and AI agents.
 | `technical/` | 2 | README + 1 篇 Avalonia 架构参考调研 |
 | `requirements/` | 1 | REQUIREMENTS（需求基线，无 README） |
 | `trobleshooting/` | 1 | README（尚无故障手册） |
-| `analysis/` | 1 | README（尚无调研报告） |
+| `analysis/` | 2 | README + 1 篇代码扫描报告 |
 | `refenence/` | 1 | README（尚无外部参考） |
 | `pending-delete/` | 1 | README（缓冲区为空） |
 | `docs/` 根索引 | 1 | 本文件 |
