@@ -14,6 +14,14 @@ sealed class Program
     {
         AppLog.Write("Starting application");
         using var instance = SingleInstanceGuard.AcquireOrReplacePrevious();
+        if (instance is null)
+        {
+            AppLog.Write(SingleInstancePolicy.FailureMessage);
+            NativeUserAlert.Show(SingleInstancePolicy.FailureMessage);
+            Environment.ExitCode = 1;
+            return;
+        }
+
         try
         {
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
