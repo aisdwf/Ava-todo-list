@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using FlowTask.Core.Interfaces;
+using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Desktop.Views;
@@ -68,22 +69,8 @@ public partial class App : Application
             var quickCaptureVm = new QuickCaptureViewModel(
                 repository, projectRepository, settingsRepository, clock);
 
-            _mainWindow = new MainWindow(mainVm, quickCaptureVm);
-            desktop.MainWindow = _mainWindow;
-
             mainVm.RequestHideToTray += HideMainToTray;
             mainVm.RequestExitApplication += RequestExit;
-            _mainWindow.QuickCaptureVisibilityChanged += SyncTrayMiniMenuHeader;
-
-            // Windows：进程级热键（主窗非前台亦可）；失败则保留主窗内 KeyDown 回退
-            _hotkeyService = new GlobalHotkeyService(() =>
-                Dispatcher.UIThread.Post(_mainWindow.ToggleQuickCaptureFromHotkey));
-
-            // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
-            // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
-            _mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
-
-            InstallTrayIcon();
             SingleInstanceGuard.Current?.ListenForReplacement(
                 () => Dispatcher.UIThread.Post(RequestExit));
 
@@ -98,9 +85,53 @@ public partial class App : Application
                     _trayIcon = null;
                 }
             };
+
+            // 主窗 Show 之前必须先把已保存风格写进主题字典。挂在 Opened 上时窗口已经可见。
+            LoggedTasks.FireAndForget(
+                ShowMainWindowAsync(desktop, mainVm, quickCaptureVm),
+                "ShowMainWindow");
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// 读出已保存外观后再构造并显示主窗，避免首帧画出编译期默认风格。
+    /// </summary>
+    private async Task ShowMainWindowAsync(
+        IClassicDesktopStyleApplicationLifetime desktop,
+        MainViewModel mainVm,
+        QuickCaptureViewModel quickCaptureVm)
+    {
+        try
+        {
+            await mainVm.LoadAppearanceAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("LoadAppearanceAsync", ex);
+        }
+
+        var mainWindow = new MainWindow(mainVm, quickCaptureVm);
+        _mainWindow = mainWindow;
+        AppearanceCoordinator.ApplyMaterial(mainWindow, mainVm.SelectedMaterial.Id);
+        mainWindow.QuickCaptureVisibilityChanged += SyncTrayMiniMenuHeader;
+
+        // Windows：进程级热键（主窗非前台亦可）；失败则保留主窗内 KeyDown 回退
+        _hotkeyService = new GlobalHotkeyService(() =>
+            Dispatcher.UIThread.Post(mainWindow.ToggleQuickCaptureFromHotkey));
+
+        // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
+        // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
+        mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
+
+        InstallTrayIcon();
+
+        desktop.MainWindow = mainWindow;
+        if (!mainWindow.IsVisible)
+        {
+            mainWindow.Show();
+        }
     }
 
     /// <summary>彻底退出：置旗标后 Shutdown，主窗与小窗 Closing 放行。</summary>

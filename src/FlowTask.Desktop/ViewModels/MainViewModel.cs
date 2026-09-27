@@ -35,6 +35,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IClock _clock;
     private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
     private bool _suppressAppearancePersist;
+    private bool _appearanceLoaded;
     private bool _suppressCloseActionPersist;
     private int _tasksLoadGeneration;
 
@@ -365,7 +366,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             await _settingsRepository.InitializeAsync();
             DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
             EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
-            await LoadAppearanceAsync();
+            // 启动路径已在 Show 前恢复过外观；此处再刷会让已可见的窗口闪一次。
+            if (!_appearanceLoaded)
+            {
+                await LoadAppearanceAsync();
+            }
             await LoadCloseActionAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
@@ -393,7 +398,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 从 AppSettings 恢复外观三项，并立刻写入主题字典。
     /// </summary>
     /// <remarks>
-    /// 必须在窗口套用材质之前调用，否则首帧会闪过字段默认值。
+    /// 必须在主窗 Show 之前调用，否则首帧会闪过字段默认值。
     /// 加载期间抑制回写，避免把回退后的默认 id 在用户尚未操作时写回库。
     /// </remarks>
     public async Task LoadAppearanceAsync()
@@ -418,6 +423,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         AppearanceCoordinator.ApplyTheme(IsDarkTheme);
         AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
+        _appearanceLoaded = true;
         ThemeApplied?.Invoke();
     }
 
