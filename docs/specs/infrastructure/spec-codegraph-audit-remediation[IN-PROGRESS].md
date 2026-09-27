@@ -92,7 +92,7 @@
 - [x] **L5** 落库成功后再回写实体，或写入失败时回滚（编辑 / 到期日 / 重命名 / 勾选）
 - [x] **L6** 项目名唯一性校验；`SortOrder` 取 `MAX+1`；`@项目` 匹配含归档
 - [x] **L7** 默认到期偏移改为编辑缓冲，点保存才写回属性与仓储
-- [ ] **L8** 抽出热键注册等待、关闭策略分派等可测逻辑并补单测
+- [x] **L8** 抽出热键注册等待、关闭策略分派等可测逻辑并补单测
 
 ## Progress log
 
@@ -100,7 +100,7 @@
 
 - Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 阶段 7，L7（到期偏移编辑缓冲）。
+- Current resume point: 阶段 7，L8（关闭策略分派单测）。
 
 ## Verification
 
