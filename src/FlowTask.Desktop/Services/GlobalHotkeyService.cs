@@ -15,10 +15,12 @@ public sealed class GlobalHotkeyService : IDisposable
     private const uint VkSpace = 0x20;
 
     private readonly Action _onHotkey;
+    private readonly TaskCompletionSource<bool> _registration =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Thread? _messageThread;
     private volatile bool _running;
     private IntPtr _hwnd;
-    private bool _registered;
+    private volatile bool _registered;
 
     public GlobalHotkeyService(Action onHotkey)
     {
@@ -44,9 +46,18 @@ public sealed class GlobalHotkeyService : IDisposable
         _messageThread.SetApartmentState(ApartmentState.STA);
         _messageThread.Start();
 
-        // 给消息循环一点时间完成 RegisterHotKey
-        Thread.Sleep(50);
-        return _registered;
+        if (HotkeyRegistrationWait.Wait(_registration, HotkeyRegistrationWait.DefaultTimeout))
+        {
+            return true;
+        }
+
+        // 超时仍未发布结果：停掉消息线程，避免随后注册成功却与窗内 KeyDown 双路径并存。
+        if (!_registration.Task.IsCompleted)
+        {
+            Dispose();
+        }
+
+        return false;
     }
 
     private void MessageLoop()
@@ -57,6 +68,7 @@ public sealed class GlobalHotkeyService : IDisposable
             // Alt+Space；部分环境被 shell 占用时再试 Win+Alt+Space
             _registered = RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModNorepeat, VkSpace)
                           || RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModWin | ModNorepeat, VkSpace);
+            _registration.TrySetResult(_registered);
 
             if (!_registered)
             {
@@ -73,6 +85,11 @@ public sealed class GlobalHotkeyService : IDisposable
                 TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
             }
+        }
+        catch (Exception ex)
+        {
+            _registration.TrySetResult(false);
+            AppLog.Write("GlobalHotkey MessageLoop", ex);
         }
         finally
         {
@@ -121,8 +138,8 @@ public sealed class GlobalHotkeyService : IDisposable
             IntPtr.Zero);
     }
 
-    private static readonly WndProcDelegate WndProc = (_, msg, wParam, lParam)
-        => DefWindowProc(IntPtr.Zero, msg, wParam, lParam);
+    private static readonly WndProcDelegate WndProc = (hWnd, msg, wParam, lParam)
+        => DefWindowProc(hWnd, msg, wParam, lParam);
 
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
