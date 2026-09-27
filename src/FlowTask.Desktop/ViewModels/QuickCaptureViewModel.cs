@@ -16,7 +16,8 @@ namespace FlowTask.Desktop.ViewModels;
 /// 快捷小窗：单项目列表 + 勾选 + 录入。项目下拉是唯一的项目上下文，
 /// 列表展示与新建归属都跟随它（spec-quick-window-single-project-list §7，R-1.9）。
 /// </summary>
-public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>
+public partial class QuickCaptureViewModel : ViewModelBase,
+    IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>, IRecipient<ProjectsChangedMessage>
 {
     /// <summary>记忆上次在小窗选择项目的设置键（spec-quick-window-single-project-list §2.4）。</summary>
     private const string LastProjectSettingsKey = "QuickWindow.LastProjectId";
@@ -86,6 +87,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
 
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
+        WeakReferenceMessenger.Default.Register<ProjectsChangedMessage>(this);
     }
 
     /// <summary>
@@ -246,14 +248,29 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return;
         }
 
-        TaskListRefreshTask = UiThread.RunAsync(HandlePeerTaskDeletedAsync);
+        TaskListRefreshTask = UiThread.RunAsync(LoadTasksForSelectedProjectAsync);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 小窗隐藏时也会收到并刷新：实例被复用（Hide 而非 Close），
+    /// 下次打开前 <see cref="PrepareAsync"/> 仍会重读，这里保证可见期间实时同步。
+    /// </remarks>
+    public void Receive(ProjectsChangedMessage message)
+    {
+        if (ReferenceEquals(message.Origin, this))
+        {
+            return;
+        }
+
+        TaskListRefreshTask = UiThread.RunAsync(HandlePeerProjectsChangedAsync);
     }
 
     /// <summary>
-    /// 对端删除任务或整个项目后：刷新项目列表。
-    /// 若当前选中项目已不存在，回退 Default（与 <see cref="PrepareAsync"/> 一致）。
+    /// 对端新建 / 重命名 / 归档 / 删除项目后：重读项目表并重建下拉，保留当前选中项。
+    /// 若当前选中项目已不存在（归档或删除），回退 Default 并写回记忆项（与 <see cref="PrepareAsync"/> 一致）。
     /// </summary>
-    private async Task HandlePeerTaskDeletedAsync()
+    private async Task HandlePeerProjectsChangedAsync()
     {
         var preferred = SelectedProject?.Id;
         await ReloadActiveProjectsAsync();
@@ -265,6 +282,7 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
                 SelectedProject?.Id ?? DefaultProject.Id);
         }
 
+        // 行上的项目名/色取自 _projects 快照，重命名后须重建行
         await LoadTasksForSelectedProjectAsync();
     }
 

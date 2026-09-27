@@ -1,6 +1,7 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -25,7 +26,8 @@ public sealed class CreateProjectViewModel
         string name,
         Action clearAndCollapse,
         Func<Task> reloadProjects,
-        Action<string> onInvalid)
+        Action<string> onInvalid,
+        object origin)
     {
         var error = ProjectName.Validate(name);
         if (error is not null)
@@ -51,6 +53,7 @@ public sealed class CreateProjectViewModel
         };
 
         await _projectRepository.SaveProjectAsync(project);
+        ProjectChangeBus.Changed(origin);
         clearAndCollapse();
         await reloadProjects();
     }
@@ -62,7 +65,8 @@ public sealed class CreateProjectViewModel
         string name,
         Action collapse,
         Func<Task> reloadProjects,
-        Action<string> onInvalid)
+        Action<string> onInvalid,
+        object origin)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -70,6 +74,6 @@ public sealed class CreateProjectViewModel
             return Task.CompletedTask;
         }
 
-        return ExecuteAsync(name, collapse, reloadProjects, onInvalid);
+        return ExecuteAsync(name, collapse, reloadProjects, onInvalid, origin);
     }
 }

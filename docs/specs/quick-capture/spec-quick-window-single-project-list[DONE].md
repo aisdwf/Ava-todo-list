@@ -13,7 +13,7 @@
 >
 > Owner 预览 `feature/quick-window-project-linkage` 后回复「没问题」，§7.5 验收通过。
 > 同轮发现的「主窗增删改项目后小窗下拉不实时刷新」是独立缺陷，
-> 在同一分支以后续提交修复，见 [spec-quick-window-project-sync](./spec-quick-window-project-sync[IN-PROGRESS].md)。
+> 在同一分支以后续提交修复，见 [spec-quick-window-project-sync](./spec-quick-window-project-sync[DONE].md)。
 
 > ## ⚠ 本轮修订（2026-09-27）：下拉成为唯一项目上下文
 >
