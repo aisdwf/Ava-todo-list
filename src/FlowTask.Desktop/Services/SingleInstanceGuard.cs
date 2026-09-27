@@ -121,7 +121,7 @@ public sealed class SingleInstanceGuard : IDisposable
             using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
             client.Connect(800);
             using var writer = new StreamWriter(client) { AutoFlush = true };
-            writer.WriteLine(SingleInstancePolicy.FormatReplaceLine(CurrentExecutablePath()));
+            writer.WriteLine(SingleInstancePolicy.FormatReplaceLine(CurrentExecutablePath() ?? string.Empty));
         }
         catch (Exception)
         {

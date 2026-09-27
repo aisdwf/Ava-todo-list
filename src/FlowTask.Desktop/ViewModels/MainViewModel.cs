@@ -451,10 +451,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             ? CurrentSelection.ProjectId
             : null;
 
+        var counts = await _repository.CountTasksGroupedByProjectAsync();
         _projects.Clear();
         foreach (var project in projects)
         {
-            var count = await _projectRepository.CountTasksAsync(project.Id);
+            counts.TryGetValue(project.Id, out var count);
             _projects.Add(new ProjectItemViewModel(project, count));
         }
 
@@ -614,12 +615,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     private async Task RefreshCountsAsync()
     {
-        var visible = await _repository.GetAllActiveTasksAsync();
-        ActiveCount = visible.Count;
+        var counts = await _repository.CountTasksGroupedByProjectAsync();
+        ActiveCount = await _repository.CountActiveTasksAsync();
 
         foreach (var project in _projects)
         {
-            project.TaskCount = await _projectRepository.CountTasksAsync(project.Id);
+            counts.TryGetValue(project.Id, out var count);
+            project.TaskCount = count;
         }
     }
 

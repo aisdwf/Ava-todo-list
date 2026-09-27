@@ -140,5 +140,10 @@ public class LoadGenerationTests : IDisposable
         public Task<int> SaveTaskAsync(TaskItem item) => Task.FromResult(0);
 
         public Task<int> PermanentDeleteAsync(string id) => Task.FromResult(0);
+
+        public Task<int> CountActiveTasksAsync() => Task.FromResult(0);
+
+        public Task<IReadOnlyDictionary<string, int>> CountTasksGroupedByProjectAsync()
+            => Task.FromResult<IReadOnlyDictionary<string, int>>(new Dictionary<string, int>());
     }
 }

@@ -135,6 +135,39 @@ public class SqliteTaskRepository : ITaskRepository
     }
 
     /// <inheritdoc />
+    public async Task<int> CountActiveTasksAsync()
+    {
+        await InitializeAsync();
+        return await _db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Tasks WHERE IsDeleted = 0");
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, int>> CountTasksGroupedByProjectAsync()
+    {
+        await InitializeAsync();
+        var rows = await _db.QueryAsync<ProjectTaskCountRow>(
+            "SELECT ProjectId, COUNT(*) AS TaskCount FROM Tasks WHERE IsDeleted = 0 GROUP BY ProjectId");
+        var map = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            if (row.ProjectId is null)
+            {
+                continue;
+            }
+
+            map[row.ProjectId] = row.TaskCount;
+        }
+
+        return map;
+    }
+
+    private sealed class ProjectTaskCountRow
+    {
+        public string? ProjectId { get; set; }
+        public int TaskCount { get; set; }
+    }
+
+    /// <inheritdoc />
     /// <remarks>
     /// 本方法是所有任务写入的唯一漏斗，因此在此统一维护两条不变量，
     /// 而非依赖每个调用方各自遵守（Article 6）：

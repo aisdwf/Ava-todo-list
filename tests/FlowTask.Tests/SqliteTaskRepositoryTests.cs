@@ -120,4 +120,28 @@ public class SqliteTaskRepositoryTests : IDisposable
         var titles = (await _repo.GetAllActiveTasksAsync()).Select(t => t.Title).ToArray();
         Assert.Equal(new[] { "high", "low", "done" }, titles);
     }
+
+    [Fact]
+    public async Task CountActiveAndGrouped_ExcludesDeletedAndDoesNotRequirePerProjectQueries()
+    {
+        var a = NewTask("a");
+        a.ProjectId = "p1";
+        var b = NewTask("b");
+        b.ProjectId = "p1";
+        var c = NewTask("c");
+        c.ProjectId = "p2";
+        var deleted = NewTask("gone");
+        deleted.ProjectId = "p1";
+        deleted.IsDeleted = true;
+
+        await _repo.SaveTaskAsync(a);
+        await _repo.SaveTaskAsync(b);
+        await _repo.SaveTaskAsync(c);
+        await _repo.SaveTaskAsync(deleted);
+
+        var grouped = await _repo.CountTasksGroupedByProjectAsync();
+        Assert.Equal(2, grouped["p1"]);
+        Assert.Equal(1, grouped["p2"]);
+        Assert.Equal(3, await _repo.CountActiveTasksAsync());
+    }
 }
