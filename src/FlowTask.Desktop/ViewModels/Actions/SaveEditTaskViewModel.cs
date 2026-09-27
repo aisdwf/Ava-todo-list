@@ -1,5 +1,6 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -15,7 +16,7 @@ public sealed class SaveEditTaskViewModel
         _taskRepository = taskRepository;
     }
 
-    public async Task ExecuteAsync(TaskRowViewModel? row, Func<Task> reloadTasks)
+    public async Task ExecuteAsync(TaskRowViewModel? row, Func<Task> reloadTasks, object origin)
     {
         if (row is null)
         {
@@ -33,6 +34,7 @@ public sealed class SaveEditTaskViewModel
         task.ProjectId = row.EditProject.ProjectId;
 
         await _taskRepository.SaveTaskAsync(task);
+        TaskChangeBus.Saved(task, origin);
 
         row.EndEdit();
         await reloadTasks();

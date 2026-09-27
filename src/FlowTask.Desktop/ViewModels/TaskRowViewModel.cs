@@ -120,6 +120,19 @@ public partial class TaskRowViewModel : ViewModelBase
     partial void OnIsCompletedChanged(bool value) => Task.IsCompleted = value;
 
     /// <summary>
+    /// 用仓储读回的整行更新本行。归属项目变了则返回 false，由调用方整表重载以刷新色条。
+    /// </summary>
+    public void ApplyPersisted(TaskItem persisted)
+    {
+        Task.Title = persisted.Title;
+        Task.Priority = persisted.Priority;
+        Task.DueDate = persisted.DueDate;
+        Task.CompletedAt = persisted.CompletedAt;
+        IsCompleted = persisted.IsCompleted;
+        RefreshDerivedFlags();
+    }
+
+    /// <summary>
     /// 用仓储读回的完成态更新本行。保留同一行实例，供已渲染的勾选圈接收通知。
     /// </summary>
     public void ApplyPersistedCompletion(bool isCompleted, DateTime? completedAt)

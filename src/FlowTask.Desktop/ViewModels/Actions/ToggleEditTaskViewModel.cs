@@ -16,7 +16,8 @@ public sealed class ToggleEditTaskViewModel
         TaskRowViewModel? row,
         IEnumerable<TaskRowViewModel> allRows,
         IList<ProjectChoice> projectChoices,
-        Func<Task> reloadTasks)
+        Func<Task> reloadTasks,
+        object origin)
     {
         if (row is null)
         {
@@ -25,13 +26,13 @@ public sealed class ToggleEditTaskViewModel
 
         if (row.IsEditing)
         {
-            await _saveEdit.ExecuteAsync(row, reloadTasks);
+            await _saveEdit.ExecuteAsync(row, reloadTasks, origin);
             return;
         }
 
         foreach (var other in allRows.Where(r => r.IsEditing && r != row).ToList())
         {
-            await _saveEdit.ExecuteAsync(other, reloadTasks);
+            await _saveEdit.ExecuteAsync(other, reloadTasks, origin);
         }
 
         row.BeginEdit(projectChoices);

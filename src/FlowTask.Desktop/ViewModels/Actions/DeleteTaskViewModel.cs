@@ -1,5 +1,6 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -15,7 +16,7 @@ public sealed class DeleteTaskViewModel
         _taskRepository = taskRepository;
     }
 
-    public async Task ExecuteAsync(TaskItem? item, Func<Task> reloadTasks)
+    public async Task ExecuteAsync(TaskItem? item, Func<Task> reloadTasks, object origin)
     {
         if (item is null)
         {
@@ -23,6 +24,7 @@ public sealed class DeleteTaskViewModel
         }
 
         await _taskRepository.PermanentDeleteAsync(item.Id);
+        TaskChangeBus.Deleted(item.Id, origin);
         await reloadTasks();
     }
 }

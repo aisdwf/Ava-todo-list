@@ -23,7 +23,12 @@ internal static class TaskRowListSync
             return false;
         }
 
-        row.ApplyPersistedCompletion(persisted.IsCompleted, persisted.CompletedAt);
+        if (row.Task.ProjectId != persisted.ProjectId)
+        {
+            return false;
+        }
+
+        row.ApplyPersisted(persisted);
         return true;
     }
 

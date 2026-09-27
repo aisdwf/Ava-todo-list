@@ -51,7 +51,7 @@ public class LoadGenerationTests : IDisposable
         tasks.ArmOverlap();
         var staleLoad = vm.RefreshTasksCommand.ExecuteAsync(null);
         await tasks.StaleStarted.Task;
-        WeakReferenceMessenger.Default.Send(new TaskDeletedMessage("stale"));
+        WeakReferenceMessenger.Default.Send(new TaskDeletedMessage("stale", this));
         await vm.TaskListRefreshTask;
 
         Assert.Equal("新结果", Assert.Single(vm.Tasks).Task.Title);
@@ -77,7 +77,7 @@ public class LoadGenerationTests : IDisposable
         tasks.ArmOverlap();
         var staleLoad = vm.ChangeSelectedProjectCommand.ExecuteAsync(vm.SelectedProject);
         await tasks.StaleStarted.Task;
-        WeakReferenceMessenger.Default.Send(new TaskSavedMessage(TaskItemFactory.Create(_clock, "触发重载")));
+        WeakReferenceMessenger.Default.Send(new TaskSavedMessage(TaskItemFactory.Create(_clock, "触发重载"), this));
         await vm.TaskListRefreshTask;
 
         Assert.Equal("新结果", Assert.Single(vm.Tasks).Task.Title);

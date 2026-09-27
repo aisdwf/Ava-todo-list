@@ -1,7 +1,6 @@
-using CommunityToolkit.Mvvm.Messaging;
 using FlowTask.Core.Interfaces;
-using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -19,7 +18,7 @@ public sealed class ToggleCompleteTaskViewModel
         _clock = clock;
     }
 
-    public async Task ExecuteAsync(TaskItem? item, Func<Task> reloadTasks)
+    public async Task ExecuteAsync(TaskItem? item, Func<Task> reloadTasks, object origin)
     {
         if (item is null)
         {
@@ -30,7 +29,7 @@ public sealed class ToggleCompleteTaskViewModel
         await _taskRepository.SaveTaskAsync(item);
         // 单一数据源：完成态只在 SQLite。总线通知各窗口从仓储重载自己的派生列表，
         // 禁止窗口之间改对方的 TaskItem 实例（spec-cross-window-complete-sync）。
-        WeakReferenceMessenger.Default.Send(new TaskSavedMessage(item));
+        TaskChangeBus.Saved(item, origin);
         await reloadTasks();
     }
 }

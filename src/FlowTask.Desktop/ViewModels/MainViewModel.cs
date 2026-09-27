@@ -42,7 +42,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
     private bool _suppressAppearancePersist;
     private bool _suppressCloseActionPersist;
-    private bool _suppressTaskSavedReload;
     private int _tasksLoadGeneration;
 
     [ObservableProperty]
@@ -642,7 +641,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 NewTaskTitle = string.Empty;
                 NewDueDateEditor.Load(null);
             },
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 打开行编辑弹出层，用于修改到期日。
@@ -681,7 +681,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 IsDueDatePopupOpen = false;
                 EditingDueDateTarget = null;
             },
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 保存默认到期偏移设置。
@@ -754,18 +755,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="item">目标任务；勾选框已通过双向绑定更新其 IsCompleted。</param>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
-    {
-        _suppressTaskSavedReload = true;
-        try
-        {
-            await new ToggleCompleteTaskViewModel(_repository, _clock)
-                .ExecuteAsync(item, LoadTasksAsync);
-        }
-        finally
-        {
-            _suppressTaskSavedReload = false;
-        }
-    }
+        => await new ToggleCompleteTaskViewModel(_repository, _clock)
+            .ExecuteAsync(item, LoadTasksAsync, this);
 
     /// <summary>
     /// 物理删除任务。
@@ -778,7 +769,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task DeleteTaskAsync(TaskItem? item)
-        => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync);
+        => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync, this);
 
     /// <summary>
     /// 展开或收起某行的编辑面板。
@@ -795,7 +786,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 row,
                 _tasks,
                 ProjectChoices,
-                LoadTasksAsync);
+                LoadTasksAsync,
+                this);
 
     /// <summary>
     /// 提交某行的编辑缓冲并收起面板。
@@ -817,7 +809,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task SaveEditAsync(TaskRowViewModel? row)
         => await new SaveEditTaskViewModel(_repository)
-            .ExecuteAsync(row, LoadTasksAsync);
+            .ExecuteAsync(row, LoadTasksAsync, this);
 
 
     /// <summary>
@@ -834,6 +826,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         item.ProjectId = string.IsNullOrEmpty(projectId) ? DefaultProject.Id : projectId;
         await _repository.SaveTaskAsync(item);
+        TaskChangeBus.Saved(item, this);
         await LoadTasksAsync();
     }
 
@@ -854,6 +847,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         item.DueDate = dueDate;
         await _repository.SaveTaskAsync(item);
+        TaskChangeBus.Saved(item, this);
         await LoadTasksAsync();
     }
 
@@ -1194,7 +1188,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
     {
-        if (_suppressTaskSavedReload)
+        if (ReferenceEquals(message.Origin, this))
         {
             return;
         }
@@ -1230,6 +1224,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
     {
+        if (ReferenceEquals(message.Origin, this))
+        {
+            return;
+        }
+
         TaskListRefreshTask = LoggedTasks.Observe(
             UiThread.RunAsync(() => LoadTasksAsync()),
             "TaskDeletedMessage");
