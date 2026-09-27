@@ -28,8 +28,8 @@ public class TaskItem
     /// 历史库中的 <c>null</c> 仅在主窗启动迁移里改挂 Default。
     /// </summary>
     /// <remarks>
-    /// 一个任务只能属于一个项目。项目被删除时改挂 Default，任务本身永不随项目删除。
-    /// 归档时保持不变。见 <c>IProjectRepository.DeleteAsync</c>。
+    /// 一个任务只能属于一个项目。项目被删除时任务一并物理删除（R-2.7）。
+    /// 归档项目时归属保持不变。见 <c>IProjectRepository.DeleteAsync</c>。
     /// </remarks>
     [Indexed]
     public string? ProjectId { get; set; }

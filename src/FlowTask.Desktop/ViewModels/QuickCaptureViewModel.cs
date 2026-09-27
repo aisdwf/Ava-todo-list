@@ -122,14 +122,23 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
     private async Task RefreshProjectChoicesAsync()
     {
         var lastProjectId = await _settingsRepository.GetAsync(LastProjectSettingsKey);
+        RebuildProjectChoices(lastProjectId);
+        await LoadTasksForSelectedProjectAsync();
+    }
 
+    /// <summary>
+    /// 按当前内存中的活跃项目重建下拉，并选中 <paramref name="preferredProjectId"/>
+    /// （已不存在则回退 Default）。
+    /// </summary>
+    private void RebuildProjectChoices(string? preferredProjectId)
+    {
         Projects.Clear();
         foreach (var project in _projects)
         {
             Projects.Add(new ProjectItemViewModel(project, 0));
         }
 
-        var restored = Projects.FirstOrDefault(p => p.Id == lastProjectId)
+        var restored = Projects.FirstOrDefault(p => p.Id == preferredProjectId)
                        ?? Projects.FirstOrDefault(p => p.Id == DefaultProject.Id);
 
         _suppressProjectSelectionReload = true;
@@ -141,8 +150,6 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
         {
             _suppressProjectSelectionReload = false;
         }
-
-        await LoadTasksForSelectedProjectAsync();
     }
 
     /// <summary>
@@ -226,7 +233,28 @@ public partial class QuickCaptureViewModel : ViewModelBase, IRecipient<TaskSaved
             return;
         }
 
-        TaskListRefreshTask = UiThread.RunAsync(() => LoadTasksForSelectedProjectAsync());
+        TaskListRefreshTask = UiThread.RunAsync(HandlePeerTaskDeletedAsync);
+    }
+
+    /// <summary>
+    /// 对端删除任务或整个项目后：刷新项目列表。
+    /// 若当前选中项目已不存在，回退 Default（与 <see cref="PrepareAsync"/> 一致）。
+    /// </summary>
+    private async Task HandlePeerTaskDeletedAsync()
+    {
+        var preferred = SelectedProject?.Id;
+        _allProjects = await _projectRepository.GetAllProjectsAsync();
+        _projects = _allProjects.Where(p => !p.IsArchived).OrderBy(p => p.SortOrder).ToList();
+        RefreshCompletion();
+        RebuildProjectChoices(preferred);
+        if (SelectedProject?.Id != preferred)
+        {
+            await _settingsRepository.SetAsync(
+                LastProjectSettingsKey,
+                SelectedProject?.Id ?? DefaultProject.Id);
+        }
+
+        await LoadTasksForSelectedProjectAsync();
     }
 
     /// <summary>

@@ -135,6 +135,36 @@ public class CrossWindowCompleteSyncTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task MainDeleteProject_RemovesTasksFromQuickAndFallsBackToDefault()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+
+        main.NewProjectName = "跨窗删项目";
+        await main.CreateProjectCommand.ExecuteAsync(null);
+        var project = main.Projects.Single(p => p.Id != DefaultProject.Id);
+
+        main.NewTaskTitle = "随项目删除";
+        await main.AddTaskCommand.ExecuteAsync(null);
+        await main.AssignProjectAsync(main.Tasks[0].Task, project.Id);
+
+        await _settingsRepo.SetAsync("QuickWindow.LastProjectId", project.Id);
+        await quick.PrepareAsync();
+        Assert.Equal(project.Id, quick.SelectedProject!.Id);
+        Assert.Single(quick.Tasks);
+
+        await main.RequestDeleteProjectCommand.ExecuteAsync(project);
+        await main.ConfirmDeleteProjectCommand.ExecuteAsync(null);
+        await quick.TaskListRefreshTask;
+
+        Assert.Equal(DefaultProject.Id, quick.SelectedProject!.Id);
+        Assert.DoesNotContain(quick.Projects, p => p.Id == project.Id);
+        Assert.Empty(quick.Tasks);
+        Assert.DoesNotContain(main.Tasks, t => t.Task.Title == "随项目删除");
+    }
+
+    [AvaloniaFact]
     public async Task OwnWrite_DoesNotTreatBusEchoAsPeerRefresh()
     {
         var main = CreateMain();

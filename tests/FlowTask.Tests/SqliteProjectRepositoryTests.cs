@@ -5,7 +5,7 @@ using Xunit;
 namespace FlowTask.Tests;
 
 /// <summary>
-/// 覆盖项目仓储，重点是删除项目时的任务保全语义。
+/// 覆盖项目仓储，重点是删除项目时级联物理删除其下任务（R-2.7）。
 /// </summary>
 public class SqliteProjectRepositoryTests : IDisposable
 {
@@ -154,14 +154,10 @@ public class SqliteProjectRepositoryTests : IDisposable
     }
 
     /// <summary>
-    /// <b>核心保全语义</b>：删除项目绝不删除其下任务，仅清空归属。
+    /// <b>级联删除</b>：删除项目必须物理删除其下任务，而不是改挂 Default。
     /// </summary>
-    /// <remarks>
-    /// 任务是用户的核心资产，项目只是它的一个可选属性；
-    /// 删除属性不应销毁拥有该属性的实体（design-domain-contract §2.2）。
-    /// </remarks>
     [Fact]
-    public async Task Delete_KeepsTasksAndClearsAssignment()
+    public async Task Delete_PhysicallyDeletesTasks()
     {
         await _projects.EnsureDefaultProjectAsync(_clock.UtcNow);
         var project = NewProject("建错的项目");
@@ -173,19 +169,26 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         Assert.Equal(2, affected);
         Assert.Null(await _projects.GetByIdAsync(project.Id));
+        Assert.Null(await _tasks.GetByIdAsync(taskA.Id));
+        Assert.Null(await _tasks.GetByIdAsync(taskB.Id));
+    }
 
-        var storedA = await _tasks.GetByIdAsync(taskA.Id);
-        var storedB = await _tasks.GetByIdAsync(taskB.Id);
+    /// <summary>
+    /// 历史软删行也随项目物理清掉，不留指向已删项目的孤儿行。
+    /// </summary>
+    [Fact]
+    public async Task Delete_AlsoRemovesSoftDeletedRows()
+    {
+        var project = NewProject("含软删");
+        await _projects.SaveProjectAsync(project);
+        var ghost = TaskItemFactory.Create(_clock, "旧软删", projectId: project.Id);
+        ghost.IsDeleted = true;
+        await _tasks.SaveTaskAsync(ghost);
 
-        // 任务必须存在
-        Assert.NotNull(storedA);
-        Assert.NotNull(storedB);
-        // 且改挂 Default（R-2.6）
-        Assert.Equal(DefaultProject.Id, storedA.ProjectId);
-        Assert.Equal(DefaultProject.Id, storedB.ProjectId);
-        // 未被误标记为删除
-        Assert.False(storedA.IsDeleted);
-        Assert.False(storedB.IsDeleted);
+        var affected = await _projects.DeleteAsync(project.Id);
+
+        Assert.Equal(1, affected);
+        Assert.Null(await _tasks.GetByIdAsync(ghost.Id));
     }
 
     /// <summary>
@@ -199,7 +202,7 @@ public class SqliteProjectRepositoryTests : IDisposable
         await _projects.SaveProjectAsync(target);
         await _projects.SaveProjectAsync(other);
 
-        await AddTaskAsync("将失去归属", target.Id);
+        await AddTaskAsync("将被一并删除", target.Id);
         var kept = await AddTaskAsync("归属不变", other.Id);
 
         await _projects.DeleteAsync(target.Id);

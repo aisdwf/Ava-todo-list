@@ -1027,9 +1027,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 确认删除项目。
     /// </summary>
     /// <remarks>
-    /// <b>其下任务不会被删除</b>，仅改挂 Default（R-2.6）——
-    /// 任务是用户的核心资产，项目只是它的一个可选属性（design-domain-contract §2.2）。
-    /// 该语义由 <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
+    /// 确认后物理删除其下任务（R-2.7）。该语义由
+    /// <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
     /// <para>
     /// <b>回退逻辑同 <see cref="ArchiveProjectAsync"/></b>：由 <see cref="LoadProjectsAsync"/>
     /// 统一判定选中项目是否仍存在，无需在此重复记录 <c>wasSelected</c> 后再调用一次
@@ -1046,7 +1045,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 && CurrentSelection.ProjectId == target?.Id,
             () => ProjectPendingDeletion = null,
             LoadProjectsAsync,
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
     }
 
     /// <summary>

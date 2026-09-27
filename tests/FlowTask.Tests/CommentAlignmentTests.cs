@@ -11,7 +11,7 @@ public class CommentAlignmentTests
     public void AgentsBaseline_IsAtLeastScanCount()
     {
         var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "AGENTS.md"));
-        Assert.Contains("tests 269 passing", text, StringComparison.Ordinal);
+        Assert.Contains("tests 272 passing", text, StringComparison.Ordinal);
         Assert.DoesNotContain("tests 163 passing", text, StringComparison.Ordinal);
     }
 
@@ -24,10 +24,11 @@ public class CommentAlignmentTests
     }
 
     [Fact]
-    public void ConfirmDeleteProjectComments_ReassignDefaultNotNull()
+    public void ConfirmDeleteProjectComments_CascadeDeleteNotRemount()
     {
         var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "FlowTask.Desktop", "ViewModels", "MainViewModel.cs"));
-        Assert.Contains("改挂 Default", text, StringComparison.Ordinal);
+        Assert.Contains("物理删除其下任务", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("其下任务不会被删除", text, StringComparison.Ordinal);
         Assert.DoesNotContain("置空退回未归属", text, StringComparison.Ordinal);
         Assert.Contains("不改已保存的当前值", text, StringComparison.Ordinal);
     }
