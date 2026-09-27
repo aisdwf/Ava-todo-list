@@ -4,13 +4,11 @@
 
 - **ID**: spec-codegraph-audit-remediation
 - **Type**: complex
-- **Status**: draft
+- **Status**: in-progress
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-27
 - **Last Updated**: 2026-09-27
 
-> **本 SPEC 保持 `[DRAFT]`。** 所有者 2026-09-27 原话：「新增 SPEC，把所有修改列为清单，并且标记 draft。完成以后推送到 dev」。
-> 本分支只交付扫描报告与整改清单，**不改生产代码**。开工须另经 Gate 1 确认后再翻成 `[IN-PROGRESS]`。
 > 证据与推导见 [`docs/analysis/analysis-codegraph-code-audit.md`](../../analysis/analysis-codegraph-code-audit.md)，本文件不重复长文。
 
 ## Why
@@ -21,16 +19,16 @@
 
 ## What
 
-把扫描报告第 4 节的 **H1–H4、M1–M8、L1–L8** 全部列入本 SPEC 的分阶段计划与改动清单。实施时按报告第 6 节顺序拆到独立 `bugfix/*` / `feature/*`，每项修完在本清单打钩。
+把扫描报告第 4 节的 **H1–H4、M1–M8、L1–L8** 全部列入本 SPEC 的分阶段计划与改动清单。实施在单一 `bugfix/codegraph-audit-remediation` 分支上按报告第 6 节顺序推进，**每条问题一次提交**，全部完成并经所有者预览后再合入 `dev`。扫描类问题以回归测试证明修复，不依赖手工复现。
 
-受影响范围（实施阶段才动代码）：`FlowTask.Core`、`FlowTask.Infrastructure`、`FlowTask.Desktop`、`FlowTask.Tests`、`.github/workflows`、相关注释与 `AGENTS.md` 测试基线。
+受影响范围：`FlowTask.Core`、`FlowTask.Infrastructure`、`FlowTask.Desktop`、`FlowTask.Tests`、`.github/workflows`、相关注释与 `AGENTS.md` 测试基线。
 
 ## Non-goals
 
-- 本 `[DRAFT]` 周期不修改任何 `.cs` / `.axaml` / CI。
-- 不把本 SPEC 当成已批准开工。
 - 不覆盖扫描未审的样式文件、macOS 图标路径、第三方 CVE。
 - 不在本文件重写分析报告正文。
+- 不把 ORM 特性从 Core 实体迁到 Infrastructure（M5 已定为补 ADR）。
+- 不在每条修复后要求所有者预览；仅在 20 条全部完成后打一次预览 exe，等所有者验收后再合 `dev`。
 
 ## Constraints and decisions
 
@@ -39,36 +37,37 @@
 - Article 9：禁止用 `Sleep` 做同步（H4）；业务时间走 `IClock`。
 - Article 1 / 10：注释与行为必须一致（M6）；同一概念只在一处表达（H2「未归属」）。
 - `rule-code-standards`：跨窗弱引用；CI 应以警告当错误构建（M7）。
-- `project-rules`：Core 不泄漏持久化细节；M5 要么补 ADR，要么把 ORM 特性移出 Core。
+- **M5（所有者 2026-09-27）**：补 ADR 承认实体上的 sqlite-net 特性；去掉 Core 未使用的 `CommunityToolkit.Mvvm`；**不**把映射移出 Core。
+- **分支（所有者 2026-09-27）**：一条 `bugfix/codegraph-audit-remediation`，20 条全做，逐条提交；合 `dev` 前 SPEC 收成 `[DONE]`。
 - TR-1：整改时不得把逻辑重新堆回 `MainViewModel`。
 - 保持已确认的良好实践：`IClock`、仓储写入漏斗、删除项目的同步事务、`WeakReferenceMessenger`、`UiThread.RunAsync`。
-- **合入 `dev` 仍为 `[DRAFT]`**：所有者明确要求清单先入库、暂不开工。这与「实施中 SPEC 须先收成 `[DONE]` 再合 `dev`」不冲突——本分支没有实施。
 
 ## Acceptance criteria
 
 - [x] 分析报告落在 `docs/analysis/`。
-- [x] 本 SPEC 以 `[DRAFT]` 列出 H1–H4、M1–M8、L1–L8，无遗漏。
-- [ ] 所有者确认本清单后，才允许翻成 `[IN-PROGRESS]` 并改代码。
-- [ ] 每条问题在对应任务分支修复，回归测试不回退；本清单同步打钩。
+- [x] 本 SPEC 列出 H1–H4、M1–M8、L1–L8，无遗漏。
+- [x] 所有者确认本清单后，才允许翻成 `[IN-PROGRESS]` 并改代码。
+- [ ] 每条问题在本任务分支修复，回归测试不回退；本清单同步打钩。
 - [ ] 全部勾选后本 SPEC 收为 `[DONE]`。
+- [ ] 所有者预览通过后再合入 `dev`。
 
 ## Staged plan
 
-实施须等所有者确认。阶段划分对齐分析报告 §6。
+阶段划分对齐分析报告 §6；全部落在同一 `bugfix/codegraph-audit-remediation` 分支。
 
-1. **H1 + H2（建议 `bugfix/*`）** — 归档任务编辑不丢归属；去掉与 R-2.6 冲突的「未归属」。
-2. **H3（建议 `feature/*`）** — 全局异常兜底、可见失败、日志。
-3. **H4（建议 `bugfix/*`）** — 热键注册改为可等待结果，去掉 `Sleep(50)`。
-4. **M4（建议 `feature/*`）** — 数据库路径单一真源；预览构建隔离日常库。
-5. **M7（建议 `feature/*`）** — PR / 发布前构建+测试门禁。
-6. **M1 + M2 + M3（建议 `bugfix/*`）** — 列表加载版本、跨窗消息补全、Default 种子竞态。
-7. **M5、M6 与 L 类** — 分层/ADR、注释对齐、死代码与小债务，可随相关功能顺带。
+1. **H1 + H2** — 归档任务编辑不丢归属；去掉与 R-2.6 冲突的「未归属」。
+2. **H3** — 全局异常兜底、可见失败、日志。
+3. **H4** — 热键注册改为可等待结果，去掉 `Sleep(50)`。
+4. **M4** — 数据库路径单一真源；预览构建隔离日常库。
+5. **M7** — PR / 发布前构建+测试门禁。
+6. **M1 + M2 + M3** — 列表加载版本、跨窗消息补全、Default 种子竞态。
+7. **M5、M6、M8 与 L 类** — ADR、注释对齐、单实例失败即退出、死代码与小债务。
 
 ## Change checklist
 
 ### 高优先级
 
-- [ ] **H1** 编辑已归档项目下的任务时，未改项目下拉不得把 `ProjectId` 写成 null；补回归测试
+- [x] **H1** 编辑已归档项目下的任务时，未改项目下拉不得把 `ProjectId` 写成 null；补回归测试
 - [ ] **H2** 按 R-2.6 移除或改写 `ProjectChoice.None`；`EnsureDefaultProjectAsync` 的 null→Default 迁移只留在启动路径
 - [ ] **H3** 注册 UI / Task / AppDomain 未处理异常；日志写入 `%LOCALAPPDATA%\FlowTask\logs`；`InitializeAsync` 失败有可见提示；fire-and-forget 统一记录异常
 - [ ] **H4** `GlobalHotkeyService.TryStart` 用事件/`TaskCompletionSource` 等待注册结果（带超时）；`_registered` 正确发布；`WndProc` 透传真实 `hWnd`（需运行验证）
@@ -79,7 +78,7 @@
 - [ ] **M2** 所有任务写入成功后发总线消息（含删除）；`TaskDeletedMessage` 必须有发送点；抑制逻辑按消息来源而非跨 await 的布尔窗
 - [ ] **M3** `EnsureDefaultProjectAsync` 改为 `INSERT OR IGNORE` 或单事务，避免并发主键冲突
 - [ ] **M4** 抽出单一 `DatabaseLocation` / 连接工厂；预览与 `dotnet run` 默认可指向独立 db 文件
-- [ ] **M5** 补 ADR 承认实体上的 sqlite-net 特性，或把映射移到 Infrastructure；去掉 Core 未使用的 `CommunityToolkit.Mvvm`
+- [ ] **M5** 补 ADR 承认实体上的 sqlite-net 特性；去掉 Core 未使用的 `CommunityToolkit.Mvvm`
 - [ ] **M6** 对齐注释与文档：删除项目改挂 Default、删除 `TaskTags` 表述、清理 `TaskFilter.Settings` / `SaveDefaultDueOffsetAsync` 注释、`AGENTS.md` 测试基线改为 218
 - [ ] **M7** PR 工作流：`TreatWarningsAsErrors=true` 的 build + test；Release 工作流在 publish 前跑测试
 - [ ] **M8** 单实例拿不到锁则退出并提示；强杀前校验进程路径；替换管道校验对端
@@ -99,22 +98,20 @@
 
 ### 2026-09-27
 
-- Completed: Codegraph 扫描；分析报告已写；本 SPEC 以 `[DRAFT]` 收录全部 20 条改动。
-- Decisions: 本分支不合入任何代码修复；清单入库后保持 draft，等所有者确认再开工。
-- Current resume point: 等待所有者确认本清单（或指定先做哪一阶段）。确认后：翻成 `[IN-PROGRESS]`，从阶段 1（H1+H2）开独立 `bugfix/*`。
+- Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。
+- Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
+- Current resume point: 阶段 1 下一步 H2（移除 `ProjectChoice.None`；null→Default 迁移只留启动路径）。
 
 ## Verification
 
-- Automated: 扫描工作树 `dotnet build FlowTask.sln` → 0 警告 0 错误；`dotnet test FlowTask.sln` → 218 通过 / 0 失败（基线，非本 SPEC 的修复验证）。
-- Manual: 分析为静态扫描；H1 UI 色条、H4 `DefWindowProc` 影响标注为需运行验证。
-- Not run or not covered: 未做运行时复现、性能压测、CVE 扫描。
+- Automated: 每条修复必须有会失败的回归测试（或等价的可重复断言）；全量 `dotnet test FlowTask.sln` 不回退。基线开工时 218 通过。
+- Manual: 全部完成后打 `preview/bugfix/codegraph-audit-remediation/FlowTask.exe`，由所有者预览。H1 UI 色条、H4 `DefWindowProc`、H3 可见提示等运行态项列入该次预览。
+- Not run or not covered: 未做性能压测、CVE 扫描。
 
 ## Risks and open questions
 
-- Owner: 是否按 §6 顺序开工，或先做其中几条。
-- Owner: M5 接受 ORM 特性留在 Core（补 ADR）还是迁到 Infrastructure。
-- Blocker: Gate 1 — 未确认前不得改代码。
-- H4 的 `DefWindowProc(IntPtr.Zero)` 是否在本机导致 hwnd=0，需运行验证后再改。
+- H4 的 `DefWindowProc(IntPtr.Zero)` 是否在本机导致 hwnd=0，需所有者最终预览。
+- 若干 Win32 / 双进程路径（H4 注册、M8 互斥、M7 GitHub Actions）单测只能覆盖抽出的策略，运行态留给预览。
 
 ## Lessons learned
 

@@ -30,7 +30,12 @@ public sealed class SaveEditTaskViewModel
         }
 
         task.Priority = row.EditPriority;
-        task.ProjectId = row.EditProject.ProjectId;
+
+        // 归档项目不在活跃候选时，下拉可能落到 None。未改归属不得把已有 ProjectId 写成 null。
+        if (row.EditProject.ProjectId is not null || task.ProjectId is null)
+        {
+            task.ProjectId = row.EditProject.ProjectId;
+        }
 
         await _taskRepository.SaveTaskAsync(task);
 

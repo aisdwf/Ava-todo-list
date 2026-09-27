@@ -546,8 +546,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
             : await _repository.GetAllActiveTasksAsync();
 
-        // 建立 Id → 项目 的查找表，避免为每行任务各查一次库（N+1 查询）
-        var projectLookup = _projects.ToDictionary(p => p.Id, p => p.Project);
+        // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
+        // 查找表必须含归档项目，否则色条为空、编辑候选也对不上归属。
+        var allProjects = await _projectRepository.GetAllProjectsAsync();
+        var projectLookup = allProjects.ToDictionary(p => p.Id);
 
         _tasks.Clear();
         foreach (var item in items)

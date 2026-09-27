@@ -606,6 +606,48 @@ public class ProjectInteractionTests : IDisposable
         Assert.Equal(project.Id, stored!.ProjectId);
     }
 
+    /// <summary>
+    /// 归档项目下的任务仍出现在全部任务看板；只改标题保存时不得把归属写成 null。
+    /// </summary>
+    /// <remarks>
+    /// 编辑候选原先只含活跃项目，<c>BeginEdit</c> 找不到归属就落到「未归属」，
+    /// <c>SaveEdit</c> 无条件写回 <c>ProjectId</c>，任务被静默清空后再被 Default 迁移。
+    /// </remarks>
+    [AvaloniaFact]
+    public async Task SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "待归档";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = SoleUserProject(vm);
+        var projectId = project.Id;
+        var colorHex = project.Project.ColorHex;
+
+        vm.NewTaskTitle = "归档项目下的任务";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        var taskId = vm.Tasks[0].Task.Id;
+        await vm.AssignProjectAsync(vm.Tasks[0].Task, projectId);
+
+        await vm.ArchiveProjectCommand.ExecuteAsync(project);
+
+        var row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
+        Assert.Equal(projectId, row.Task.ProjectId);
+        Assert.Equal(colorHex, row.ProjectColorHex);
+
+        await vm.ToggleEditCommand.ExecuteAsync(row);
+        Assert.Equal(projectId, row.EditProject.ProjectId);
+        Assert.Same(
+            row.EditProject,
+            Assert.Single(vm.ProjectChoices, c => c.ProjectId == projectId));
+
+        row.EditTitle = "只改标题";
+        await vm.SaveEditCommand.ExecuteAsync(row);
+
+        var stored = await _repo.GetByIdAsync(taskId);
+        Assert.Equal(projectId, stored!.ProjectId);
+        Assert.Equal("只改标题", stored.Title);
+    }
+
     // ==================== 删除 ====================
 
     /// <summary>

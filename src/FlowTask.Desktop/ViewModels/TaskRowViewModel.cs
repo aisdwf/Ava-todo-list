@@ -143,14 +143,27 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 以实体当前值填充编辑缓冲并展开面板。
     /// </summary>
     /// <param name="projectChoices">可选项目列表，用于定位当前归属对应的候选项。</param>
-    public void BeginEdit(IEnumerable<ProjectChoice> projectChoices)
+    /// <remarks>
+    /// 侧边栏候选只含未归档项目。全部任务看板仍会列出归档项目下的任务；
+    /// 若此处找不到当前 <see cref="TaskItem.ProjectId"/> 就回落到
+    /// <see cref="ProjectChoice.None"/>，ComboBox 与保存路径会把归属写成 null。
+    /// 所以把当前归属补进候选（同一实例，供 ComboBox 引用相等），而不是假装「未归属」。
+    /// </remarks>
+    public void BeginEdit(IList<ProjectChoice> projectChoices)
     {
         EditTitle = Task.Title;
         EditDueDate = Task.DueDate?.ToString("yyyy-MM-dd") ?? string.Empty;
         EditPriority = Task.Priority;
-        EditProject = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId)
-                      ?? ProjectChoice.None;
 
+        var match = projectChoices.FirstOrDefault(c => c.ProjectId == Task.ProjectId);
+        if (match is null && Task.ProjectId is not null)
+        {
+            var label = string.IsNullOrEmpty(ProjectName) ? Task.ProjectId : ProjectName;
+            match = new ProjectChoice(Task.ProjectId, label);
+            projectChoices.Add(match);
+        }
+
+        EditProject = match ?? ProjectChoice.None;
         IsEditing = true;
     }
 

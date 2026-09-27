@@ -15,7 +15,7 @@ public sealed class ToggleEditTaskViewModel
     public async Task ExecuteAsync(
         TaskRowViewModel? row,
         IEnumerable<TaskRowViewModel> allRows,
-        IEnumerable<ProjectChoice> projectChoices,
+        IList<ProjectChoice> projectChoices,
         Func<Task> reloadTasks)
     {
         if (row is null)
