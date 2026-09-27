@@ -11,7 +11,7 @@ public class CommentAlignmentTests
     public void AgentsBaseline_IsAtLeastScanCount()
     {
         var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "AGENTS.md"));
-        Assert.Contains("tests 218 passing", text, StringComparison.Ordinal);
+        Assert.Contains("tests 269 passing", text, StringComparison.Ordinal);
         Assert.DoesNotContain("tests 163 passing", text, StringComparison.Ordinal);
     }
 

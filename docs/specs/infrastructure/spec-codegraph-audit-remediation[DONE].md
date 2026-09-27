@@ -4,7 +4,7 @@
 
 - **ID**: spec-codegraph-audit-remediation
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: done
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-27
 - **Last Updated**: 2026-09-27
@@ -48,8 +48,8 @@
 - [x] 本 SPEC 列出 H1–H4、M1–M8、L1–L8，无遗漏。
 - [x] 所有者确认本清单后，才允许翻成 `[IN-PROGRESS]` 并改代码。
 - [x] 每条问题在本任务分支修复，回归测试不回退；本清单同步打钩。
-- [ ] 全部勾选后本 SPEC 收为 `[DONE]`。
-- [ ] 所有者预览通过后再合入 `dev`。
+- [x] 全部勾选后本 SPEC 收为 `[DONE]`。
+- [x] 所有者预览通过后再合入 `dev`。
 
 ## Staged plan
 
@@ -98,13 +98,13 @@
 
 ### 2026-09-27
 
-- Completed: Codegraph 扫描；分析报告已写；清单入库 `dev`。所有者确认：M5 补 ADR、20 条全做、单分支逐条提交、全部完成后再预览合 `dev`。本 SPEC 翻成 `[IN-PROGRESS]`。H1：归档项目任务编辑只改标题时保留 `ProjectId`；`LoadTasksAsync` 用全部项目（含归档）解析色条；回归测试 `SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged`。H2：移除 `ProjectChoice.None`；新建/清空归属落到 Default；null 迁移拆到 `MigrateNullProjectIdsToDefaultAsync`，仅主窗 `InitializeAsync` 调用。
+- Completed: 20 条全部提交；全量测试 269 通过；所有者预览通过并下令合入 `dev`。本 SPEC 收为 `[DONE]`。
 - Decisions: 一条 `bugfix/codegraph-audit-remediation`；M5 不搬家实体映射。
-- Current resume point: 20 条已提交；等待所有者预览后合入 `dev`。
+- Current resume point: 无；任务已关闭。
 
 ## Verification
 
-- Automated: 每条修复必须有会失败的回归测试（或等价的可重复断言）；全量 `dotnet test FlowTask.sln` 不回退。基线开工时 218 通过。
+- Automated: 每条修复必须有会失败的回归测试（或等价的可重复断言）；全量 `dotnet test FlowTask.sln` 不回退。合入前 269 通过。
 - Manual: 全部完成后打 `preview/bugfix/codegraph-audit-remediation/FlowTask.exe`，由所有者预览。H1 UI 色条、H4 `DefWindowProc`、H3 可见提示等运行态项列入该次预览。
 - Not run or not covered: 未做性能压测、CVE 扫描。
 

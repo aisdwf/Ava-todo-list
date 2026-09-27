@@ -180,7 +180,7 @@ This document serves as the master navigation map for developers and AI agents.
 -->
 
 - **顶层受控目录数**：`13` 个（新增 `technical/`）
-- **Markdown 文档总数**：`66` 篇（截至 2026-09-27，新增 `spec-codegraph-audit-remediation[DRAFT].md` 后按校验命令重计；不含已 gitignore 的 `ai-workflow/`）
+- **Markdown 文档总数**：`66` 篇（截至 2026-09-27；不含已 gitignore 的 `ai-workflow/`）
 
 | 目录 | 篇数 | 构成 |
 | :--- | :--- | :--- |

@@ -274,7 +274,7 @@ Codegraph 影响面分析显示以下组件 **3 跳内无测试覆盖**：`Globa
 
 ## 8. 相关文档
 
-- 整改清单（工作记忆，`[DRAFT]`）：[`spec-codegraph-audit-remediation[DRAFT].md`](../specs/infrastructure/spec-codegraph-audit-remediation[DRAFT].md)
+- 整改清单（工作记忆，`[DONE]`）：[`spec-codegraph-audit-remediation[DONE].md`](../specs/infrastructure/spec-codegraph-audit-remediation[DONE].md)
 - 规则：[`AI_CONSTITUTION.md`](../../AI_CONSTITUTION.md)、[`project-rules.md`](../rules/project-rules.md)、
   [`technical-rules.md`](../rules/technical-rules.md)、[`rule-code-standards.md`](../rules/rule-code-standards.md)
 - 需求：[`REQUIREMENTS.md`](../requirements/REQUIREMENTS.md)（R-2.6）
