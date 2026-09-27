@@ -164,6 +164,70 @@ public class CrossWindowCompleteSyncTests : IDisposable
         Assert.DoesNotContain(main.Tasks, t => t.Task.Title == "随项目删除");
     }
 
+    /// <summary>
+    /// 主窗新建项目后，已打开的小窗下拉立即出现该项目，无需重开（spec-quick-window-project-sync）。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task MainCreateProject_AppearsInQuickDropdownWithoutReopen()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+        await quick.PrepareAsync();
+        var selectedBefore = quick.SelectedProject!.Id;
+
+        main.NewProjectName = "跨窗新建";
+        await main.CreateProjectCommand.ExecuteAsync(null);
+        await quick.TaskListRefreshTask;
+
+        Assert.Contains(quick.Projects, p => p.Name == "跨窗新建");
+        Assert.Equal(selectedBefore, quick.SelectedProject!.Id);
+    }
+
+    [AvaloniaFact]
+    public async Task MainRenameProject_UpdatesQuickDropdownAndKeepsSelection()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+
+        main.NewProjectName = "改名前";
+        await main.CreateProjectCommand.ExecuteAsync(null);
+        var project = main.Projects.Single(p => p.Id != DefaultProject.Id);
+        await _settingsRepo.SetAsync("QuickWindow.LastProjectId", project.Id);
+        await quick.PrepareAsync();
+
+        main.BeginRenameProjectCommand.Execute(project);
+        project.RenameBuffer = "改名后";
+        await main.CommitRenameProjectCommand.ExecuteAsync(project);
+        await quick.TaskListRefreshTask;
+
+        Assert.Equal(project.Id, quick.SelectedProject!.Id);
+        Assert.Equal("改名后", quick.SelectedProject.Name);
+        Assert.DoesNotContain(quick.Projects, p => p.Name == "改名前");
+    }
+
+    [AvaloniaFact]
+    public async Task MainArchiveSelectedProject_QuickFallsBackToDefault()
+    {
+        var main = CreateMain();
+        var quick = CreateQuick();
+        await main.InitializeAsync();
+
+        main.NewProjectName = "将归档";
+        await main.CreateProjectCommand.ExecuteAsync(null);
+        var project = main.Projects.Single(p => p.Id != DefaultProject.Id);
+        await _settingsRepo.SetAsync("QuickWindow.LastProjectId", project.Id);
+        await quick.PrepareAsync();
+
+        await main.ArchiveProjectCommand.ExecuteAsync(project);
+        await quick.TaskListRefreshTask;
+
+        Assert.Equal(DefaultProject.Id, quick.SelectedProject!.Id);
+        Assert.DoesNotContain(quick.Projects, p => p.Id == project.Id);
+        Assert.Equal(DefaultProject.Id, await _settingsRepo.GetAsync("QuickWindow.LastProjectId"));
+    }
+
     [AvaloniaFact]
     public async Task OwnWrite_DoesNotTreatBusEchoAsPeerRefresh()
     {

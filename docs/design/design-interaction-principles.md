@@ -267,7 +267,7 @@
 > 实施拆分见：
 > [spec-quick-window-hotkey-capture](../specs/quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) ·
 > [spec-project-managed-tasks](../specs/task-domain/spec-project-managed-tasks[DONE].md) ·
-> [spec-quick-window-single-project-list](../specs/quick-capture/spec-quick-window-single-project-list[IN-PROGRESS].md)。
+> [spec-quick-window-single-project-list](../specs/quick-capture/spec-quick-window-single-project-list[DONE].md)。
 
 ---
 

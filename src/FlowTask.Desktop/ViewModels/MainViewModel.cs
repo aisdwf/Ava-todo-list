@@ -917,7 +917,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             NewProjectName,
             CollapseCreateProject,
             LoadProjectsAsync,
-            error => CreateProjectError = error);
+            error => CreateProjectError = error,
+            this);
 
     /// <summary>
     /// 离开新建输入框时提交：空白收起；非空走创建（非法则提示并保持输入区）。
@@ -934,7 +935,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             NewProjectName,
             CollapseCreateProject,
             LoadProjectsAsync,
-            error => CreateProjectError = error);
+            error => CreateProjectError = error,
+            this);
     }
 
     private void CollapseCreateProject()
@@ -988,7 +990,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new CommitRenameProjectViewModel(_projectRepository).ExecuteAsync(
             project,
             SelectedProject?.Id,
-            title => CurrentCategoryTitle = title);
+            title => CurrentCategoryTitle = title,
+            this);
 
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
     /// <remarks>
@@ -1006,7 +1009,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             CurrentSelection.Kind == ViewSelectionKind.Project
                 && CurrentSelection.ProjectId == project?.Id,
             LoadProjectsAsync,
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 请求删除项目：先查询影响范围，交由界面确认。

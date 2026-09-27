@@ -1,5 +1,6 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -21,7 +22,8 @@ public sealed class CommitRenameProjectViewModel
     public async Task ExecuteAsync(
         ProjectItemViewModel? project,
         string? selectedProjectId,
-        Action<string> syncSelectedTitle)
+        Action<string> syncSelectedTitle,
+        object origin)
     {
         if (project is null)
         {
@@ -53,6 +55,7 @@ public sealed class CommitRenameProjectViewModel
             throw;
         }
 
+        ProjectChangeBus.Changed(origin);
         project.SyncFromEntity();
         project.CancelRename();
 

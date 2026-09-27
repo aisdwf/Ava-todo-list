@@ -43,13 +43,6 @@ public partial class QuickCaptureWindow : Window
         _isSystemHotkeyActive = isSystemHotkeyActive;
         DataContext = vm;
         vm.RequestClose += Hide;
-        vm.RequestSetCaret += caret =>
-        {
-            if (this.FindControl<TextBox>("InputBox") is { } box)
-            {
-                box.CaretIndex = caret;
-            }
-        };
 
         // 拖拽整窗：无系统装饰条时，用户只能靠窗体本身移动浮窗。
         // 单项目列表 (spec-quick-window-single-project-list) 加入项目下拉与任务勾选后，
@@ -58,8 +51,6 @@ public partial class QuickCaptureWindow : Window
         PointerPressed += (_, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
-                && e.Source is not ListBox
-                && e.Source is not ListBoxItem
                 && e.Source is not ComboBox
                 && e.Source is not ComboBoxItem
                 && e.Source is not CheckBox
@@ -69,23 +60,8 @@ public partial class QuickCaptureWindow : Window
             }
         };
 
-        // Tunnel：TextBox 会吞掉 Tab，须在隧道阶段先处理补全接受
+        // Tunnel：Tab 会先被焦点导航消费，Ctrl+Tab 切换项目须在隧道阶段先拦下
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-
-        if (this.FindControl<ListBox>("CompletionList") is { } completionList)
-        {
-            completionList.PointerReleased += (_, e) =>
-            {
-                if (e.InitialPressMouseButton != MouseButton.Left
-                    || completionList.SelectedItem is not string choice)
-                {
-                    return;
-                }
-
-                vm.AcceptCompletionChoiceCommand.Execute(choice);
-                e.Handled = true;
-            };
-        }
     }
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
@@ -109,44 +85,26 @@ public partial class QuickCaptureWindow : Window
         switch (e.Key)
         {
             case Key.Escape:
-                if (vm.IsCompletionOpen)
+                vm.CancelCommand.Execute(null);
+                e.Handled = true;
+                break;
+
+            // D6：Ctrl+Tab 下一个、Ctrl+Shift+Tab 上一个；焦点留在输入框，便于切完直接录入
+            case Key.Tab when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
                 {
-                    vm.IsCompletionOpen = false;
-                    vm.CompletionItems.Clear();
+                    vm.SelectPreviousProjectCommand.Execute(null);
                 }
                 else
                 {
-                    vm.CancelCommand.Execute(null);
+                    vm.SelectNextProjectCommand.Execute(null);
                 }
 
-                e.Handled = true;
-                break;
-
-            case Key.Down when vm.IsCompletionOpen:
-                vm.SelectNextCompletionCommand.Execute(null);
-                e.Handled = true;
-                break;
-
-            case Key.Up when vm.IsCompletionOpen:
-                vm.SelectPreviousCompletionCommand.Execute(null);
-                e.Handled = true;
-                break;
-
-            case Key.Tab when vm.IsCompletionOpen:
-                vm.AcceptCompletionCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case Key.Enter:
-                if (vm.IsCompletionOpen)
-                {
-                    vm.AcceptCompletionCommand.Execute(null);
-                }
-                else
-                {
-                    vm.SaveCommand.Execute(null);
-                }
-
+                vm.SaveCommand.Execute(null);
                 e.Handled = true;
                 break;
         }
@@ -154,7 +112,7 @@ public partial class QuickCaptureWindow : Window
 
     /// <summary>
     /// 判断指针事件来源是否落在需要保留自身点击行为的交互控件内
-    /// （补全列表、项目下拉、任务列表滚动区、勾选框），
+    /// （项目下拉、任务列表滚动区、勾选框），
     /// 这些区域内的点击不应被整窗拖拽抢走。
     /// </summary>
     private static bool IsDescendantOfInteractiveRegion(object? source)
@@ -166,7 +124,7 @@ public partial class QuickCaptureWindow : Window
 
         for (var current = control; current is not null; current = current.Parent as Control)
         {
-            if (current is ListBox or ListBoxItem or ComboBox or ComboBoxItem or CheckBox or ScrollViewer)
+            if (current is ComboBox or ComboBoxItem or CheckBox or ScrollViewer)
             {
                 return true;
             }

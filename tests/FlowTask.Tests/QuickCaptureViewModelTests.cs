@@ -173,22 +173,79 @@ public class QuickCaptureViewModelTests : IDisposable
         Assert.Null((await _taskRepo.GetByIdAsync(orphan.Id))!.ProjectId);
     }
 
+    /// <summary>
+    /// R-1.9：新建归属跟随下拉，不再回落 Default；保存后留在小窗、可连续录入（D4/D5）。
+    /// </summary>
     [AvaloniaFact]
-    public async Task SaveAsync_AtMentionMatchesArchivedProjectInsteadOfCreatingDuplicate()
+    public async Task SaveAsync_AssignsSelectedProjectAndKeepsWindowOpen()
     {
-        var archived = new Project { Name = "旧项", CreatedAt = _clock.UtcNow };
-        await _projectRepo.SaveProjectAsync(archived);
-        await _projectRepo.SetArchivedAsync(archived.Id, true);
+        var project = new Project { Name = "工作", CreatedAt = _clock.UtcNow };
+        await _projectRepo.SaveProjectAsync(project);
+        await _settingsRepo.SetAsync("QuickWindow.LastProjectId", project.Id);
 
         var vm = CreateViewModel();
         await vm.PrepareAsync();
-        Assert.DoesNotContain(vm.Projects, p => p.Id == archived.Id);
+        var closeRequested = false;
+        vm.RequestClose += () => closeRequested = true;
 
-        vm.InputText = "续上 @旧项";
+        vm.InputText = "写周报";
+        await vm.SaveCommand.ExecuteAsync(null);
+        vm.InputText = "开例会";
         await vm.SaveCommand.ExecuteAsync(null);
 
-        var stored = (await _taskRepo.GetAllActiveTasksAsync()).Single(t => t.Title == "续上");
-        Assert.Equal(archived.Id, stored.ProjectId);
-        Assert.Single(await _projectRepo.GetAllProjectsAsync(), p => p.Name == "旧项");
+        Assert.False(closeRequested);
+        Assert.Equal(string.Empty, vm.InputText);
+        Assert.Equal(2, vm.Tasks.Count);
+        var stored = await _taskRepo.GetTasksByProjectAsync(project.Id);
+        Assert.Equal(2, stored.Count);
+    }
+
+    /// <summary>
+    /// <c>@</c> 语法已移除（D3）：原样保留在标题里，不解析、不新建项目。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SaveAsync_KeepsAtSignInTitleWithoutCreatingProject()
+    {
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+        var projectCountBefore = (await _projectRepo.GetAllProjectsAsync()).Count;
+
+        vm.InputText = "x @某项目";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("x @某项目", Assert.Single(vm.Tasks).Task.Title);
+        Assert.Equal(projectCountBefore, (await _projectRepo.GetAllProjectsAsync()).Count);
+    }
+
+    /// <summary>
+    /// D6：Ctrl+Tab / Ctrl+Shift+Tab 首尾循环切换，列表与记忆项同步。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SelectNextAndPreviousProject_CycleAndReloadTasks()
+    {
+        var projectA = new Project { Name = "项目甲", SortOrder = 1, CreatedAt = _clock.UtcNow };
+        await _projectRepo.SaveProjectAsync(projectA);
+        await _taskRepo.SaveTaskAsync(TaskItemFactory.Create(_clock, "甲的任务", projectId: projectA.Id));
+
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+        Assert.Equal(2, vm.Projects.Count);
+        var first = vm.Projects[0];
+        var last = vm.Projects[^1];
+        vm.SelectedProject = first;
+        await vm.ChangeSelectedProjectCommand.ExecuteAsync(first);
+
+        await vm.SelectNextProjectCommand.ExecuteAsync(null);
+        Assert.Same(last, vm.SelectedProject);
+        Assert.Equal(last.Id, await _settingsRepo.GetAsync("QuickWindow.LastProjectId"));
+
+        await vm.SelectNextProjectCommand.ExecuteAsync(null);
+        Assert.Same(first, vm.SelectedProject);
+
+        await vm.SelectPreviousProjectCommand.ExecuteAsync(null);
+        Assert.Same(last, vm.SelectedProject);
+        Assert.Equal(
+            last.Id == projectA.Id ? ["甲的任务"] : Array.Empty<string>(),
+            vm.Tasks.Select(t => t.Task.Title).ToArray());
     }
 }
