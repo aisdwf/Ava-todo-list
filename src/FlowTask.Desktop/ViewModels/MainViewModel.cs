@@ -313,8 +313,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <remarks>
     /// 此前 UI 写死 macOS 的 <c>⌥ Space</c>，Windows 用户看到的图标与实际热键不符。
+    /// 其后又写死 Alt+Space，注册回退到 Win+Alt+Space 时同样教错，
+    /// 现由 <see cref="SetRegisteredHotkey"/> 按实际注册结果刷新（spec-onboarding-guide Q3）。
     /// </remarks>
-    public string QuickCaptureHotkeyLabel => OperatingSystem.IsMacOS() ? "⌥ Space" : "Alt+Space";
+    [ObservableProperty]
+    private string _quickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(RegisteredHotkey.None);
+
+    /// <summary>记录进程级热键实际注册到的组合，刷新界面文案。</summary>
+    public void SetRegisteredHotkey(RegisteredHotkey registered)
+        => QuickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(registered);
 
     /// <summary>请求应用窗口材质。窗口实例归视图层所有，故以事件外发。</summary>
     public event Action<MaterialOption>? MaterialPresetChanged;

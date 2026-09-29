@@ -22,6 +22,11 @@ public sealed class GlobalHotkeyService : IDisposable
     private IntPtr _hwnd;
     private volatile bool _registered;
 
+    /// <summary>
+    /// 实际注册到的组合。<see cref="TryStart"/> 返回 true 后读取；消息线程在发布注册结果前写入。
+    /// </summary>
+    public RegisteredHotkey Registered { get; private set; } = RegisteredHotkey.None;
+
     public GlobalHotkeyService(Action onHotkey)
     {
         _onHotkey = onHotkey;
@@ -65,9 +70,18 @@ public sealed class GlobalHotkeyService : IDisposable
         try
         {
             _hwnd = CreateMessageWindow();
-            // Alt+Space；部分环境被 shell 占用时再试 Win+Alt+Space
-            _registered = RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModNorepeat, VkSpace)
-                          || RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModWin | ModNorepeat, VkSpace);
+            // Alt+Space；部分环境被 shell 占用时再试 Win+Alt+Space。
+            // 记下实际命中的组合：界面文案必须与之一致（spec-onboarding-guide Q3）。
+            if (RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModNorepeat, VkSpace))
+            {
+                Registered = RegisteredHotkey.AltSpace;
+            }
+            else if (RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModWin | ModNorepeat, VkSpace))
+            {
+                Registered = RegisteredHotkey.WinAltSpace;
+            }
+
+            _registered = Registered != RegisteredHotkey.None;
             _registration.TrySetResult(_registered);
 
             if (!_registered)
