@@ -201,7 +201,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 是否有必须先处理的全窗覆盖层。为 true 时主内容关闭命中，
     /// 避免遮罩外的 <c>:pointerover</c> 高亮穿透到任务行 / 侧栏。
     /// </summary>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen;
+    /// <remarks>
+    /// 到期日选择器已改为贴边浮层（spec-due-date-picker），不再是全窗遮罩，故不计入。
+    /// </remarks>
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen;
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -212,20 +215,17 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>请求彻底退出。与托盘「退出」、通用页按钮同一条路径。</summary>
     public event Action? RequestExitApplication;
 
-    /// <summary>创建区中的到期日编辑器。</summary>
-    public DueDateEditorViewModel NewDueDateEditor { get; private set; } = null!;
+    /// <summary>创建栏到期日选择器的编辑器；其已提交值随新任务写入。</summary>
+    public DueDateEditorViewModel NewDueDateEditor { get; }
 
-    /// <summary>行编辑弹出层中的到期日编辑器。</summary>
-    public DueDateEditorViewModel EditingDueDateEditor { get; private set; } = null!;
+    /// <summary>
+    /// 任务行到期日选择器共享的编辑器。同一时刻只有一个浮层打开，故全列表共用一个实例。
+    /// </summary>
+    public DueDateEditorViewModel RowDueDateEditor { get; }
 
-    /// <summary>是否打开到期日编辑弹出层。</summary>
+    /// <summary>创建栏选择器的展示值，与 <see cref="NewDueDateEditor"/> 已提交值同步。</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
-    private bool _isDueDatePopupOpen;
-
-    /// <summary>正在编辑的任务行（用于弹出层定位）；<c>null</c> 表示未在弹出编辑。</summary>
-    [ObservableProperty]
-    private TaskRowViewModel? _editingDueDateTarget;
+    private DateTime? _newTaskDueDate;
 
     [ObservableProperty]
     private int _activeCount;
@@ -340,9 +340,10 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         _clock = clock;
         _settingsRepository = settingsRepository;
 
-        // 初始化到期日编辑器（Func<int> 绑定 DefaultDueOffsetDays 属性）
+        // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
-        EditingDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
+        NewDueDateEditor.Committed += date => NewTaskDueDate = date;
+        RowDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
 
         Tasks = new ReadOnlyObservableCollection<TaskRowViewModel>(_tasks);
         Projects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_projects);
@@ -641,55 +642,22 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new AddTaskViewModel(_repository, _clock).ExecuteAsync(
             NewTaskTitle,
             NewTaskPriority,
-            NewDueDateEditor.TakeValue(),
+            NewTaskDueDate,
             SelectedProject?.Id,
             () =>
             {
                 NewTaskTitle = string.Empty;
-                NewDueDateEditor.Load(null);
+                NewTaskDueDate = null;
             },
             LoadTasksAsync,
             this);
 
     /// <summary>
-    /// 打开行编辑弹出层，用于修改到期日。
+    /// 持久化任务行到期日选择器的一次提交（spec-due-date-picker）。
     /// </summary>
     [RelayCommand]
-    private void OpenDueDatePopup(TaskRowViewModel? row)
-        => new OpenDueDatePopupViewModel().Execute(
-            row,
-            target =>
-            {
-                EditingDueDateTarget = target;
-                EditingDueDateEditor.Load(target.Task.DueDate, expandCalendar: true);
-                IsDueDatePopupOpen = true;
-            });
-
-    /// <summary>
-    /// 关闭到期日编辑弹出层，不保存更改。
-    /// </summary>
-    [RelayCommand]
-    private void CloseDueDatePopup()
-    {
-        IsDueDatePopupOpen = false;
-        EditingDueDateTarget = null;
-    }
-
-    /// <summary>
-    /// 保存到期日编辑弹出层的更改。
-    /// </summary>
-    [RelayCommand]
-    private async Task CommitDueDatePopupAsync()
-        => await new CommitDueDatePopupViewModel(_repository).ExecuteAsync(
-            EditingDueDateTarget,
-            EditingDueDateEditor.TakeValue(),
-            () =>
-            {
-                IsDueDatePopupOpen = false;
-                EditingDueDateTarget = null;
-            },
-            LoadTasksAsync,
-            this);
+    private async Task CommitRowDueDateAsync(DueDateCommit? commit)
+        => await new CommitRowDueDateViewModel(_repository).ExecuteAsync(commit, LoadTasksAsync, this);
 
     /// <summary>
     /// 保存默认到期偏移设置。

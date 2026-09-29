@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlowTask.Desktop.ViewModels"
+             x:Class="FlowTask.Desktop.Controls.DueDatePicker">
+
+    <!--
+      到期日选择器 (spec-due-date-picker)：一个触发入口 + 贴边浮层。
+      浮层是 Popup，叠加在内容之上、不参与布局，打开时不会推动列表
+      （design-interaction-principles §2.4 布局不突变）。
+      浮层内：数字预览 → Enter 提交；点击日历某天即提交；「默认 +N 天」「清除」即提交；
+      Esc / 点击外部不改动关闭。
+    -->
+    <Panel>
+        <Button x:Name="Trigger"
+                Classes="DueTrigger"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox x:Name="TriggerIcon" Width="13" Height="13" VerticalAlignment="Center">
+                    <Path Classes="StrokeIcon Muted" Data="{StaticResource IconCalendar}" />
+                </Viewbox>
+                <TextBlock x:Name="TriggerText" Classes="DueTriggerText" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+
+        <Popup x:Name="PickerPopup"
+               Placement="BottomEdgeAlignedLeft"
+               VerticalOffset="6"
+               IsLightDismissEnabled="True">
+            <Border x:Name="Surface"
+                    x:DataType="vm:DueDateEditorViewModel"
+                    Classes="DuePickerSurface"
+                    Opacity="0"
+                    RenderTransform="translateY(-6px)">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                    </Transitions>
+                </Border.Transitions>
+
+                <StackPanel Spacing="10" MinWidth="280">
+                    <TextBox x:Name="DigitBox"
+                             Classes="FieldInput"
+                             Watermark="输入数字：10 / 0310 / 20260310"
+                             Text="{Binding DigitText, Mode=TwoWay}" />
+
+                    <TextBlock Classes="CaptionText"
+                               Foreground="{DynamicResource PriorityHighBrush}"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding HasParseError}"
+                               Text="{Binding ParseErrorMessage}" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button Classes="DuePickerPreset"
+                                Content="{Binding DefaultPresetLabel}"
+                                Command="{Binding ApplyDefaultDueCommand}" />
+                        <Button Classes="DuePickerPreset"
+                                Content="清除"
+                                Command="{Binding ClearDueCommand}" />
+                    </StackPanel>
+
+                    <Calendar x:Name="DueCalendar"
+                              HorizontalAlignment="Center"
+                              SelectedDate="{Binding CalendarDate, Mode=TwoWay}"
+                              DisplayDate="{Binding CalendarDisplayDate, Mode=TwoWay}" />
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Panel>
+</UserControl>

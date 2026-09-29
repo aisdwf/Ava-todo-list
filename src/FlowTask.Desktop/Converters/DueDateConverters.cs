@@ -85,49 +85,6 @@ public sealed class DueDateTodayConverter : IValueConverter
 }
 
 /// <summary>
-/// 将到期日格式化为可编辑的 `yyyy-MM-dd` 文本；<c>null</c> 转空串。
-/// </summary>
-/// <remarks>
-/// 与 <see cref="DueDateTextConverter"/> 分离：编辑态需要**可解析回日期**的
-/// 精确字面值，而列表展示需要**便于理解**的相对描述。
-/// 用同一个转换器同时满足两种用途会导致编辑框里出现「今天到期」这类无法解析的文本。
-/// </remarks>
-public sealed class DueDateEditConverter : IValueConverter
-{
-    public static readonly DueDateEditConverter Instance = new();
-
-    /// <summary>编辑态使用的日期格式。全应用唯一固定点。</summary>
-    public const string Format = "yyyy-MM-dd";
-
-    /// <inheritdoc />
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is DateTime due ? due.ToString(Format, CultureInfo.InvariantCulture) : string.Empty;
-
-    /// <summary>
-    /// 严格按 <see cref="Format"/> 解析；非法输入返回 <c>null</c>（视为清除到期日）。
-    /// </summary>
-    /// <remarks>
-    /// 用 <c>TryParseExact</c> 而非 <c>TryParse</c>：后者会接受
-    /// 「3/10」「March 10」等多种形态并按当前区域文化推断，
-    /// 同一串输入在不同机器上可能解析出不同日期。
-    /// 严格格式让行为可预测。
-    /// </remarks>
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        var text = (value as string)?.Trim();
-        if (string.IsNullOrEmpty(text))
-        {
-            return null;
-        }
-
-        return DateTime.TryParseExact(
-            text, Format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
-            ? parsed
-            : null;
-    }
-}
-
-/// <summary>
 /// 将 `#RRGGBB` 色值字符串转为笔刷，供项目色条与色点使用。
 /// </summary>
 /// <remarks>

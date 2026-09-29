@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:Controls="using:FlowTask.Desktop.Controls">
 
     <!--
       Editorial 视觉语言实现层 (spec-editorial-and-ripple-theme Phase 3)。
@@ -663,6 +664,105 @@
     <Style Selector="TextBlock.DueBadge.DueToday">
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ================= 到期日选择器 (spec-due-date-picker) =================
+         触发入口是一个弱化的胶囊按钮：静息时只有图标 + 文案，悬停才浮现底色，
+         保证常驻可点又不与标题争夺视线。浮层用悬浮表面令牌，与小窗胶囊同一质感。 -->
+    <Style Selector="Button.DueTrigger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.DueTrigger /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+    </Style>
+    <Style Selector="Button.DueTrigger:pointerover">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="Button.DueTrigger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="Button.DueTrigger:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.DueTriggerText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.DueTriggerText.Overdue">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.DueTriggerText.DueToday">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+
+    <Style Selector="Border.DuePickerSurface">
+        <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="BoxShadow" Value="0 8 24 0 #33000000" />
+        <Setter Property="Margin" Value="0,0,12,12" />
+    </Style>
+
+    <Style Selector="Button.DuePickerPreset">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.DuePickerPreset:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- 小窗无到期日的行：入口静息隐藏、悬停整行浮现（首版形态，待 owner 预览裁决）。
+         用 Opacity 而非 IsVisible：隐藏时仍占位且可点击，指针移入即出现，不产生布局跳动。 -->
+    <Style Selector="Border.QuickTaskRow Controls|DueDatePicker.HoverOnly:unset">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.QuickTaskRow:pointerover Controls|DueDatePicker.HoverOnly:unset">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- 任务行元信息行：项目 · 到期 · 创建日期，紧贴标题下方 -->
+    <Style Selector="TextBlock.MetaText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 完成日：与完成态标题同样沉降（R-4.1 降低视觉权重），不带任何到期强调色 -->
+    <Style Selector="TextBlock.MetaText.Done">
+        <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+    </Style>
+    <Style Selector="TextBlock.MetaSeparator">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="2,0" />
     </Style>
 
     <!-- ================= 项目侧边栏行 =================

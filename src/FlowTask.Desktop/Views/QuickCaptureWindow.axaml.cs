@@ -1,7 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using FlowTask.Desktop.Controls;
 using FlowTask.Desktop.ViewModels;
 
 namespace FlowTask.Desktop.Views;
@@ -62,11 +66,25 @@ public partial class QuickCaptureWindow : Window
 
         // Tunnel：Tab 会先被焦点导航消费，Ctrl+Tab 切换项目须在隧道阶段先拦下
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+
+        // 底栏选到日期后焦点回输入框，便于直接回车保存（全键盘路径，R-1.4）
+        if (this.FindControl<DueDatePicker>("NewDuePicker") is { } picker)
+        {
+            picker.PickerClosed += (_, _) => FocusInput();
+        }
     }
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not QuickCaptureViewModel vm)
+        {
+            return;
+        }
+
+        // 到期日浮层内的按键（Enter 提交日期、Esc 关浮层）交给浮层自己处理：
+        // PopupRoot 的事件路由经由所属 Popup 回到本窗口，本隧道处理器会先于浮层收到，
+        // 若不放行，浮层里按 Enter 会保存任务、按 Esc 会隐藏整个小窗。
+        if (e.Source is Visual source && source.GetVisualRoot() is PopupRoot)
         {
             return;
         }
@@ -107,6 +125,12 @@ public partial class QuickCaptureWindow : Window
                 vm.SaveCommand.Execute(null);
                 e.Handled = true;
                 break;
+
+            // R-1.10：键盘补充入口；点击入口是底栏常驻按钮（用户裁决不得只依赖快捷键）
+            case Key.D when e.KeyModifiers == KeyModifiers.Control:
+                this.FindControl<DueDatePicker>("NewDuePicker")?.Open();
+                e.Handled = true;
+                break;
         }
     }
 
@@ -124,7 +148,9 @@ public partial class QuickCaptureWindow : Window
 
         for (var current = control; current is not null; current = current.Parent as Control)
         {
-            if (current is ComboBox or ComboBoxItem or CheckBox or ScrollViewer)
+            // Button 覆盖到期日入口与 P1/P2/P3（RadioButton 派生自 Button）：
+            // BeginMoveDrag 会进入系统拖拽循环并吞掉抬起事件，按钮的 Click 永远不触发。
+            if (current is ComboBox or ComboBoxItem or CheckBox or ScrollViewer or Button)
             {
                 return true;
             }

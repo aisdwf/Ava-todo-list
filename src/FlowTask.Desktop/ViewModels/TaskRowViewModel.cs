@@ -91,6 +91,37 @@ public partial class TaskRowViewModel : ViewModelBase
     public bool HasDueDate => Task.DueDate is not null;
 
     /// <summary>
+    /// 到期日的可绑定投影，供到期日选择器展示。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。
+    /// </summary>
+    public DateTime? DueDate => Task.DueDate;
+
+    /// <summary>
+    /// 创建日期（本地时区）展示文案。
+    /// </summary>
+    /// <remarks>
+    /// <c>CreatedAt</c> 是 UTC 时刻（<see cref="Core.Interfaces.IClock.UtcNow"/>）。此前视图直接
+    /// <c>StringFormat MM/dd</c> 格式化 UTC 值，东八区 0–8 点创建的任务会显示成前一天。
+    /// sqlite-net 读回的值 Kind 可能为 Unspecified，故显式按 UTC 解释后再转本地。
+    /// </remarks>
+    public string CreatedLocalText => FormatLocalDay(Task.CreatedAt);
+
+    /// <summary>
+    /// 已完成任务的完成日文案，如「09/29 已完成」。
+    /// </summary>
+    /// <remarks>
+    /// 用户原话（2026-09-29）：「已完成的显示为 xx/xx已完成类似的形式感觉更合理，已经完成的任务显示逾期表现很怪」。
+    /// 完成后到期日已失去行动意义，改为展示完成日；到期日本身仍保留在库中，取消勾选即恢复原展示。
+    /// 历史数据可能缺 <c>CompletedAt</c>，此时只显示「已完成」。
+    /// </remarks>
+    public string CompletedLocalText =>
+        Task.CompletedAt is { } at ? $"{FormatLocalDay(at)} 已完成" : "已完成";
+
+    /// <summary>UTC 时刻按本地时区格式化为 MM/dd。sqlite-net 读回的 Kind 可能为 Unspecified，显式按 UTC 解释。</summary>
+    private static string FormatLocalDay(DateTime utc) =>
+        DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime()
+            .ToString("MM/dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
     /// 优先级单选组名。
     /// </summary>
     /// <remarks>
@@ -113,7 +144,15 @@ public partial class TaskRowViewModel : ViewModelBase
         ApplyProject(project);
     }
 
-    partial void OnIsCompletedChanged(bool value) => Task.IsCompleted = value;
+    /// <remarks>
+    /// 勾选时 <c>CompletedAt</c> 由完成动作随后写入，这里先通知一次；
+    /// 动作结束后的列表重载 / <see cref="ApplyPersisted"/> 会以落库值再刷新。
+    /// </remarks>
+    partial void OnIsCompletedChanged(bool value)
+    {
+        Task.IsCompleted = value;
+        OnPropertyChanged(nameof(CompletedLocalText));
+    }
 
     /// <summary>
     /// 用仓储读回的整行更新本行。归属项目变了则返回 false，由调用方整表重载以刷新色条。
@@ -135,6 +174,7 @@ public partial class TaskRowViewModel : ViewModelBase
     {
         Task.CompletedAt = completedAt;
         IsCompleted = isCompleted;
+        OnPropertyChanged(nameof(CompletedLocalText));
     }
 
     /// <summary>
@@ -192,5 +232,7 @@ public partial class TaskRowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasProject));
         OnPropertyChanged(nameof(HasDueDate));
+        OnPropertyChanged(nameof(DueDate));
+        OnPropertyChanged(nameof(CompletedLocalText));
     }
 }

@@ -24,4 +24,7 @@
 
     <StreamGeometry x:Key="IconCheck">M5,12.5 L10,17.5 L19,7</StreamGeometry>
 
+    <!-- 到期日选择器触发入口 (spec-due-date-picker) -->
+    <StreamGeometry x:Key="IconCalendar">M5.5,5 L18.5,5 A1.5,1.5 0 0 1 20,6.5 L20,19 A1.5,1.5 0 0 1 18.5,20.5 L5.5,20.5 A1.5,1.5 0 0 1 4,19 L4,6.5 A1.5,1.5 0 0 1 5.5,5 Z M4,10 L20,10 M8,3 L8,7 M16,3 L16,7</StreamGeometry>
+
 </ResourceDictionary>
