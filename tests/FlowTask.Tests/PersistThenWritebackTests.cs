@@ -35,10 +35,10 @@ public class PersistThenWritebackTests
         var task = TaskItemFactory.Create(_clock, "有到期日", projectId: DefaultProject.Id);
         task.DueDate = new DateTime(2026, 3, 10);
         var row = new TaskRowViewModel(task, null);
-        var sut = new CommitDueDatePopupViewModel(new ThrowingTaskRepository());
+        var sut = new CommitRowDueDateViewModel(new ThrowingTaskRepository());
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.ExecuteAsync(row, new DateTime(2026, 4, 1), () => { }, () => Task.CompletedTask, this));
+            () => sut.ExecuteAsync(new DueDateCommit(row, new DateTime(2026, 4, 1)), () => Task.CompletedTask, this));
 
         Assert.Equal(new DateTime(2026, 3, 10), task.DueDate);
     }

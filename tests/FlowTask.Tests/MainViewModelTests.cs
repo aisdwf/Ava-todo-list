@@ -374,10 +374,10 @@ public class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// 行上弹出编辑器可写入到期日。
+    /// 行上选择器提交即持久化，列表行随之刷新（spec-due-date-picker）。
     /// </summary>
     [AvaloniaFact]
-    public async Task CommitDueDatePopup_PersistsSelectedDate()
+    public async Task CommitRowDueDate_PersistsSelectedDate()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -386,19 +386,18 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        vm.OpenDueDatePopupCommand.Execute(row);
-        vm.EditingDueDateEditor.UpdateCalendarInput(new DateTime(2026, 3, 10));
-        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
+        await vm.CommitRowDueDateCommand.ExecuteAsync(new DueDateCommit(row, new DateTime(2026, 3, 10)));
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal(new DateTime(2026, 3, 10), stored!.DueDate);
+        Assert.Equal(new DateTime(2026, 3, 10), vm.Tasks[0].DueDate);
     }
 
     /// <summary>
-    /// 弹出编辑器清除到期日后持久化为 null。
+    /// 行上选择器清除到期日后持久化为 null。
     /// </summary>
     [AvaloniaFact]
-    public async Task CommitDueDatePopup_ClearPersistsNull()
+    public async Task CommitRowDueDate_ClearPersistsNull()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -406,18 +405,36 @@ public class MainViewModelTests : IDisposable
         vm.NewTaskTitle = "任务";
         await vm.AddTaskCommand.ExecuteAsync(null);
 
+        await vm.CommitRowDueDateCommand.ExecuteAsync(new DueDateCommit(vm.Tasks[0], new DateTime(2026, 3, 10)));
         var row = vm.Tasks[0];
-        vm.OpenDueDatePopupCommand.Execute(row);
-        vm.EditingDueDateEditor.UpdateCalendarInput(new DateTime(2026, 3, 10));
-        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
-
-        row = vm.Tasks[0];
-        vm.OpenDueDatePopupCommand.Execute(row);
-        vm.EditingDueDateEditor.ClearDueCommand.Execute(null);
-        await vm.CommitDueDatePopupCommand.ExecuteAsync(null);
+        await vm.CommitRowDueDateCommand.ExecuteAsync(new DueDateCommit(row, null));
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Null(stored!.DueDate);
+    }
+
+    /// <summary>
+    /// 创建栏选择器的提交值随新任务写入，保存后清空，下一条默认无到期日。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task AddTask_UsesCreateBarDueDateThenResets()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.NewDueDateEditor.Load(null);
+        vm.NewDueDateEditor.ApplyDefaultDueCommand.Execute(null);
+        vm.NewTaskTitle = "带默认到期";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+
+        Assert.Null(vm.NewTaskDueDate);
+        var stored = await _repo.GetByIdAsync(vm.Tasks[0].Task.Id);
+        Assert.Equal(_clock.Today.AddDays(vm.DefaultDueOffsetDays), stored!.DueDate);
+
+        vm.NewTaskTitle = "无到期";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        var plain = vm.Tasks.Single(t => t.Task.Title == "无到期");
+        Assert.Null(plain.Task.DueDate);
     }
 
     [AvaloniaFact]
@@ -851,7 +868,7 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void BlockingOverlay_TracksClosePromptAndDueDatePopup()
+    public void BlockingOverlay_TracksClosePrompt()
     {
         var vm = CreateViewModel();
         Assert.False(vm.IsBlockingOverlayOpen);
@@ -861,11 +878,26 @@ public class MainViewModelTests : IDisposable
 
         vm.DismissClosePromptCommand.Execute(null);
         Assert.False(vm.IsBlockingOverlayOpen);
+    }
 
-        vm.IsDueDatePopupOpen = true;
+    /// <summary>
+    /// 删除项目确认改为弹层后，打开期间屏蔽主内容命中；取消后恢复。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task DeleteProjectPrompt_BlocksOverlayUntilCancelled()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        vm.NewProjectName = "待删";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = vm.Projects.Single(p => p.Name == "待删");
+
+        await vm.RequestDeleteProjectCommand.ExecuteAsync(project);
+        Assert.True(vm.IsDeleteProjectPromptOpen);
         Assert.True(vm.IsBlockingOverlayOpen);
 
-        vm.IsDueDatePopupOpen = false;
+        vm.CancelDeleteProjectCommand.Execute(null);
+        Assert.False(vm.IsDeleteProjectPromptOpen);
         Assert.False(vm.IsBlockingOverlayOpen);
     }
 

@@ -4,6 +4,7 @@
         xmlns:models="using:FlowTask.Core.Models"
         xmlns:conv="using:FlowTask.Desktop.Converters"
         xmlns:appearance="using:FlowTask.Desktop.Appearance"
+        xmlns:controls="using:FlowTask.Desktop.Controls"
         xmlns:onboarding="using:FlowTask.Desktop.Views.Onboarding"
         xmlns:guide="using:FlowTask.Desktop.Views.Guide"
         x:Class="FlowTask.Desktop.Views.MainWindow"
@@ -117,6 +118,13 @@
                                                     <TextBlock Text="{Binding TaskCount}" />
                                                 </Border>
 
+                                                <!-- 删除槽位对所有行固定占位：Default 无删除入口，若整列折叠，
+                                                     其计数会比其它行右移一个按钮宽，上下不对齐。
+                                                     故 Default 行放一个等宽空占位，而不是隐藏整列。 -->
+                                                <Border Grid.Column="3"
+                                                        Width="22"
+                                                        Margin="4,0,0,0"
+                                                        IsVisible="{Binding !ShowDeleteAction}" />
                                                 <Button Grid.Column="3"
                                                         Classes="ProjectAction"
                                                         Margin="4,0,0,0"
@@ -302,8 +310,8 @@
                 <Grid Grid.Row="1">
 
                     <!-- ========== 视图 A: Editorial 任务流 ========== -->
-                    <!-- Row 0 添加栏 / Row 1 删除确认条（按需出现）/ Row 2 任务流 -->
-                    <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding !IsSettingsOpen}">
+                    <!-- Row 0 添加栏 / Row 1 任务流（删除项目确认已改为居中弹层，不再插入一行推动列表） -->
+                    <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsSettingsOpen}">
 
                         <!-- 贯穿式添加栏 (design-visual-language §2.3)：无边框，仅底部发丝线 -->
                         <Border Grid.Row="0"
@@ -312,54 +320,30 @@
                                 Padding="4,0,4,16"
                                 Margin="0,0,0,8"
                                 onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.AddBar}">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="6">
-                                    <TextBox x:Name="NewTaskInput"
-                                             onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.AddInput}"
-                                             Classes="EditorialInput"
-                                             Text="{Binding NewTaskTitle, Mode=TwoWay}"
-                                             Watermark="记录下一件重要的事…"
-                                             VerticalAlignment="Center">
-                                        <TextBox.KeyBindings>
-                                            <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
-                                        </TextBox.KeyBindings>
-                                    </TextBox>
-                                    <!-- 到期日：默认仅快捷项+数字；日历按需展开，避免常驻占位 -->
-                                    <StackPanel DataContext="{Binding NewDueDateEditor}" Spacing="6" Margin="0,4,0,0">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <Button Classes="SecondaryAction"
-                                                    Content="启用默认到期"
-                                                    Command="{Binding EnableDefaultDueCommand}" />
-                                            <Button Content="清除"
-                                                    Command="{Binding ClearDueCommand}" />
-                                            <Button Content="日历"
-                                                    Command="{Binding ToggleCalendarCommand}"
-                                                    ToolTip.Tip="展开日历"
-                                                    IsVisible="{Binding !IsCalendarExpanded}" />
-                                            <Button Content="收起日历"
-                                                    Command="{Binding ToggleCalendarCommand}"
-                                                    ToolTip.Tip="收起日历"
-                                                    IsVisible="{Binding IsCalendarExpanded}" />
-                                            <TextBox Width="140"
-                                                     Classes="FieldInput"
-                                                     Watermark="10 / 0310 / 20260310"
-                                                     Text="{Binding DigitText, Mode=TwoWay}" />
-                                            <TextBlock VerticalAlignment="Center"
-                                                       Classes="CaptionText"
-                                                       Text="{Binding SelectedDate, StringFormat='yyyy-MM-dd', TargetNullValue='未设置到期日'}" />
-                                        </StackPanel>
-                                        <Calendar SelectedDate="{Binding CalendarDate, Mode=TwoWay}"
-                                                  HorizontalAlignment="Left"
-                                                  IsVisible="{Binding IsCalendarExpanded}" />
-                                        <TextBlock Classes="CaptionText"
-                                                   Foreground="{DynamicResource DangerBrush}"
-                                                   IsVisible="{Binding HasParseError}"
-                                                   Text="{Binding ParseErrorMessage}" />
-                                    </StackPanel>
-                                </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBox Grid.Column="0"
+                                         x:Name="NewTaskInput"
+                                         onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.AddInput}"
+                                         Classes="EditorialInput"
+                                         Text="{Binding NewTaskTitle, Mode=TwoWay}"
+                                         Watermark="记录下一件重要的事…"
+                                         VerticalAlignment="Center">
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding AddTaskCommand}" />
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+
+                                <!-- 到期日：唯一入口，浮层叠加不推动布局 (spec-due-date-picker)。
+                                     与优先级同处一行，默认态为「到期」占位，新建不自动写入日期。 -->
+                                <controls:DueDatePicker Grid.Column="1"
+                                                        Margin="12,0,12,0"
+                                                        VerticalAlignment="Center"
+                                                        PopupPlacement="BottomEdgeAlignedRight"
+                                                        Date="{Binding NewTaskDueDate}"
+                                                        Editor="{Binding NewDueDateEditor}" />
 
                                 <!-- 优先级分段直选，替代原下拉框 -->
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                                     <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P1"
                                                  IsChecked="{Binding NewTaskPriority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
                                     <RadioButton Classes="SegmentChoice" GroupName="NewPriority" Content="P2"
@@ -370,31 +354,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- 删除项目确认条：级联物理删除不可逆，须先告知将删除多少条任务
-                             (spec-delete-project-cascade-tasks / R-2.7)。 -->
-                        <Border Grid.Row="1"
-                                Classes="DangerConfirm"
-                                IsVisible="{Binding ProjectPendingDeletion, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Grid ColumnDefinitions="*,Auto,Auto">
-                                <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
-                                    <TextBlock FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextPrimaryBrush}"
-                                               Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
-                                    <TextBlock Classes="CaptionText"
-                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='将删除其下 {0} 条任务，不可撤销。'}" />
-                                </StackPanel>
-
-                                <Button Grid.Column="1" Margin="12,0,8,0"
-                                        Command="{Binding CancelDeleteProjectCommand}"
-                                        Content="取消" />
-                                <Button Grid.Column="2"
-                                        Command="{Binding ConfirmDeleteProjectCommand}"
-                                        Content="确认删除" />
-                            </Grid>
-                        </Border>
-
                         <!-- 空状态 -->
-                        <StackPanel Grid.Row="2"
+                        <StackPanel Grid.Row="1"
                                     Spacing="10"
                                     Margin="4,72,0,0"
                                     VerticalAlignment="Top"
@@ -414,7 +375,7 @@
                              底部/右侧留白必须写在内部内容的 Margin，不能写 ScrollViewer.Padding：
                              Avalonia 11.2 ScrollContentPresenter 计算 Extent 时只计入子元素
                              尺寸与 Margin，不计自身 Padding，否则滚到底时最后一行会被裁掉约半行。 -->
-                        <ScrollViewer Grid.Row="2"
+                        <ScrollViewer Grid.Row="1"
                                       HorizontalScrollBarVisibility="Disabled"
                                       IsVisible="{Binding !IsTaskStreamEmpty}">
                             <ItemsControl ItemsSource="{Binding Tasks}"
@@ -428,9 +389,14 @@
                                                 BorderBrush="{DynamicResource HairlineBrush}"
                                                 BorderThickness="0,0,0,1"
                                                 Padding="{DynamicResource TaskRowPadding}">
-                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
+                                            <!-- 双行布局 (spec-due-date-picker §C)：
+                                                 第 1 行 勾选 | 色条 | 优先级 | 标题 | 删除；
+                                                 第 2 行 元信息（项目 · 到期 · 创建），与标题左对齐。
+                                                 此前 7 列单行把到期与创建日期挤在最右，中间只有一行标题的空白。 -->
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+                                                  RowDefinitions="Auto,Auto">
 
-                                                <CheckBox Grid.Column="0"
+                                                <CheckBox Grid.Column="0" Grid.Row="0"
                                                           Classes="RingCheck"
                                                           IsChecked="{Binding IsCompleted, Mode=TwoWay}"
                                                           VerticalAlignment="Center"
@@ -438,16 +404,16 @@
                                                           Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
                                                           CommandParameter="{Binding Task}" />
 
-                                                <!-- 项目色条：零文本、零额外行高地承载归属信息 (design-domain-contract §5.2)。
+                                                <!-- 项目色条：跨两行，贯穿标题与元信息 (design-domain-contract §5.2)。
                                                      无项目时整体不渲染，行布局与改动前一致 -->
-                                                <Border Grid.Column="1"
+                                                <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                                         Classes="ProjectStripe"
                                                         IsVisible="{Binding HasProject}"
                                                         Background="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
                                                         ToolTip.Tip="{Binding ProjectName}" />
 
                                                 <!-- 优先级微标签 P1/P2/P3 (spec-editorial-and-ripple-theme §2) -->
-                                                <Border Grid.Column="2"
+                                                <Border Grid.Column="2" Grid.Row="0"
                                                         Classes="PriorityTag"
                                                         Classes.P1="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=High}"
                                                         Classes.P2="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=Medium}"
@@ -462,7 +428,7 @@
                                                      在 Border 上挂 PointerPressed：后者会与
                                                      勾选框、删除按钮的点击热区相互竞争。
                                                      Button 天然处理 Handled，热区边界清晰。 -->
-                                                <Button Grid.Column="3"
+                                                <Button Grid.Column="3" Grid.Row="0"
                                                         Classes="TitleTrigger"
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleEditCommand}"
                                                         CommandParameter="{Binding}"
@@ -475,34 +441,9 @@
                                                                VerticalAlignment="Center" />
                                                 </Button>
 
-                                                <!-- 到期日：点击打开同一套三来源编辑器 -->
-                                                <Button Grid.Column="4"
-                                                        Classes="DueBadgeButton"
-                                                        Margin="14,0,0,0"
-                                                        VerticalAlignment="Center"
-                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenDueDatePopupCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip.Tip="设置到期日">
-                                                    <Panel>
-                                                        <TextBlock Classes="DueBadge"
-                                                                   Classes.Overdue="{Binding Task.DueDate, Converter={x:Static conv:DueDateOverdueConverter.Instance}}"
-                                                                   Classes.DueToday="{Binding Task.DueDate, Converter={x:Static conv:DueDateTodayConverter.Instance}}"
-                                                                   Text="{Binding Task.DueDate, Converter={x:Static conv:DueDateTextConverter.Instance}}"
-                                                                   IsVisible="{Binding HasDueDate}" />
-                                                        <TextBlock Classes="CaptionText"
-                                                                   Text="到期"
-                                                                   IsVisible="{Binding !HasDueDate}" />
-                                                    </Panel>
-                                                </Button>
-
-                                                <TextBlock Grid.Column="5"
-                                                           Classes="CaptionText"
-                                                           Text="{Binding Task.CreatedAt, StringFormat='{}{0:MM/dd}'}"
-                                                           VerticalAlignment="Center"
-                                                           Margin="16,0,4,0" />
-
-                                                <Button Grid.Column="6"
+                                                <Button Grid.Column="4" Grid.Row="0"
                                                         Classes="IconCircle Compact RowAction"
+                                                        Margin="12,0,0,0"
                                                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).DeleteTaskCommand}"
                                                         CommandParameter="{Binding Task}"
                                                         VerticalAlignment="Center"
@@ -511,6 +452,40 @@
                                                         <Path Classes="StrokeIcon Muted" Data="{StaticResource IconClose}" />
                                                     </Viewbox>
                                                 </Button>
+
+                                                <!-- 元信息行：到期常驻（无值时为「到期」占位），保证改期入口可发现 (design §2.3)。
+                                                     选择器左内边距 6px，整体左移 6px 使图标与标题首字对齐。 -->
+                                                <StackPanel Grid.Column="3" Grid.Row="1"
+                                                            Orientation="Horizontal"
+                                                            Spacing="4"
+                                                            Margin="-6,4,0,0">
+                                                    <StackPanel Orientation="Horizontal"
+                                                                Spacing="4"
+                                                                IsVisible="{Binding HasProject}">
+                                                        <Ellipse Classes="ProjectDot"
+                                                                 Margin="6,0,2,0"
+                                                                 Fill="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                                        <TextBlock Classes="MetaText" Text="{Binding ProjectName}" />
+                                                        <TextBlock Classes="MetaSeparator" Text="·" />
+                                                    </StackPanel>
+
+                                                    <!-- 未完成：到期选择器；已完成：完成日（用户原话「显示为 xx/xx已完成」）。
+                                                         完成后改期无意义，取消勾选即恢复选择器与原到期日。 -->
+                                                    <controls:DueDatePicker Date="{Binding DueDate}"
+                                                                            IsVisible="{Binding !IsCompleted}"
+                                                                            Editor="{Binding $parent[Window].((vm:MainViewModel)DataContext).RowDueDateEditor}"
+                                                                            CommitCommand="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRowDueDateCommand}"
+                                                                            CommitTarget="{Binding}" />
+                                                    <TextBlock Classes="MetaText Done"
+                                                               Margin="6,0,0,0"
+                                                               IsVisible="{Binding IsCompleted}"
+                                                               Text="{Binding CompletedLocalText}" />
+
+                                                    <TextBlock Classes="MetaSeparator" Text="·" />
+                                                    <TextBlock Classes="MetaText"
+                                                               Text="{Binding CreatedLocalText}"
+                                                               ToolTip.Tip="创建日期" />
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
 
@@ -705,58 +680,6 @@
         </Grid>
 
 
-        <!-- 到期日编辑弹出层 -->
-        <!-- 遮罩必须自带铺满的命中面：宿主 Grid 无 Background 不参与命中；
-             空 Fluent Button 的背景画在按内容尺寸的 ContentPresenter 上，
-             指针会穿透到后面的 TaskRow / NavPill，触发异常 :pointerover。 -->
-        <Grid IsVisible="{Binding IsDueDatePopupOpen}" ZIndex="100">
-            <Button HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    Command="{Binding CloseDueDatePopupCommand}">
-                <Button.Template>
-                    <ControlTemplate>
-                        <Border Background="#73000000" />
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
-            <Border Classes="SettingsCard"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    MinWidth="360"
-                    Padding="24"
-                    Background="{DynamicResource SurfaceBrush}">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="设置到期日" Classes="SectionTitle" />
-                    <StackPanel DataContext="{Binding EditingDueDateEditor}" Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Classes="SecondaryAction"
-                                    Content="启用默认到期"
-                                    Command="{Binding EnableDefaultDueCommand}" />
-                            <Button Content="清除"
-                                    Command="{Binding ClearDueCommand}" />
-                        </StackPanel>
-                        <TextBox Classes="FieldInput"
-                                 Watermark="10 / 0310 / 20260310"
-                                 Text="{Binding DigitText, Mode=TwoWay}" />
-                        <Calendar SelectedDate="{Binding CalendarDate, Mode=TwoWay}"
-                                  HorizontalAlignment="Left" />
-                        <TextBlock Classes="CaptionText"
-                                   Text="{Binding SelectedDate, StringFormat='已选：yyyy-MM-dd', TargetNullValue='未设置到期日'}" />
-                        <TextBlock Classes="CaptionText"
-                                   Foreground="{DynamicResource DangerBrush}"
-                                   IsVisible="{Binding HasParseError}"
-                                   Text="{Binding ParseErrorMessage}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="取消" Command="{Binding CloseDueDatePopupCommand}" />
-                        <Button Classes="PrimaryAction"
-                                Content="完成"
-                                Command="{Binding CommitDueDatePopupCommand}" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Grid>
-
         <!-- 未设关闭默认时的选择层（spec-close-to-tray）：不另开 Window，避免再占一条生命周期 -->
         <Grid IsVisible="{Binding IsClosePromptOpen}" ZIndex="110">
             <Button HorizontalAlignment="Stretch"
@@ -792,6 +715,43 @@
                         <Button Classes="PrimaryAction"
                                 Content="确认"
                                 Command="{Binding ConfirmClosePromptCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 删除项目确认 (spec-delete-project-cascade-tasks / R-2.7)：级联物理删除不可逆，须先告知将删除多少条任务。
+             用户原话（2026-09-29）：「删除项目的表现，目前跳出的位置还是有点违背不突变的原则，感觉可以用弹窗的形式更加合理」。
+             此前是任务流上方插入的一行，出现时把整列任务推下去；改为与关闭选择层同构的居中弹层，
+             遮罩吸收点击 = 取消。危险操作需要阻断式确认，属 design §2.2 允许的例外（与关闭选择层同理）。 -->
+        <Grid IsVisible="{Binding IsDeleteProjectPromptOpen}" ZIndex="105">
+            <Button HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Command="{Binding CancelDeleteProjectCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <Border Classes="SettingsCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MinWidth="360"
+                    MaxWidth="440"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Classes="SectionTitle"
+                               TextWrapping="Wrap"
+                               Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
+                    <TextBlock Classes="BodyText"
+                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='将删除其下 {0} 条任务，不可撤销。'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="取消"
+                                Command="{Binding CancelDeleteProjectCommand}" />
+                        <Button Classes="DangerAction"
+                                Content="确认删除"
+                                Command="{Binding ConfirmDeleteProjectCommand}" />
                     </StackPanel>
                 </StackPanel>
             </Border>

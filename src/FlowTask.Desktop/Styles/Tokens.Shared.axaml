@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="https://github.com/avaloniaui"
+﻿<ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
@@ -31,7 +31,7 @@
 
     <!-- ============ 呼吸感间距 (Spacious Rhythm) ============
          design-visual-language §1 要求条目垂直留白 18-24px。 -->
-    <Thickness x:Key="TaskRowPadding">4,20,4,20</Thickness>
+    <Thickness x:Key="TaskRowPadding">4,18,4,18</Thickness>
     <Thickness x:Key="ContentAreaMargin">56,28,56,0</Thickness>
     <Thickness x:Key="SidebarPadding">24,28,20,24</Thickness>
 

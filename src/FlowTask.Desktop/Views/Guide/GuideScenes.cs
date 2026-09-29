@@ -109,43 +109,86 @@ internal static class GuideScenes
             .Wait(2200);
     }
 
+    /// <remarks>
+    /// 与真实添加栏一致（spec-due-date-picker）：标题 | 「到期」入口 | P1–P3 同处一行；
+    /// 点「到期」在其下方弹出日期框（预设 + 日历），点某一天即生效，入口随即显示相对日期。
+    /// 不演示数字输入：用户 2026-09-29 裁决删除。
+    /// </remarks>
     private static SceneScript DueAndPriority(SceneLayer layer)
     {
         layer.Text(12, 14, "买机票", 13, "TextPrimaryBrush", FontWeight.SemiBold);
+        var dueChip = layer.Pill(144, 14, 62, "到期", null, "TextTertiaryBrush");
         var p1 = layer.Pill(212, 14, 30, "P1", null, "TextTertiaryBrush");
         var p2 = layer.Pill(244, 14, 30, "P2", "AccentSubtleBrush", "AccentBrush");
         var p3 = layer.Pill(276, 14, 30, "P3", null, "TextTertiaryBrush");
         layer.Box(12, 40, 296, 1, "HairlineStrongBrush", 0);
 
-        layer.Pill(12, 52, 64, "启用默认到期", "HairlineStrongBrush", "TextSecondaryBrush");
-        var digitBox = layer.Box(84, 49, 82, 22, null, 4, "HairlineStrongBrush");
-        var digits = layer.Text(92, 54, "10 / 0310", 9.5, "TextTertiaryBrush");
-        var result = layer.Text(176, 54, "未设置到期日", 9.5, "TextTertiaryBrush");
+        // 下方的任务列表：日期框叠在它上面，不把它推下去
+        layer.TaskRow(52, "写周报");
+        layer.TaskRow(80, "续签合同");
 
-        layer.Micro(12, 90, "敲数字即可定日期");
-        var rows = new[]
-        {
-            (Digits: "10", Meaning: "→ 本月 10 日"),
-            (Digits: "0310", Meaning: "→ 今年 3 月 10 日"),
-            (Digits: "20260310", Meaning: "→ 完整日期")
-        };
-        var legend = rows.Select((row, index) =>
-        {
-            var chip = layer.Cell(12, 104 + (index * 22), 62, 16, row.Digits, "KeyCapSurfaceBrush", "TextSecondaryBrush");
-            var meaning = layer.Text(82, 106 + (index * 22), row.Meaning, 9.5, "TextSecondaryBrush");
-            return (chip, meaning);
-        }).ToArray();
+        // 贴边日期框：右对齐到「到期」入口，向左展开
+        const double popX = 86;
+        const double popY = 44;
+        var (popover, pop) = layer.Group(popX, popY, 120, 126, "CardSurfaceBrush", 8, "HairlineStrongBrush");
+        var presetDefault = pop.Pill(8, 8, 58, "默认 +1 天", "HairlineBrush", "TextSecondaryBrush");
+        pop.Pill(70, 8, 36, "清除", "HairlineBrush", "TextSecondaryBrush");
+        pop.Text(8, 30, "三月", 8.5, "TextSecondaryBrush", FontWeight.SemiBold);
 
-        var badge = layer.Cell(236, 104, 72, 18, "03-10", "AccentSubtleBrush", "AccentBrush", 9, 9.5);
+        // 迷你日历：5 行 × 7 列，今天为 10 日；演示点选 12 日
+        const double cellW = 14.5;
+        const double cellH = 14;
+        const double gridX = 6;
+        const double gridY = 44;
+        const int pickDay = 12;
+        Border? picked = null;
+        for (var day = 1; day <= 31; day++)
+        {
+            var index = day + 6 - 1; // 3 月 1 日排在第 7 列
+            var col = index % 7;
+            var row = index / 7;
+            var cell = pop.Cell(
+                gridX + (col * cellW),
+                gridY + (row * cellH),
+                cellW - 1.5,
+                cellH - 1.5,
+                day.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                day == 10 ? "HairlineStrongBrush" : null,
+                "TextSecondaryBrush",
+                3,
+                7);
+            if (day == pickDay)
+            {
+                picked = cell;
+            }
+        }
+
+        var pickIndex = pickDay + 6 - 1;
+        var pickX = popX + gridX + ((pickIndex % 7) * cellW) + (cellW / 2);
+        var pickY = popY + gridY + ((pickIndex / 7) * cellH) + (cellH / 2);
+
+        layer.Micro(12, 150, "点一天即生效，Esc 或点外面取消");
         var cursor = layer.Cursor();
 
-        void Highlight(int index)
+        static void SetPillText(Border pill, string text)
         {
-            for (var i = 0; i < legend.Length; i++)
+            if (pill.Child is TextBlock label)
             {
-                var on = i == index;
-                layer.Tint(legend[i].chip, on ? "AccentSubtleBrush" : "KeyCapSurfaceBrush", on ? "AccentBrush" : "TextSecondaryBrush");
-                legend[i].meaning.Opacity = index < 0 || on ? 1 : 0.45;
+                label.Text = text;
+            }
+        }
+
+        void ShowPopover(bool on)
+        {
+            if (on)
+            {
+                Motion.Show(popover);
+                Motion.Place(popover, 0, 0);
+            }
+            else
+            {
+                Motion.Hide(popover);
+                Motion.Place(popover, 0, -6);
             }
         }
 
@@ -153,49 +196,50 @@ internal static class GuideScenes
         {
             Reset = () =>
             {
-                digits.Text = "10 / 0310";
-                layer.Brushes.Set(digits, TextBlock.ForegroundProperty, "TextTertiaryBrush");
-                layer.Brushes.Set(digitBox, Border.BorderBrushProperty, "HairlineStrongBrush");
-                result.Text = "未设置到期日";
-                layer.Brushes.Set(result, TextBlock.ForegroundProperty, "TextTertiaryBrush");
+                SetPillText(dueChip, "到期");
+                layer.Tint(dueChip, null, "TextTertiaryBrush");
+                layer.Tint(presetDefault, "HairlineBrush", "TextSecondaryBrush");
+                if (picked is not null)
+                {
+                    layer.Tint(picked, null, "TextSecondaryBrush");
+                }
+
                 layer.Tint(p1, null, "TextTertiaryBrush");
                 layer.Tint(p2, "AccentSubtleBrush", "AccentBrush");
                 layer.Tint(p3, null, "TextTertiaryBrush");
-                Motion.Hide(badge);
-                Motion.Place(badge, 0, 6);
-                Highlight(-1);
+                ShowPopover(false);
                 cursor.Park();
             }
         };
 
-        return script.MoveTo(cursor, 120, 62)
-            .Click(cursor, 120, 62)
-            .Then(200, () =>
+        return script.MoveTo(cursor, 175, 24)
+            .Click(cursor, 175, 24)
+            .Then(500, () => ShowPopover(true))
+            .MoveTo(cursor, pickX, pickY)
+            .Then(300, () =>
             {
-                digits.Text = string.Empty;
-                layer.Brushes.Set(digits, TextBlock.ForegroundProperty, "TextPrimaryBrush");
-                layer.Brushes.Set(digitBox, Border.BorderBrushProperty, "AccentBrush");
-                Highlight(1);
+                if (picked is not null)
+                {
+                    layer.Tint(picked, "AccentSubtleBrush", "AccentBrush");
+                }
             })
-            .Type(digits, "0310", 220)
-            .Then(700, () =>
+            .Click(cursor, pickX, pickY)
+            .Then(500, () =>
             {
-                result.Text = "2026-03-10";
-                layer.Brushes.Set(result, TextBlock.ForegroundProperty, "AccentBrush");
-                Motion.Show(badge);
-                Motion.Place(badge, 0, 0);
+                // 点选即生效：日期框关闭，入口显示相对日期
+                ShowPopover(false);
+                SetPillText(dueChip, "2 天后");
+                layer.Tint(dueChip, "AccentSubtleBrush", "AccentBrush");
             })
-            .MoveTo(cursor, 225, 24)
-            .Click(cursor, 225, 24)
+            .MoveTo(cursor, 227, 22)
+            .Click(cursor, 227, 22)
             .Then(900, () =>
             {
                 layer.Tint(p1, "PriorityHighSurfaceBrush", "PriorityHighBrush");
                 layer.Tint(p2, null, "TextTertiaryBrush");
                 cursor.Park();
             })
-            .Then(900, () => Highlight(0))
-            .Then(900, () => Highlight(2))
-            .Wait(1200);
+            .Wait(1600);
     }
 
     private static SceneScript EditAndComplete(SceneLayer layer)
@@ -402,18 +446,20 @@ internal static class GuideScenes
         var targetName = side.Text(28, 50, "旧项目", 9.5, "TextSecondaryBrush", FontWeight.Medium);
         var trash = side.Icon(106, 51, 10, "IconTrash", "TextTertiaryBrush");
 
-        // 与真实界面一致：确认条出现在右侧内容区顶部（MainWindow DangerConfirm）
-        var (confirm, confirmLayer) = layer.Group(152, 14, 158, 70, "PriorityHighSurfaceBrush", 6);
-        confirmLayer.Text(10, 8, "删除项目「旧项目」？", 9.5, "TextPrimaryBrush", FontWeight.SemiBold);
-        confirmLayer.Text(10, 24, "将删除其下 3 条任务，不可撤销。", 8, "TextTertiaryBrush");
-        confirmLayer.Cell(46, 44, 44, 18, "取消", "HairlineStrongBrush", "TextSecondaryBrush");
-        var ok = confirmLayer.Cell(96, 44, 52, 18, "确认删除", "HairlineStrongBrush", "PriorityHighBrush");
-
         var rows = new[]
         {
-            layer.TaskRow(96, "旧需求 A", 148, 162),
-            layer.TaskRow(124, "旧需求 B", 148, 162)
+            layer.TaskRow(24, "旧需求 A", 148, 162),
+            layer.TaskRow(52, "旧需求 B", 148, 162)
         };
+
+        // 与真实界面一致（spec-due-date-picker G3）：居中确认框 + 压暗遮罩，列表不被推动
+        var dim = layer.Box(0, 0, 320, 180, null, 0);
+        dim.Background = new SolidColorBrush(Color.Parse("#73000000"));
+        var (confirm, confirmLayer) = layer.Group(70, 50, 180, 78, "CardSurfaceBrush", 8, "HairlineStrongBrush");
+        confirmLayer.Text(12, 10, "删除项目「旧项目」？", 10, "TextPrimaryBrush", FontWeight.SemiBold);
+        confirmLayer.Text(12, 28, "将删除其下 3 条任务，不可撤销。", 8, "TextSecondaryBrush");
+        confirmLayer.Cell(62, 52, 44, 18, "取消", "HairlineStrongBrush", "TextSecondaryBrush");
+        var ok = confirmLayer.Cell(112, 52, 56, 18, "确认删除", "PriorityHighSurfaceBrush", "PriorityHighBrush");
         var cursor = layer.Cursor();
 
         var script = new SceneScript
@@ -429,7 +475,8 @@ internal static class GuideScenes
                 Motion.Hide(trash);
                 layer.Brushes.Set(trash, Avalonia.Controls.Shapes.Shape.StrokeProperty, "TextTertiaryBrush");
                 Motion.Hide(confirm);
-                layer.Tint(ok, "HairlineStrongBrush", "PriorityHighBrush");
+                Motion.Hide(dim);
+                layer.Tint(ok, "PriorityHighSurfaceBrush", "PriorityHighBrush");
                 foreach (var row in rows)
                 {
                     row.Reset();
@@ -448,12 +495,17 @@ internal static class GuideScenes
             .MoveTo(cursor, 121, 66)
             .Then(160, () => layer.Brushes.Set(trash, Avalonia.Controls.Shapes.Shape.StrokeProperty, "PriorityHighBrush"))
             .Click(cursor, 121, 66)
-            .Then(1400, () => Motion.Show(confirm))
-            .MoveTo(cursor, 272, 67)
-            .Click(cursor, 272, 67)
+            .Then(1400, () =>
+            {
+                Motion.Show(dim);
+                Motion.Show(confirm);
+            })
+            .MoveTo(cursor, 210, 111)
+            .Click(cursor, 210, 111)
             .Then(400, () => layer.Tint(ok, "PriorityHighBrush", "OnAccentBrush"))
             .Then(1800, () =>
             {
+                Motion.Hide(dim);
                 Motion.Hide(confirm);
                 foreach (var control in new Control[] { target, targetDot, targetName, trash })
                 {
@@ -637,8 +689,9 @@ internal static class GuideScenes
         var savedHint = card.Text(242, 32, "已保存", 8.5, "AccentBrush");
 
         layer.Text(12, 94, "新任务", 12, "TextPrimaryBrush", FontWeight.SemiBold);
-        var enable = layer.Pill(12, 116, 70, "启用默认到期", "HairlineStrongBrush", "TextSecondaryBrush");
-        var result = layer.Text(92, 118, "未设置到期日", 9.5, "TextTertiaryBrush");
+        // 日期框里的「默认 +N 天」预设（spec-due-date-picker），N 跟随上方设置
+        var enable = layer.Pill(12, 116, 70, "默认 +3 天", "HairlineStrongBrush", "TextSecondaryBrush");
+        var result = layer.Text(92, 118, "到期", 9.5, "TextTertiaryBrush");
         var formula = layer.Text(12, 146, "今天 + 3 天", 10, "AccentBrush", FontWeight.SemiBold);
         var cursor = layer.Cursor();
 
@@ -648,7 +701,7 @@ internal static class GuideScenes
             {
                 days.Text = "1";
                 Motion.Hide(savedHint);
-                result.Text = "未设置到期日";
+                result.Text = "到期";
                 layer.Brushes.Set(result, TextBlock.ForegroundProperty, "TextTertiaryBrush");
                 layer.Tint(enable, "HairlineStrongBrush", "TextSecondaryBrush");
                 Motion.Hide(formula);

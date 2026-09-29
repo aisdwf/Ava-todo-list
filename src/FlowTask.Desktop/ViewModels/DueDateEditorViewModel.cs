@@ -1,171 +1,106 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowTask.Core.Interfaces;
-using FlowTask.Core.Models;
 
 namespace FlowTask.Desktop.ViewModels;
 
 /// <summary>
-/// 到期日编辑器；支持快捷预设、日历、纯数字输入三来源同步。
+/// 到期日选择器浮层的编辑状态：快捷预设 + 日历（design-interaction-principles §4.3）。
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>预览与提交分离</b>（spec-due-date-picker）：日历方向键只改变
+/// <see cref="CalendarDate"/>（浮层内的高亮预览），不改变 <see cref="SelectedDate"/>。
+/// 只有「提交类」操作——点击日历某天、日历上按 Enter、「默认 +N 天」、「清除」——
+/// 才写入 <see cref="SelectedDate"/> 并触发 <see cref="Committed"/>。
+/// </para>
+/// <para>
+/// <b>为什么没有数字输入</b>：用户原话（2026-09-29）「目前的操作逻辑下我认为不需要硬编码日期了，
+/// 我考虑删掉直接输入日期的形式」。贴边日历一键可达后，数字速记成了第二种要记规则的录入方式。
+/// </para>
+/// <para>
+/// 编辑器本身不落库：创建栏只读取 <see cref="TakeValue"/>，
+/// 任务行由持有者订阅 <see cref="Committed"/> 后持久化。
+/// </para>
+/// </remarks>
 public partial class DueDateEditorViewModel : ViewModelBase
 {
     private readonly IClock _clock;
     private readonly Func<int> _getOffsetDays;
-    private bool _syncing;
 
+    /// <summary>已提交的到期日；<c>null</c> 表示未设置。</summary>
     [ObservableProperty]
     private DateTime? _selectedDate;
 
-    [ObservableProperty]
-    private string _digitText = string.Empty;
-
+    /// <summary>浮层内日历的高亮日期（预览态）。</summary>
     [ObservableProperty]
     private DateTime? _calendarDate;
 
+    /// <summary>日历当前显示的月份。</summary>
     [ObservableProperty]
-    private bool _hasParseError;
-
-    [ObservableProperty]
-    private string _parseErrorMessage = string.Empty;
+    private DateTime _calendarDisplayDate;
 
     /// <summary>
-    /// 日历是否展开。创建条默认收起，避免常驻占位；弹出设期时可展开。
+    /// 某次提交完成。参数为提交后的到期日（可为 <c>null</c>）。视图据此关闭浮层，持有者据此落库。
     /// </summary>
-    [ObservableProperty]
-    private bool _isCalendarExpanded;
+    public event Action<DateTime?>? Committed;
 
     public DueDateEditorViewModel(IClock clock, Func<int> getOffsetDays)
     {
         _clock = clock;
         _getOffsetDays = getOffsetDays;
+        _calendarDisplayDate = clock.Today;
     }
+
+    /// <summary>「默认 +N 天」按钮文案；N 来自设置，打开浮层时经 <see cref="Load"/> 刷新。</summary>
+    public string DefaultPresetLabel => $"默认 +{_getOffsetDays()} 天";
 
     /// <summary>
-    /// 初始化编辑器，加载指定的初始日期。
+    /// 以指定日期开始一次编辑会话：已提交值与预览都回到该日期。
     /// </summary>
-    /// <param name="initialDate">初始到期日。</param>
-    /// <param name="expandCalendar">是否展开日历（弹出设期为 <c>true</c>，创建条为 <c>false</c>）。</param>
-    public void Load(DateTime? initialDate, bool expandCalendar = false)
+    public void Load(DateTime? initialDate)
     {
-        ApplyState(initialDate, clearDigit: true, clearError: true);
-        IsCalendarExpanded = expandCalendar;
+        SelectedDate = initialDate;
+        CalendarDate = initialDate;
+        CalendarDisplayDate = initialDate ?? _clock.Today;
+        OnPropertyChanged(nameof(DefaultPresetLabel));
     }
 
+    /// <summary>提交「今天 + N 天」。</summary>
     [RelayCommand]
-    private void ToggleCalendar() => IsCalendarExpanded = !IsCalendarExpanded;
+    private void ApplyDefaultDue() => CommitDate(_clock.Today.AddDays(_getOffsetDays()));
 
+    /// <summary>提交清除到期日。</summary>
     [RelayCommand]
-    private void EnableDefaultDue()
-    {
-        var dueDate = _clock.Today.AddDays(_getOffsetDays());
-        ApplyState(dueDate, clearDigit: true, clearError: true);
-    }
-
-    // 命令名 EnableDefaultDueCommand，与既有测试一致
-
-    [RelayCommand]
-    private void ClearDue()
-    {
-        ApplyState(null, clearDigit: true, clearError: true);
-    }
+    private void ClearDue() => CommitDate(null);
 
     /// <summary>
-    /// 供测试与命令显式调用的数字解析入口。
+    /// 提交当前高亮（日历上按 Enter）。尚未高亮任何日期时不提交，避免误清空已有日期。
     /// </summary>
-    public void UpdateDigitInput(string? newText)
+    [RelayCommand]
+    private void CommitPreview()
     {
-        if (_syncing)
+        if (CalendarDate is { } date)
         {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(newText))
-        {
-            _syncing = true;
-            DigitText = string.Empty;
-            HasParseError = false;
-            ParseErrorMessage = string.Empty;
-            _syncing = false;
-            return;
-        }
-
-        var result = DueDateParser.TryParse(newText, _clock.Today);
-        _syncing = true;
-        try
-        {
-            DigitText = newText;
-            switch (result.Status)
-            {
-                case DueDateParser.ParseStatus.Success:
-                    SelectedDate = result.Date;
-                    CalendarDate = result.Date;
-                    HasParseError = false;
-                    ParseErrorMessage = string.Empty;
-                    break;
-                case DueDateParser.ParseStatus.Invalid:
-                    HasParseError = true;
-                    ParseErrorMessage = "日期格式无效，请使用 10、0310 或 20260310 格式";
-                    break;
-            }
-        }
-        finally
-        {
-            _syncing = false;
+            CommitDate(date);
         }
     }
 
     /// <summary>
-    /// 供测试与命令显式调用的日历入口。
+    /// 提交指定日期（日历点击某天、预设、清除的统一出口）。
     /// </summary>
-    public void UpdateCalendarInput(DateTime? newDate)
+    public void CommitDate(DateTime? date)
     {
-        ApplyState(newDate, clearDigit: true, clearError: true);
+        SelectedDate = date;
+        CalendarDate = date;
+        if (date is { } d)
+        {
+            CalendarDisplayDate = d;
+        }
+
+        Committed?.Invoke(date);
     }
 
+    /// <summary>已提交的到期日。</summary>
     public DateTime? TakeValue() => SelectedDate;
-
-    partial void OnDigitTextChanged(string value)
-    {
-        if (_syncing)
-        {
-            return;
-        }
-
-        UpdateDigitInput(value);
-    }
-
-    partial void OnCalendarDateChanged(DateTime? value)
-    {
-        if (_syncing || value == SelectedDate)
-        {
-            return;
-        }
-
-        UpdateCalendarInput(value);
-    }
-
-    private void ApplyState(DateTime? date, bool clearDigit, bool clearError)
-    {
-        _syncing = true;
-        try
-        {
-            SelectedDate = date;
-            CalendarDate = date;
-            if (clearDigit)
-            {
-                DigitText = string.Empty;
-            }
-
-            if (clearError)
-            {
-                HasParseError = false;
-                ParseErrorMessage = string.Empty;
-            }
-        }
-        finally
-        {
-            _syncing = false;
-        }
-    }
 }

@@ -238,6 +238,14 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        // 删除项目确认弹层：Esc = 取消，与点击遮罩一致
+        if (e.Key == Key.Escape && DataContext is MainViewModel { IsDeleteProjectPromptOpen: true } deleteVm)
+        {
+            deleteVm.CancelDeleteProjectCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         // 系统级热键已生效时窗内不再重复响应，否则同一次按键会触发两次 Toggle
         if (_systemHotkeyActive)
         {

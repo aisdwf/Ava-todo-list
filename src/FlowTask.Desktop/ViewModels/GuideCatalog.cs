@@ -12,7 +12,7 @@ public enum GuideSceneKind
     /// <summary>输入标题、回车落入列表。</summary>
     AddTask,
 
-    /// <summary>数字速记到期日与 P1–P3。</summary>
+    /// <summary>「到期」日期框点选与 P1–P3。</summary>
     DueAndPriority,
 
     /// <summary>圆环完成与点击标题展开编辑。</summary>
@@ -119,12 +119,12 @@ public static class GuideCatalog
 
         new GuideTopic(string.Empty, GuideSceneKind.DueAndPriority, "基础",
             "到期日与优先级",
-            "输入框下方敲几个数字就能定到期日，右侧 P1–P3 一键定优先级。",
+            "输入框右侧点「到期」弹出日期框，点日历上的某一天即生效；旁边的 P1–P3 一键定优先级。",
             new[]
             {
-                "10 = 本月 10 日；0310 = 今年 3 月 10 日；20260310 = 完整日期。",
-                "「启用默认到期」按设置里的天数推算，也可以展开日历点选。",
-                "列表里点任务右侧的日期（或「到期」）可以随时改期。"
+                "「默认 +N 天」按设置里的天数推算，「清除」去掉到期日，都是一下就生效。",
+                "键盘也能用：方向键移动日期，回车确认；Esc 或点框外取消。",
+                "列表里点任务标题下方的日期（或「到期」）可以随时改期；已完成的任务显示完成日。"
             },
             new[] { OnboardingTargets.AddBar }),
 
@@ -159,11 +159,11 @@ public static class GuideCatalog
 
         new GuideTopic(string.Empty, GuideSceneKind.DeleteProject, "项目",
             "删除项目",
-            "悬停项目行点垃圾桶，确认条会写明将一并删除多少条任务。",
+            "悬停项目行点垃圾桶，确认框会写明将一并删除多少条任务。",
             new[]
             {
                 "Default 项目不能删除。",
-                "点「确认删除」之前都可以取消。"
+                "点「确认删除」之前都可以取消：点「取消」、点框外或按 Esc。"
             },
             NoTarget),
 
@@ -179,17 +179,18 @@ public static class GuideCatalog
 
         new GuideTopic(string.Empty, GuideSceneKind.QuickWindowKeys, "小窗",
             "小窗键位",
-            "小窗全程不用鼠标：Ctrl+Tab 切换项目，↵ 保存，Esc 收起。",
+            "小窗全程不用鼠标：Ctrl+Tab 切换项目，Ctrl+D 设到期日，↵ 保存，Esc 收起。",
             new[]
             {
                 "Ctrl+Shift+Tab 反向切换项目。",
-                "新任务归入小窗当前选中的项目。"
+                "新任务归入小窗当前选中的项目；保存后优先级保持不变，方便连续记同档任务。",
+                "底栏的日期按钮和任务右侧的日期也可以直接点击设置。"
             },
             NoTarget),
 
         new GuideTopic(string.Empty, GuideSceneKind.DefaultDue, "设置",
             "默认到期天数",
-            "在设置 → 通用里定好天数，之后点「启用默认到期」就是今天加这么多天。",
+            "在设置 → 通用里定好天数，之后在日期框里点「默认 +N 天」就是今天加这么多天。",
             new[]
             {
                 "范围 1–30 天，点「保存」后生效。"

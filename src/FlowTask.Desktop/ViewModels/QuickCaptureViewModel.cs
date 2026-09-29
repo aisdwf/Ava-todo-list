@@ -43,6 +43,19 @@ public partial class QuickCaptureViewModel : ViewModelBase,
     [ObservableProperty]
     private TaskPriority _priority = TaskPriority.Medium;
 
+    /// <summary>新任务的到期日（底栏选择器，R-1.10）；保存后清空，与主窗创建栏一致。</summary>
+    [ObservableProperty]
+    private DateTime? _newTaskDueDate;
+
+    /// <summary>底栏到期日选择器的编辑器。</summary>
+    public DueDateEditorViewModel NewDueDateEditor { get; }
+
+    /// <summary>小窗任务行到期日选择器共享的编辑器（同一时刻只开一个浮层）。</summary>
+    public DueDateEditorViewModel RowDueDateEditor { get; }
+
+    /// <summary>默认到期偏移天数，每次 <see cref="PrepareAsync"/> 从设置重读，主窗改了设置后小窗下次打开即同步。</summary>
+    private int _defaultDueOffsetDays = DueDateOffset.DefaultDays;
+
     /// <summary>
     /// 项目下拉候选（含系统 Default），驱动小窗单项目列表切换（D1：下拉）。
     /// </summary>
@@ -85,6 +98,10 @@ public partial class QuickCaptureViewModel : ViewModelBase,
         _settingsRepository = settingsRepository;
         _clock = clock;
 
+        NewDueDateEditor = new DueDateEditorViewModel(clock, () => _defaultDueOffsetDays);
+        NewDueDateEditor.Committed += date => NewTaskDueDate = date;
+        RowDueDateEditor = new DueDateEditorViewModel(clock, () => _defaultDueOffsetDays);
+
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
         WeakReferenceMessenger.Default.Register<ProjectsChangedMessage>(this);
@@ -97,6 +114,7 @@ public partial class QuickCaptureViewModel : ViewModelBase,
     {
         await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
         await ReloadActiveProjectsAsync();
+        _defaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
 
         var lastProjectId = await _settingsRepository.GetAsync(LastProjectSettingsKey);
         RebuildProjectChoices(lastProjectId);
@@ -229,6 +247,14 @@ public partial class QuickCaptureViewModel : ViewModelBase,
         => await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
             .ExecuteAsync(item, LoadTasksForSelectedProjectAsync, this);
 
+    /// <summary>
+    /// 持久化小窗任务行到期日选择器的一次提交，与主窗共用同一动作（R-1.10）。
+    /// </summary>
+    [RelayCommand]
+    private async Task CommitRowDueDateAsync(DueDateCommit? commit)
+        => await new CommitRowDueDateViewModel(_taskRepository)
+            .ExecuteAsync(commit, LoadTasksForSelectedProjectAsync, this);
+
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
     {
@@ -318,22 +344,29 @@ public partial class QuickCaptureViewModel : ViewModelBase,
         => await new AddTaskViewModel(_taskRepository, _clock).ExecuteAsync(
             InputText,
             Priority,
-            dueDate: null,
+            NewTaskDueDate,
             SelectedProject?.Id,
-            ResetInput,
+            ClearAfterSave,
             LoadTasksForSelectedProjectAsync,
             this);
 
     [RelayCommand]
     private void Cancel()
     {
-        ResetInput();
+        ClearAfterSave();
+        Priority = TaskPriority.Medium;
         RequestClose?.Invoke();
     }
 
-    private void ResetInput()
+    /// <summary>
+    /// 保存后只清标题与日期，优先级保持：连续录入同档任务时不必每条重选
+    /// （用户原话 2026-09-29「enter 确认一个任务时优先级会重置到 p2，感觉保持不变比较好」）。
+    /// 日期仍清空，与主窗创建栏一致，避免后续任务被静默带上同一到期日。
+    /// Esc 关闭才视为会话结束，优先级回到 P2。
+    /// </summary>
+    private void ClearAfterSave()
     {
         InputText = string.Empty;
-        Priority = TaskPriority.Medium;
+        NewTaskDueDate = null;
     }
 }
