@@ -865,6 +865,133 @@
         <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
     </Style>
 
+    <!-- ================= 聚光灯引导与操作指南 (spec-onboarding-guide) =================
+         挖空框用超大外扩阴影压暗四周：只有一个元素，位置与尺寸可以直接补间；
+         压暗色与既有遮罩 #73000000 同值，不新造第二种遮罩深度。 -->
+    <Style Selector="Border.CoachSpotlight">
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BoxShadow" Value="0 0 0 4000 #73000000" />
+    </Style>
+
+    <!-- 气泡：与设置卡同一表面与圆角，贴在控件旁而不是居中弹框 -->
+    <Style Selector="Border.CoachBubble">
+        <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="20,16,20,18" />
+    </Style>
+
+    <!-- 气泡与指南页里的动效舞台：弱底 + 发丝线，场景自带底色时仍有边界 -->
+    <Style Selector="Border.GuideStage">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+    </Style>
+
+    <!-- 克制的文字按钮：「跳过引导」不能与主按钮抢视线 -->
+    <Style Selector="Button.CoachGhost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.CoachGhost:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- 步骤点：当前步拉长成胶囊，宽度补间 -->
+    <Style Selector="Border.StepDot">
+        <Setter Property="Width" Value="6" />
+        <Setter Property="Height" Value="6" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Width" Duration="0:0:0.26" Easing="CubicEaseOut" />
+                <BrushTransition Property="Background" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.StepDot.Current">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <!-- 指南页左侧条目：复用设置导航的竖条选中语言 -->
+    <Style Selector="ListBox.GuideTopics">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="GuideTopicRoot"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="12,9">
+                    <Grid ColumnDefinitions="3,*">
+                        <Border x:Name="GuideTopicBar"
+                                Width="3"
+                                CornerRadius="2"
+                                Background="{DynamicResource AccentBrush}"
+                                Opacity="0" />
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="12,0,0,0"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}" />
+                    </Grid>
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.18" />
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem /template/ Border#GuideTopicBar">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem:pointerover /template/ Border#GuideTopicRoot">
+        <Setter Property="Background" Value="{DynamicResource HairlineBrush}" />
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem:selected /template/ Border#GuideTopicRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem:selected /template/ Border#GuideTopicBar">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="ListBox.GuideTopics ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- 指南要点前的强调色小圆点 -->
+    <Style Selector="Ellipse.GuideBullet">
+        <Setter Property="Width" Value="5" />
+        <Setter Property="Height" Value="5" />
+        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Margin" Value="0,7,10,0" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
     <!-- 危险操作按钮：删除不可逆，需与常规操作在视觉上区分。复用高优先级色，不新造红色（Article 6）。
          原 Border.DangerConfirm 内联确认条已随删除确认改为弹层移除（spec-due-date-picker）。 -->
     <Style Selector="Button.DangerAction">

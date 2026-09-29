@@ -123,7 +123,9 @@ public partial class App : Application
 
         // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
         // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
-        mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
+        var hotkeyActive = _hotkeyService.TryStart();
+        mainWindow.SetSystemHotkeyActive(hotkeyActive);
+        mainVm.SetRegisteredHotkey(hotkeyActive ? _hotkeyService.Registered : RegisteredHotkey.None);
 
         InstallTrayIcon();
 

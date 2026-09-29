@@ -5,6 +5,8 @@
         xmlns:conv="using:FlowTask.Desktop.Converters"
         xmlns:appearance="using:FlowTask.Desktop.Appearance"
         xmlns:controls="using:FlowTask.Desktop.Controls"
+        xmlns:onboarding="using:FlowTask.Desktop.Views.Onboarding"
+        xmlns:guide="using:FlowTask.Desktop.Views.Guide"
         x:Class="FlowTask.Desktop.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="FlowTask"
@@ -41,8 +43,10 @@
                                    Classes="CaptionText" />
                     </StackPanel>
 
-                    <!-- 视图导航 -->
-                    <StackPanel Grid.Row="1" Spacing="2">
+                    <!-- 视图导航。整块是引导「项目」步的锚点：零项目时只剩 VIEWS 与「新建项目」，仍要框得到入口 -->
+                    <StackPanel Grid.Row="1" Spacing="2"
+                                VerticalAlignment="Top"
+                                onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.SidebarProjects}">
                         <TextBlock Text="VIEWS" Classes="MicroLabel" Margin="14,0,0,12" />
 
                         <!-- 侧边栏高亮统一表达 (spec-sidebar-selection-consolidation)：
@@ -181,6 +185,7 @@
                          而是独立的查看+勾选+捕捉小窗，文案与副标题同步更新，不再称「随手记」 -->
                     <Button Grid.Row="2"
                             Classes="CaptureTrigger"
+                            onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.CaptureTrigger}"
                             Command="{Binding OpenQuickCaptureCommand}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
@@ -250,16 +255,34 @@
                                    Text="与功能相关的设置。目前可改「启用默认到期」的天数。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}" />
                         <TextBlock Classes="CaptionText"
+                                   Text="每个功能配一段动图演示；也可以重新播放新手引导。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />
+                        <TextBlock Classes="CaptionText"
                                    Text="版本与技术信息。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=About}" />
                     </StackPanel>
 
-                    <!-- 右上角一对药丸按钮：齿轮在左、昼夜在右。齿轮隐藏后昼夜仍停在最右侧，不占齿轮原位。 -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余 -->
+                    <!-- 右上角按钮组：「? | 齿轮 | 昼夜」。会随设置页消失的两个放左侧，
+                         昼夜锚定最右，打开设置后不滑位（spec-settings-theme-button-order 同一原则）。 -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                                onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.HeaderActions}">
+                        <!-- 操作指南入口（spec-onboarding-guide，R-6.3）：常驻可见，不藏在齿轮里 -->
+                        <Button Classes="IconCircle"
+                                Command="{Binding OpenGuideCommand}"
+                                ToolTip.Tip="操作指南"
+                                AutomationProperties.Name="操作指南"
+                                IsVisible="{Binding !IsSettingsOpen}">
+                            <Viewbox Width="18" Height="18">
+                                <Path Classes="StrokeIcon" Data="{StaticResource IconHelp}" />
+                            </Viewbox>
+                        </Button>
+
+                        <!-- 设置页返回在左侧栏顶部，齿轮此时隐藏避免入口冗余。
+                             tooltip 原为「外观设置」，设置页早已不止外观（spec-onboarding-guide Q4）。 -->
                         <Button Classes="IconCircle"
                                 Command="{Binding ToggleSettingsCommand}"
-                                ToolTip.Tip="外观设置"
+                                ToolTip.Tip="设置"
+                                AutomationProperties.Name="设置"
                                 IsVisible="{Binding !IsSettingsOpen}">
                             <Viewbox Width="18" Height="18">
                                 <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
@@ -268,7 +291,8 @@
 
                         <Button x:Name="ThemeToggleButton"
                                 Classes="IconCircle"
-                                ToolTip.Tip="切换昼夜主题">
+                                ToolTip.Tip="切换昼夜主题"
+                                AutomationProperties.Name="切换昼夜主题">
                             <!-- 深色时显示太阳（提示可切亮），浅色时显示月亮；二者同一描边 -->
                             <Panel>
                                 <Viewbox Width="18" Height="18" IsVisible="{Binding IsDarkTheme}">
@@ -294,10 +318,12 @@
                                 BorderBrush="{DynamicResource HairlineStrongBrush}"
                                 BorderThickness="0,0,0,1"
                                 Padding="4,0,4,16"
-                                Margin="0,0,0,8">
+                                Margin="0,0,0,8"
+                                onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.AddBar}">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBox Grid.Column="0"
                                          x:Name="NewTaskInput"
+                                         onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.AddInput}"
                                          Classes="EditorialInput"
                                          Text="{Binding NewTaskTitle, Mode=TwoWay}"
                                          Watermark="记录下一件重要的事…"
@@ -333,6 +359,8 @@
                                     Spacing="10"
                                     Margin="4,72,0,0"
                                     VerticalAlignment="Top"
+                                    HorizontalAlignment="Left"
+                                    onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.TaskEmpty}"
                                     IsVisible="{Binding IsTaskStreamEmpty}">
                             <TextBlock Text="NOTHING HERE" Classes="MicroLabel" />
                             <TextBlock Text="这片空白等待被填满"
@@ -355,7 +383,9 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TaskRowViewModel">
                                         <StackPanel>
+                                        <!-- 每行都带锚点：引导取可视树里第一个，即列表首行 -->
                                         <Border Classes="TaskRow"
+                                                onboarding:OnboardingAnchor.Key="{x:Static vm:OnboardingTargets.TaskRow}"
                                                 BorderBrush="{DynamicResource HairlineBrush}"
                                                 BorderThickness="0,0,0,1"
                                                 Padding="{DynamicResource TaskRowPadding}">
@@ -632,6 +662,8 @@
                                             Command="{Binding ExitApplicationCommand}" />
                                 </StackPanel>
 
+                                <guide:GuidePage IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />
+
                                 <StackPanel Spacing="10"
                                             MaxWidth="640"
                                             HorizontalAlignment="Left"
@@ -724,6 +756,9 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- 首次聚光灯引导（spec-onboarding-guide，R-6.1）：压在所有业务弹层之上、启动错误条之下 -->
+        <onboarding:CoachMarkOverlay DataContext="{Binding Onboarding}" ZIndex="115" />
 
         <!-- 启动失败可见提示：无控制台，不能只写日志 -->
         <Border IsVisible="{Binding HasInitializationError}"

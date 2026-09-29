@@ -205,7 +205,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 到期日选择器已改为贴边浮层（spec-due-date-picker），不再是全窗遮罩，故不计入。
     /// 删除项目确认改为居中弹层后计入。
     /// </remarks>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDeleteProjectPromptOpen;
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDeleteProjectPromptOpen || Onboarding.IsActive;
+
+    /// <summary>首次聚光灯引导状态（spec-onboarding-guide）。</summary>
+    public OnboardingViewModel Onboarding { get; }
+
+    /// <summary>设置 → 操作指南页状态。</summary>
+    public GuideViewModel Guide { get; } = new();
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -296,13 +302,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
+        new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -314,8 +321,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <remarks>
     /// 此前 UI 写死 macOS 的 <c>⌥ Space</c>，Windows 用户看到的图标与实际热键不符。
+    /// 其后又写死 Alt+Space，注册回退到 Win+Alt+Space 时同样教错，
+    /// 现由 <see cref="SetRegisteredHotkey"/> 按实际注册结果刷新（spec-onboarding-guide Q3）。
     /// </remarks>
-    public string QuickCaptureHotkeyLabel => OperatingSystem.IsMacOS() ? "⌥ Space" : "Alt+Space";
+    [ObservableProperty]
+    private string _quickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(RegisteredHotkey.None);
+
+    /// <summary>记录进程级热键实际注册到的组合，刷新界面文案。</summary>
+    public void SetRegisteredHotkey(RegisteredHotkey registered)
+        => QuickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(registered);
 
     /// <summary>请求应用窗口材质。窗口实例归视图层所有，故以事件外发。</summary>
     public event Action<MaterialOption>? MaterialPresetChanged;
@@ -340,6 +354,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         _projectRepository = projectRepository;
         _clock = clock;
         _settingsRepository = settingsRepository;
+
+        Onboarding = new OnboardingViewModel(settingsRepository);
+        Onboarding.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OnboardingViewModel.IsActive))
+            {
+                OnPropertyChanged(nameof(IsBlockingOverlayOpen));
+            }
+        };
 
         // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
@@ -374,6 +397,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 await LoadAppearanceAsync();
             }
             await LoadCloseActionAsync();
+            await Onboarding.LoadAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
             // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
@@ -1081,6 +1105,27 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
+
+    /// <summary>
+    /// 右上角「?」：直接进入设置 → 操作指南（spec-onboarding-guide）。
+    /// </summary>
+    [RelayCommand]
+    private void OpenGuide()
+    {
+        IsSettingsOpen = true;
+        SelectedSettingsSection = SettingsSection.Guide;
+        EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+    }
+
+    /// <summary>
+    /// 开始聚光灯引导。锚点都在任务页，须先退出设置，否则挖空对准的是隐藏控件。
+    /// </summary>
+    [RelayCommand]
+    private void StartOnboarding()
+    {
+        IsSettingsOpen = false;
+        Onboarding.Start();
+    }
 
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。

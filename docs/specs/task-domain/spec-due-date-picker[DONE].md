@@ -157,6 +157,7 @@
 - [x] `src/FlowTask.Desktop/Views/QuickCaptureWindow.axaml(.cs)`（行内 chip、底栏常驻按钮、`Ctrl+D`、浮层按键放行、按钮排除拖拽）
 - [x] `src/FlowTask.Desktop/ViewModels/QuickCaptureViewModel.cs`（`NewTaskDueDate`、两个编辑器、读偏移设置、`CommitRowDueDate`）
 - [x] `src/FlowTask.Desktop/Converters/DueDateConverters.cs`（删未用的 `DueDateEditConverter`）
+- [x] Guide: updated 到期日与优先级、删除项目、小窗键位、默认到期天数（`GuideCatalog` 文案 + `GuideScenes` 的 DueAndPriority / DeleteProject / DefaultDue 场景；`OnboardingProgress.CurrentVersion` 1→2，因第 2 步讲解与挖空区域变化）
 - [x] `tests/FlowTask.Tests/`：重写 `DueDateEditorViewModelTests`；新增 `DueDatePickerTests`、`TaskRowViewModelTests`；更新 `MainViewModelTests`、`PersistThenWritebackTests`、`QuickCaptureViewModelTests`
 
 ---
@@ -188,7 +189,11 @@
   - G3：删除项目确认由任务流上方插入的 `DangerConfirm` 行改为居中弹层（遮罩点击 / Esc = 取消，`确认删除` 用 `DangerAction` 样式）；`IsDeleteProjectPromptOpen` 计入 `IsBlockingOverlayOpen`。视图 A 网格从 3 行收为 2 行。design §2.2 已登记该例外。
   - build 0/0；test 289 通过。
 - 用户验收（原话）：「合并到dev」—— 三轮预览后接受当前形态；SPEC `in-progress` → `done`，按容器流程提交并合入 `dev`。
-- Current resume point: 无（已闭环）。
+- 合并受阻：本分支开出后 `dev` 已合入 `feature/onboarding-guide`（首次引导 + 操作指南 + BR-1「指南与交互同步维护」）。`finish-task.ps1` 在 5 个文件上冲突，已在 `dev` 上 `merge --abort`（`dev` 未改动），改为在任务分支先合入 `dev`：
+  - 冲突解决：保留双方新增（引导锚点 `AddBar` / `AddInput` 挂到新的单行添加栏；`CoachMarkOverlay` 与删除确认弹层并存；`IsBlockingOverlayOpen` = 关闭询问 ∥ 删除确认 ∥ 引导；design §2.2 两条受限例外并列）。
+  - BR-1：指南文案与动效仍在讲旧的「启用默认到期 / 展开日历 / 确认条」，已更新（见 Change checklist 的 Guide 行），引导版本 1→2。
+  - 合并后 build 0/0；test 332 通过（连续 3 次）。
+- Current resume point: 等 owner 预览指南改动；确认后运行 `finish-task.ps1 feature/due-date-picker-unify`。
 
 ---
 

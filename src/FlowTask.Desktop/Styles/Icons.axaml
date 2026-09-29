@@ -27,4 +27,10 @@
     <!-- 到期日选择器触发入口 (spec-due-date-picker) -->
     <StreamGeometry x:Key="IconCalendar">M5.5,5 L18.5,5 A1.5,1.5 0 0 1 20,6.5 L20,19 A1.5,1.5 0 0 1 18.5,20.5 L5.5,20.5 A1.5,1.5 0 0 1 4,19 L4,6.5 A1.5,1.5 0 0 1 5.5,5 Z M4,10 L20,10 M8,3 L8,7 M16,3 L16,7</StreamGeometry>
 
+    <!-- 操作指南入口（spec-onboarding-guide）：圆 + 问号，与齿轮同一描边规格 -->
+    <StreamGeometry x:Key="IconHelp">M12,3 A9,9 0 1 1 11.99,3 M9.2,9.3 A2.9,2.9 0 0 1 14.8,10.1 C14.8,12 12,12.4 12,14.4 M12,17.4 L12,17.5</StreamGeometry>
+
+    <!-- 演示场景里的鼠标指针：唯一的填充几何，只在引导动效中出现，不作操作图标 -->
+    <StreamGeometry x:Key="GuidePointer">M0,0 L0,15 L4,11.4 L6.8,17.6 L9.2,16.6 L6.5,10.5 L11.6,10.5 Z</StreamGeometry>
+
 </ResourceDictionary>

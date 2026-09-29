@@ -146,11 +146,40 @@ public partial class MainWindow : Window
         {
             await vm.InitializeAsync();
             ArmMidnightRefresh(vm);
+            ArmFirstRunOnboarding(vm);
         }
         catch (Exception ex)
         {
             vm.ReportInitializationFailure(ex);
         }
+    }
+
+    /// <summary>
+    /// 首次启动自动播放引导（spec-onboarding-guide Q1）。
+    /// </summary>
+    /// <remarks>
+    /// 等主窗真正可见、任务列表载入后的一小段时间再开始：挖空要量控件位置，
+    /// 布局没稳时框会先对错再滑过去。延时只服务观感，不参与业务判断（Article 9 动画豁免）。
+    /// 启动失败时不播：错误条比引导更要紧。
+    /// </remarks>
+    private void ArmFirstRunOnboarding(MainViewModel vm)
+    {
+        if (!vm.Onboarding.ShouldAutoStart || vm.HasInitializationError)
+        {
+            return;
+        }
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            // 用户可能已经自己打开了弹层或设置；有阻断层时让位，下次启动再播
+            if (IsVisible && !vm.IsBlockingOverlayOpen && vm.Onboarding.ShouldAutoStart)
+            {
+                vm.StartOnboardingCommand.Execute(null);
+            }
+        };
+        timer.Start();
     }
 
     /// <summary>
