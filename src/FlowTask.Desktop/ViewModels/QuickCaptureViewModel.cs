@@ -346,21 +346,27 @@ public partial class QuickCaptureViewModel : ViewModelBase,
             Priority,
             NewTaskDueDate,
             SelectedProject?.Id,
-            ResetInput,
+            ClearAfterSave,
             LoadTasksForSelectedProjectAsync,
             this);
 
     [RelayCommand]
     private void Cancel()
     {
-        ResetInput();
+        ClearAfterSave();
+        Priority = TaskPriority.Medium;
         RequestClose?.Invoke();
     }
 
-    private void ResetInput()
+    /// <summary>
+    /// 保存后只清标题与日期，优先级保持：连续录入同档任务时不必每条重选
+    /// （用户原话 2026-09-29「enter 确认一个任务时优先级会重置到 p2，感觉保持不变比较好」）。
+    /// 日期仍清空，与主窗创建栏一致，避免后续任务被静默带上同一到期日。
+    /// Esc 关闭才视为会话结束，优先级回到 P2。
+    /// </summary>
+    private void ClearAfterSave()
     {
         InputText = string.Empty;
-        Priority = TaskPriority.Medium;
         NewTaskDueDate = null;
     }
 }

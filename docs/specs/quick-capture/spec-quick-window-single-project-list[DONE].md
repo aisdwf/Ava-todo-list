@@ -212,7 +212,9 @@ dotnet test  FlowTask.sln --nologo -v q
 | D7 | 占位文字 | `Something to do...`（用户原话「不必过于直白」） |
 | D8 | 底部提示 | 增加 `Ctrl+Tab 切换项目`；**[推断]** 文案「切换项目」，依据：与现有「保存」「关闭」同为动词短语 |
 
-**[推断]** 保存后优先级复位为 P2：沿用现有 `ResetInput` 行为，未改动。
+~~**[推断]** 保存后优先级复位为 P2：沿用现有 `ResetInput` 行为，未改动。~~
+**已被用户推翻（2026-09-29）**：「enter 确认一个任务时优先级会重置到 p2，感觉保持不变比较好」。
+回车保存后优先级保持，Esc 关闭才回到 P2。见 [spec-due-date-picker](../task-domain/spec-due-date-picker[DONE].md)。
 
 ### 7.3 Non-goals
 

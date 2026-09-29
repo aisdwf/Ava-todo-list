@@ -273,6 +273,30 @@ public class QuickCaptureViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// 回车保存后优先级保持，便于连续录入同档任务；Esc 关闭才回到 P2。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_KeepsPriority_CancelResetsIt()
+    {
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        vm.Priority = FlowTask.Core.Enums.TaskPriority.High;
+        vm.InputText = "第一条";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(FlowTask.Core.Enums.TaskPriority.High, vm.Priority);
+
+        vm.InputText = "第二条";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(
+            FlowTask.Core.Enums.TaskPriority.High,
+            vm.Tasks.Single(t => t.Task.Title == "第二条").Task.Priority);
+
+        vm.CancelCommand.Execute(null);
+        Assert.Equal(FlowTask.Core.Enums.TaskPriority.Medium, vm.Priority);
+    }
+
+    /// <summary>
     /// 小窗「默认 +N 天」读取主窗保存的偏移设置，而不是写死 1。
     /// </summary>
     [AvaloniaFact]
