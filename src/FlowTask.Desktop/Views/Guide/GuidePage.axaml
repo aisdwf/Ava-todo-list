@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlowTask.Desktop.ViewModels"
+             xmlns:guide="using:FlowTask.Desktop.Views.Guide"
+             x:Class="FlowTask.Desktop.Views.Guide.GuidePage"
+             x:DataType="vm:MainViewModel">
+
+    <!-- 设置 → 操作指南（spec-onboarding-guide，R-6.3）：左侧目录、右侧动效舞台，
+         参照 VS Code Walkthroughs —— 可按需跳读，每一条都有动图，不是纯文字说明。 -->
+    <Grid ColumnDefinitions="260,*" RowDefinitions="Auto,*">
+
+        <!-- 重播入口放在最上方：跳过引导的人最可能是来这里找它 -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Classes="SettingsCard"
+                Padding="20,16"
+                Margin="0,0,0,24">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Viewbox Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <Path Classes="StrokeIcon Accent" Data="{StaticResource IconSpark}" />
+                </Viewbox>
+                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="新手引导" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock Classes="CaptionText" TextWrapping="Wrap"
+                               Text="逐个高亮界面上的关键位置，约 1 分钟。随时按 Esc 退出。" />
+                </StackPanel>
+                <Button Grid.Column="2"
+                        Classes="PrimaryAction"
+                        Content="重新播放新手引导"
+                        VerticalAlignment="Center"
+                        Command="{Binding StartOnboardingCommand}" />
+            </Grid>
+        </Border>
+
+        <ListBox Grid.Row="1" Grid.Column="0"
+                 Classes="GuideTopics"
+                 Margin="0,0,24,0"
+                 DataContext="{Binding Guide}"
+                 ItemsSource="{Binding Topics}"
+                 SelectedItem="{Binding SelectedTopic, Mode=TwoWay}"
+                 AutomationProperties.Name="操作指南条目">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:GuideTopic">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding Caption}" Classes="MicroLabel" />
+                        <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="1" Grid.Column="1"
+                    Spacing="18"
+                    MaxWidth="560"
+                    HorizontalAlignment="Left"
+                    DataContext="{Binding Guide.SelectedTopic}"
+                    x:DataType="vm:GuideTopic">
+            <guide:GuideSceneHost Classes="GuideStage"
+                                  Height="270"
+                                  Scene="{Binding Scene}" />
+            <StackPanel Spacing="8">
+                <TextBlock Text="{Binding Caption}" Classes="MicroLabel"
+                           Foreground="{DynamicResource AccentBrush}" />
+                <TextBlock Text="{Binding Title}" Classes="SectionTitle" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Summary}" Classes="BodyText" LineHeight="21" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Points}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,8">
+                            <Ellipse Classes="GuideBullet" />
+                            <TextBlock Grid.Column="1" Text="{Binding}" Classes="BodyText" LineHeight="20" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Grid>
+</UserControl>

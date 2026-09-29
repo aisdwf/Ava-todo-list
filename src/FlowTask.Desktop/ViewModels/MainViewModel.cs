@@ -201,7 +201,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 是否有必须先处理的全窗覆盖层。为 true 时主内容关闭命中，
     /// 避免遮罩外的 <c>:pointerover</c> 高亮穿透到任务行 / 侧栏。
     /// </summary>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen;
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen || Onboarding.IsActive;
+
+    /// <summary>首次聚光灯引导状态（spec-onboarding-guide）。</summary>
+    public OnboardingViewModel Onboarding { get; }
+
+    /// <summary>设置 → 操作指南页状态。</summary>
+    public GuideViewModel Guide { get; } = new();
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -295,13 +301,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
+        new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -347,6 +354,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         _clock = clock;
         _settingsRepository = settingsRepository;
 
+        Onboarding = new OnboardingViewModel(settingsRepository);
+        Onboarding.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OnboardingViewModel.IsActive))
+            {
+                OnPropertyChanged(nameof(IsBlockingOverlayOpen));
+            }
+        };
+
         // 初始化到期日编辑器（Func<int> 绑定 DefaultDueOffsetDays 属性）
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
         EditingDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
@@ -379,6 +395,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 await LoadAppearanceAsync();
             }
             await LoadCloseActionAsync();
+            await Onboarding.LoadAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
             // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
@@ -1114,6 +1131,27 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
+
+    /// <summary>
+    /// 右上角「?」：直接进入设置 → 操作指南（spec-onboarding-guide）。
+    /// </summary>
+    [RelayCommand]
+    private void OpenGuide()
+    {
+        IsSettingsOpen = true;
+        SelectedSettingsSection = SettingsSection.Guide;
+        EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+    }
+
+    /// <summary>
+    /// 开始聚光灯引导。锚点都在任务页，须先退出设置，否则挖空对准的是隐藏控件。
+    /// </summary>
+    [RelayCommand]
+    private void StartOnboarding()
+    {
+        IsSettingsOpen = false;
+        Onboarding.Start();
+    }
 
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。

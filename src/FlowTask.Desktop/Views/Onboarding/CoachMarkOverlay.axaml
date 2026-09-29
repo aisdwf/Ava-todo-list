@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlowTask.Desktop.ViewModels"
+             xmlns:guide="using:FlowTask.Desktop.Views.Guide"
+             x:Class="FlowTask.Desktop.Views.Onboarding.CoachMarkOverlay"
+             x:DataType="vm:OnboardingViewModel"
+             IsVisible="False"
+             Opacity="0">
+
+    <UserControl.Transitions>
+        <Transitions>
+            <DoubleTransition Property="Opacity" Duration="0:0:0.26" Easing="CubicEaseOut" />
+        </Transitions>
+    </UserControl.Transitions>
+
+    <!-- 聚光灯引导（spec-onboarding-guide / design-interaction-principles §2.2 例外）：
+         挖空靠挖空框自身的 BoxShadow 外扩压暗四周，框的位置与尺寸用 DoubleTransition 补间，
+         步骤切换时光圈平滑滑向下一个控件，而不是整块遮罩闪一下。 -->
+    <Canvas x:Name="Stage" ClipToBounds="True">
+
+        <!-- 命中面：遮罩期间吞掉全部指针，主内容另由 IsBlockingOverlayOpen 关闭命中 -->
+        <Border x:Name="HitShield" Background="Transparent" />
+
+        <Border x:Name="Spotlight"
+                Classes="CoachSpotlight"
+                IsHitTestVisible="False" />
+
+        <Border x:Name="Bubble" Classes="CoachBubble" Width="344">
+            <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding StepCounterText}"
+                               Classes="MicroLabel"
+                               Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Classes="CoachGhost"
+                            Content="跳过引导"
+                            Command="{Binding SkipCommand}"
+                            ToolTip.Tip="跳过（Esc）" />
+                </Grid>
+
+                <!-- 高度由代码按窗口高度取 168 / 120：最小窗口下也要给气泡留出不压住挖空的位置 -->
+                <guide:GuideSceneHost x:Name="StepScene"
+                                      Classes="GuideStage"
+                                      Height="168"
+                                      Scene="{Binding CurrentStep.Scene}" />
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding CurrentStep.Title}"
+                               FontSize="17"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CurrentStep.Summary}"
+                               Classes="BodyText"
+                               LineHeight="20" />
+                </StackPanel>
+
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+                    <ItemsControl ItemsSource="{Binding Dots}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:OnboardingStepDot">
+                                <Border Classes="StepDot" Classes.Current="{Binding IsCurrent}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Grid.Column="1"
+                            Margin="0,0,8,0"
+                            Content="上一步"
+                            Command="{Binding PreviousCommand}"
+                            IsVisible="{Binding CanGoBack}"
+                            ToolTip.Tip="上一步（←）" />
+                    <Button Grid.Column="2"
+                            Classes="PrimaryAction"
+                            Content="{Binding NextText}"
+                            Command="{Binding NextCommand}"
+                            ToolTip.Tip="下一步（→ 或 ↵）" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Canvas>
+</UserControl>
