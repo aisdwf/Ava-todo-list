@@ -880,6 +880,26 @@ public class MainViewModelTests : IDisposable
         Assert.False(vm.IsBlockingOverlayOpen);
     }
 
+    /// <summary>
+    /// 删除项目确认改为弹层后，打开期间屏蔽主内容命中；取消后恢复。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task DeleteProjectPrompt_BlocksOverlayUntilCancelled()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        vm.NewProjectName = "待删";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = vm.Projects.Single(p => p.Name == "待删");
+
+        await vm.RequestDeleteProjectCommand.ExecuteAsync(project);
+        Assert.True(vm.IsDeleteProjectPromptOpen);
+        Assert.True(vm.IsBlockingOverlayOpen);
+
+        vm.CancelDeleteProjectCommand.Execute(null);
+        Assert.False(vm.IsDeleteProjectPromptOpen);
+        Assert.False(vm.IsBlockingOverlayOpen);
+    }
 
     [AvaloniaFact]
     public async Task EditingDueOffset_DoesNotApplyUntilSave()

@@ -865,12 +865,17 @@
         <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
     </Style>
 
-    <!-- 危险操作确认条：删除不可逆，需与常规操作在视觉上区分 -->
-    <Style Selector="Border.DangerConfirm">
+    <!-- 危险操作按钮：删除不可逆，需与常规操作在视觉上区分。复用高优先级色，不新造红色（Article 6）。
+         原 Border.DangerConfirm 内联确认条已随删除确认改为弹层移除（spec-due-date-picker）。 -->
+    <Style Selector="Button.DangerAction">
         <Setter Property="Background" Value="{DynamicResource PriorityHighSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
-        <Setter Property="Padding" Value="12" />
-        <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="Button.DangerAction:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
     </Style>
 
 </Styles>

@@ -286,8 +286,8 @@
                 <Grid Grid.Row="1">
 
                     <!-- ========== 视图 A: Editorial 任务流 ========== -->
-                    <!-- Row 0 添加栏 / Row 1 删除确认条（按需出现）/ Row 2 任务流 -->
-                    <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding !IsSettingsOpen}">
+                    <!-- Row 0 添加栏 / Row 1 任务流（删除项目确认已改为居中弹层，不再插入一行推动列表） -->
+                    <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsSettingsOpen}">
 
                         <!-- 贯穿式添加栏 (design-visual-language §2.3)：无边框，仅底部发丝线 -->
                         <Border Grid.Row="0"
@@ -328,31 +328,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- 删除项目确认条：级联物理删除不可逆，须先告知将删除多少条任务
-                             (spec-delete-project-cascade-tasks / R-2.7)。 -->
-                        <Border Grid.Row="1"
-                                Classes="DangerConfirm"
-                                IsVisible="{Binding ProjectPendingDeletion, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Grid ColumnDefinitions="*,Auto,Auto">
-                                <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
-                                    <TextBlock FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextPrimaryBrush}"
-                                               Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
-                                    <TextBlock Classes="CaptionText"
-                                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='将删除其下 {0} 条任务，不可撤销。'}" />
-                                </StackPanel>
-
-                                <Button Grid.Column="1" Margin="12,0,8,0"
-                                        Command="{Binding CancelDeleteProjectCommand}"
-                                        Content="取消" />
-                                <Button Grid.Column="2"
-                                        Command="{Binding ConfirmDeleteProjectCommand}"
-                                        Content="确认删除" />
-                            </Grid>
-                        </Border>
-
                         <!-- 空状态 -->
-                        <StackPanel Grid.Row="2"
+                        <StackPanel Grid.Row="1"
                                     Spacing="10"
                                     Margin="4,72,0,0"
                                     VerticalAlignment="Top"
@@ -370,7 +347,7 @@
                              底部/右侧留白必须写在内部内容的 Margin，不能写 ScrollViewer.Padding：
                              Avalonia 11.2 ScrollContentPresenter 计算 Extent 时只计入子元素
                              尺寸与 Margin，不计自身 Padding，否则滚到底时最后一行会被裁掉约半行。 -->
-                        <ScrollViewer Grid.Row="2"
+                        <ScrollViewer Grid.Row="1"
                                       HorizontalScrollBarVisibility="Disabled"
                                       IsVisible="{Binding !IsTaskStreamEmpty}">
                             <ItemsControl ItemsSource="{Binding Tasks}"
@@ -706,6 +683,43 @@
                         <Button Classes="PrimaryAction"
                                 Content="确认"
                                 Command="{Binding ConfirmClosePromptCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 删除项目确认 (spec-delete-project-cascade-tasks / R-2.7)：级联物理删除不可逆，须先告知将删除多少条任务。
+             用户原话（2026-09-29）：「删除项目的表现，目前跳出的位置还是有点违背不突变的原则，感觉可以用弹窗的形式更加合理」。
+             此前是任务流上方插入的一行，出现时把整列任务推下去；改为与关闭选择层同构的居中弹层，
+             遮罩吸收点击 = 取消。危险操作需要阻断式确认，属 design §2.2 允许的例外（与关闭选择层同理）。 -->
+        <Grid IsVisible="{Binding IsDeleteProjectPromptOpen}" ZIndex="105">
+            <Button HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Command="{Binding CancelDeleteProjectCommand}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="#73000000" />
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <Border Classes="SettingsCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MinWidth="360"
+                    MaxWidth="440"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Classes="SectionTitle"
+                               TextWrapping="Wrap"
+                               Text="{Binding ProjectPendingDeletion.Name, StringFormat='删除项目「{0}」？'}" />
+                    <TextBlock Classes="BodyText"
+                               Text="{Binding ProjectPendingDeletionTaskCount, StringFormat='将删除其下 {0} 条任务，不可撤销。'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="取消"
+                                Command="{Binding CancelDeleteProjectCommand}" />
+                        <Button Classes="DangerAction"
+                                Content="确认删除"
+                                Command="{Binding ConfirmDeleteProjectCommand}" />
                     </StackPanel>
                 </StackPanel>
             </Border>

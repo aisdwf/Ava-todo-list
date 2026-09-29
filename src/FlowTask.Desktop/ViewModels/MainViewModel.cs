@@ -203,8 +203,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     /// <remarks>
     /// 到期日选择器已改为贴边浮层（spec-due-date-picker），不再是全窗遮罩，故不计入。
+    /// 删除项目确认改为居中弹层后计入。
     /// </remarks>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen;
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDeleteProjectPromptOpen;
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -857,7 +858,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>待确认删除的项目；<c>null</c> 表示无待确认操作。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDeleteProjectPromptOpen))]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
     private ProjectItemViewModel? _projectPendingDeletion;
+
+    /// <summary>删除项目确认弹层是否可见。</summary>
+    public bool IsDeleteProjectPromptOpen => ProjectPendingDeletion is not null;
 
     /// <summary>待删除项目影响的任务条数，用于确认提示。</summary>
     [ObservableProperty]
