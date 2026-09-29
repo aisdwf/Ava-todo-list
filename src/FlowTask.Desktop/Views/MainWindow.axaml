@@ -114,6 +114,13 @@
                                                     <TextBlock Text="{Binding TaskCount}" />
                                                 </Border>
 
+                                                <!-- 删除槽位对所有行固定占位：Default 无删除入口，若整列折叠，
+                                                     其计数会比其它行右移一个按钮宽，上下不对齐。
+                                                     故 Default 行放一个等宽空占位，而不是隐藏整列。 -->
+                                                <Border Grid.Column="3"
+                                                        Width="22"
+                                                        Margin="4,0,0,0"
+                                                        IsVisible="{Binding !ShowDeleteAction}" />
                                                 <Button Grid.Column="3"
                                                         Classes="ProjectAction"
                                                         Margin="4,0,0,0"
