@@ -12,7 +12,7 @@ public enum GuideSceneKind
     /// <summary>输入标题、回车落入列表。</summary>
     AddTask,
 
-    /// <summary>数字速记到期日与 P1–P3。</summary>
+    /// <summary>「到期」日期框点选与 P1–P3。</summary>
     DueAndPriority,
 
     /// <summary>圆环完成与点击标题展开编辑。</summary>
@@ -119,11 +119,11 @@ public static class GuideCatalog
 
         new GuideTopic(string.Empty, GuideSceneKind.DueAndPriority, "基础",
             "到期日与优先级",
-            "输入框右侧点「到期」弹出日期框，旁边的 P1–P3 一键定优先级。",
+            "输入框右侧点「到期」弹出日期框，点日历上的某一天即生效；旁边的 P1–P3 一键定优先级。",
             new[]
             {
-                "日期框里敲数字预览，按回车生效：10 = 本月 10 日；0310 = 今年 3 月 10 日；20260310 = 完整日期。",
-                "也可以直接点日历上的某一天，或点「默认 +N 天」「清除」，一下就生效。",
+                "「默认 +N 天」按设置里的天数推算，「清除」去掉到期日，都是一下就生效。",
+                "键盘也能用：方向键移动日期，回车确认；Esc 或点框外取消。",
                 "列表里点任务标题下方的日期（或「到期」）可以随时改期；已完成的任务显示完成日。"
             },
             new[] { OnboardingTargets.AddBar }),

@@ -46,9 +46,9 @@
 - **浮层**：Avalonia `Popup`，锚定触发按钮下沿，`IsLightDismissEnabled`；悬浮于内容之上，**不参与布局**，不推动任何元素。
 - **过渡**：浮层内容 Opacity 0→1 + 轻微下移归位（约 160ms，CubicEaseOut），沿用 `design-visual-language` §5.1 的 Transitions 做法（Avalonia 11.2 `Animation` 不支持 `RenderTransform`）。
 - **浮层内容（自上而下）**：
-  1. 数字输入框（自动聚焦）：**实时预览**——日历高亮解析结果（保留 design §4.3「三来源同步」）；按 `Enter` 才提交并关闭。非法输入保留原值 + 提示（沿用）。
+  1. ~~数字输入框（自动聚焦）：实时预览，按 `Enter` 提交~~ —— **H1（2026-09-29）用户裁决移除**，见 Progress log。
   2. 快捷行：「默认 +N 天」（替代「启用默认到期」文案，N 来自设置）、「清除」。点击即提交并关闭。
-  3. `Calendar`：**点击某一天即提交并关闭**；键盘方向键只移动高亮不提交。
+  3. `Calendar`（打开时获得焦点）：**点击某一天即提交并关闭**；键盘方向键只移动高亮，`Enter` 提交高亮日。
 - **取消**：`Esc` / 点击浮层外 = 不改动关闭。无「完成 / 取消」按钮。
 - **删除**：创建栏的整块日期控件组、「日历 / 收起日历」双按钮、全窗遮罩改期卡片（`IsDueDatePopupOpen` 及其遮罩）、未用的 `DueDateEditConverter`。
 - **提交语义**：创建栏 = 只写入待创建值；主窗/小窗任务行 = 持久化（沿用 `CommitDueDatePopupViewModel` 的保存 + 广播 + 失败回滚）。
@@ -107,7 +107,7 @@
 ## Constraints and decisions
 
 - TR-1：新增的提交/打开动作若超过阈值，拆为 `ViewModels/Actions/` 下独立类；不得扩大 `MainViewModel` 既有超长方法。
-- Article 6：日期解析只走 `DueDateParser`；相对文案只走 `DueDateTextConverter`；默认偏移只来自 `AppSettings.default_due_offset_days`。
+- Article 6：相对文案只走 `DueDateTextConverter`；默认偏移只来自 `AppSettings.default_due_offset_days`。（原「日期解析只走 `DueDateParser`」随 H1 数字输入移除而失效。）
 - Article 9：所有「今天」经 `IClock` / `DueDateDisplay.Today`。
 - 跨窗通信只用 `WeakReferenceMessenger`，小窗不持有主窗 VM。
 - design-visual-language：新控件只用既有令牌（`CaptionText`、`TextTertiaryBrush`、`AccentBrush`、`FloatingSurfaceBrush`、`ControlCornerRadius` 等），不引入新色值。
@@ -117,8 +117,8 @@
 ## Acceptance criteria
 
 - [x] 主窗创建栏只剩一个日期触发按钮；打开/关闭浮层时列表不发生位移，浮层有淡入过渡。
-- [x] 浮层内：数字 + `Enter`、点击日历日、「默认 +N 天」、「清除」四种方式均一步生效并关闭；`Esc` / 点外部不改动。
-- [x] 数字输入过程中日历实时高亮预览，但未按 `Enter` 前不提交。
+- [x] 浮层内：点击日历日、日历上 `Enter`、「默认 +N 天」、「清除」均一步生效并关闭；`Esc` / 点外部不改动。
+- [x] 方向键只移动日历高亮，未按 `Enter` 前不提交；浮层内无文本输入（H1）。
 - [x] 主窗任务行点击到期 chip 在旁边弹出同一浮层；全窗遮罩改期卡片已不存在。
 - [x] 小窗行显示相对到期文案（颜色规则同主窗），可点击修改并持久化，主窗同步刷新。
 - [x] 小窗 `Ctrl+D` 打开底栏选择器；新建任务带上所选日期；保存后选择器清空。
@@ -157,7 +157,8 @@
 - [x] `src/FlowTask.Desktop/Views/QuickCaptureWindow.axaml(.cs)`（行内 chip、底栏常驻按钮、`Ctrl+D`、浮层按键放行、按钮排除拖拽）
 - [x] `src/FlowTask.Desktop/ViewModels/QuickCaptureViewModel.cs`（`NewTaskDueDate`、两个编辑器、读偏移设置、`CommitRowDueDate`）
 - [x] `src/FlowTask.Desktop/Converters/DueDateConverters.cs`（删未用的 `DueDateEditConverter`）
-- [x] Guide: updated 到期日与优先级、删除项目、小窗键位、默认到期天数（`GuideCatalog` 文案 + `GuideScenes` 的 DueAndPriority / DeleteProject / DefaultDue 场景；`OnboardingProgress.CurrentVersion` 1→2，因第 2 步讲解与挖空区域变化）
+- [x] 数字输入移除（H1）：`DueDateEditorViewModel` 去掉 `DigitText` / `HasParseError` / `ParseErrorMessage` / `UpdateDigitInput`；`DueDatePicker` 去掉数字框，打开时聚焦日历日按钮，Enter 仅在日历内提交；删除 `FlowTask.Core/Models/DueDateParser.cs`
+- [x] Guide: updated 到期日与优先级、删除项目、小窗键位、默认到期天数（`GuideCatalog` 文案 + `GuideScenes` 的 DueAndPriority / DeleteProject / DefaultDue 场景；`OnboardingProgress.CurrentVersion` 1→2，因第 2 步讲解与挖空区域变化）。H1 后「到期日与优先级」改讲日历点选与键盘路径，DueAndPriority 场景改为点选迷你日历
 - [x] `tests/FlowTask.Tests/`：重写 `DueDateEditorViewModelTests`；新增 `DueDatePickerTests`、`TaskRowViewModelTests`；更新 `MainViewModelTests`、`PersistThenWritebackTests`、`QuickCaptureViewModelTests`
 
 ---
@@ -193,7 +194,13 @@
   - 冲突解决：保留双方新增（引导锚点 `AddBar` / `AddInput` 挂到新的单行添加栏；`CoachMarkOverlay` 与删除确认弹层并存；`IsBlockingOverlayOpen` = 关闭询问 ∥ 删除确认 ∥ 引导；design §2.2 两条受限例外并列）。
   - BR-1：指南文案与动效仍在讲旧的「启用默认到期 / 展开日历 / 确认条」，已更新（见 Change checklist 的 Guide 行），引导版本 1→2。
   - 合并后 build 0/0；test 332 通过（连续 3 次）。
-- Current resume point: 等 owner 预览指南改动；确认后运行 `finish-task.ps1 feature/due-date-picker-unify`。
+- 指南预览反馈（用户原话）：「指引没有问题，但是目前的操作逻辑下我认为不需要硬编码日期了，我考虑删掉直接输入日期的形式，指引也可以做对应优化。」
+  - H1：删除数字速记（`DueDateParser` 与编辑器数字状态）。保留全键盘路径：打开浮层即聚焦日历中的已选日 / 今天，方向键移动、Enter 提交；Enter 只在日历内生效，Tab 到预设按钮上按 Enter 激活按钮本身。
+  - 发现：`Calendar` 本身 `Focusable=false`，`Focus()` 静默失败，须聚焦模板内的 `CalendarDayButton`（其 `IsSelected` / `IsToday` 为 internal，按 `DataContext` 的日期匹配）。原数字框版本从未暴露此问题，因为焦点一直在文本框上。
+  - 指南：「到期日与优先级」改讲日历点选、预设与键盘路径；DueAndPriority 场景改为弹出日期框后点选迷你日历、入口显示「2 天后」、再点 P1，并画出下方任务行以示浮层不推动布局。引导版本维持 2（本分支尚未合入，版本 2 从未发布）。
+  - design §4.3 改为「预设 + 日历」并登记推翻；§4.1、domain-contract 录入方式表、spec-due-date-calendar §2.3 加失效说明。
+  - 测试：删去 7 个数字解析相关用例，新增打开即聚焦日历 + Enter 提交、浮层无文本框、未高亮时 Enter 不提交等用例；build 0/0，test 326 通过（连续 3 次），不低于 AGENTS 基线 315。
+- Current resume point: 等 owner 预览 H1；确认后运行 `finish-task.ps1 feature/due-date-picker-unify`。
 
 ---
 
@@ -214,7 +221,7 @@
 | # | 操作 | 预期 |
 | :--- | :--- | :--- |
 | M1 | 主窗创建栏点「到期」 | 按钮下方淡入浮层；列表**不移动** |
-| M2 | 浮层里输入 `1` 再输 `0` | 日历高亮随之移动到 1 日、10 日；按钮文案不变 |
+| M2 | 浮层打开后直接按方向键（H1 起无数字框） | 日历高亮移动；按钮文案不变 |
 | M3 | 按 Enter | 浮层关闭，按钮显示「今天到期」等相对文案 |
 | M4 | 再打开，点「默认 +N 天」/「清除」/点日历某天 | 各自一步生效并关闭 |
 | M5 | 打开后按 Esc 或点浮层外 | 关闭且不改动 |
@@ -244,7 +251,9 @@
 
 - **Attribution**: design wrong —— spec-due-date-calendar 把「三来源同步」落成三组常驻平铺控件，未约束展开方式（`IsVisible` 切换直接推动布局）与入口数量；逐键解析即提交，把输入中间态当结果。
 - 「三来源」是录入方式的数量，不是入口的数量：多种方式应收纳在**一个**入口后面（design §2.5）。
-- 预览 / 提交要分离：任何边输入边生效的控件，都要先问中间态会不会被当成结果。
+- 预览 / 提交要分离：任何边输入边生效的控件，都要先问中间态会不会被当成结果（日历方向键同理）。
+- 把录入方式收进一个好用的入口后，要重新问每种方式是否还值得存在：数字速记在平铺时是「省事」，在一键可达的日历旁就成了「要记规则」（H1）。
+- 删掉一个聚焦控件时要检查键盘入口是否还在：`Calendar` 不可聚焦，焦点必须落到 `CalendarDayButton`，否则 Esc / Enter 全部失效。
 - 共享编辑器 + 多实例控件时，订阅必须限定在「本实例浮层打开期间」，否则一行的提交会串到所有行。
 - Popup 的按键事件会经所属窗口的隧道处理器；窗口级快捷键（小窗 Enter 保存 / Esc 隐藏）必须显式放行来自 PopupRoot 的事件。
 - 无装饰窗口用 `BeginMoveDrag` 做整窗拖拽时，交互控件必须排除，否则点击被系统拖拽循环吞掉。

@@ -7,8 +7,8 @@
       到期日选择器 (spec-due-date-picker)：一个触发入口 + 贴边浮层。
       浮层是 Popup，叠加在内容之上、不参与布局，打开时不会推动列表
       （design-interaction-principles §2.4 布局不突变）。
-      浮层内：数字预览 → Enter 提交；点击日历某天即提交；「默认 +N 天」「清除」即提交；
-      Esc / 点击外部不改动关闭。
+      浮层内：点击日历某天即提交；方向键移动高亮、Enter 提交；「默认 +N 天」「清除」即提交；
+      Esc / 点击外部不改动关闭。无数字输入（用户 2026-09-29 裁决删除）。
     -->
     <Panel>
         <Button x:Name="Trigger"
@@ -40,17 +40,6 @@
                 </Border.Transitions>
 
                 <StackPanel Spacing="10" MinWidth="280">
-                    <TextBox x:Name="DigitBox"
-                             Classes="FieldInput"
-                             Watermark="输入数字：10 / 0310 / 20260310"
-                             Text="{Binding DigitText, Mode=TwoWay}" />
-
-                    <TextBlock Classes="CaptionText"
-                               Foreground="{DynamicResource PriorityHighBrush}"
-                               TextWrapping="Wrap"
-                               IsVisible="{Binding HasParseError}"
-                               Text="{Binding ParseErrorMessage}" />
-
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Button Classes="DuePickerPreset"
                                 Content="{Binding DefaultPresetLabel}"

@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using FlowTask.Desktop.Controls;
 using FlowTask.Desktop.ViewModels;
@@ -72,8 +73,7 @@ public class DueDatePickerTests
 
         picker.Open();
         Dispatcher.UIThread.RunJobs();
-        picker.Editor!.DigitText = "15";
-        picker.FindControl<TextBox>("DigitBox")!.Focus();
+        picker.Editor!.CalendarDate = new DateTime(2026, 3, 15);
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
 
@@ -81,20 +81,39 @@ public class DueDatePickerTests
         Assert.Empty(commits);
     }
 
+    /// <summary>
+    /// 打开即把焦点交给日历（无数字框后的键盘入口），Enter 提交高亮日。
+    /// </summary>
     [AvaloniaFact]
-    public void EnterInDigitBox_CommitsPreview()
+    public void Open_FocusesCalendar_EnterCommitsHighlight()
     {
         var (window, picker, commits) = Mount();
 
         picker.Open();
         Dispatcher.UIThread.RunJobs();
-        picker.FindControl<TextBox>("DigitBox")!.Focus();
-        picker.Editor!.DigitText = "0320";
+        var calendar = picker.FindControl<Calendar>("DueCalendar")!;
+        Assert.True(calendar.IsKeyboardFocusWithin);
+
+        picker.Editor!.CalendarDate = new DateTime(2026, 3, 20);
         window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
 
         Assert.False(picker.IsOpen);
         Assert.Equal(new DateTime(2026, 3, 20), Assert.Single(commits).Date);
+    }
+
+    /// <summary>
+    /// 浮层里不再有数字输入框。
+    /// </summary>
+    [AvaloniaFact]
+    public void Popup_HasNoTextInput()
+    {
+        var (_, picker, _) = Mount();
+
+        picker.Open();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(picker.FindControl<Border>("Surface")!.GetVisualDescendants().OfType<TextBox>());
     }
 
     /// <summary>

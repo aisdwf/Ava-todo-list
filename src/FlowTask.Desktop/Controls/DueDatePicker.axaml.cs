@@ -178,7 +178,7 @@ public partial class DueDatePicker : UserControl
         {
             Surface.Opacity = 1;
             Surface.RenderTransform = RestOffset;
-            DigitBox.Focus();
+            FocusCalendarDay();
         }, DispatcherPriority.Loaded);
     }
 
@@ -222,7 +222,8 @@ public partial class DueDatePicker : UserControl
                 Close();
                 e.Handled = true;
                 break;
-            case Key.Enter:
+            // 只在日历内按 Enter 时提交高亮日；Tab 到预设按钮上按 Enter 应激活按钮本身
+            case Key.Enter when IsWithin(e.Source as Visual, DueCalendar):
                 _activeEditor?.CommitPreviewCommand.Execute(null);
                 e.Handled = true;
                 break;
@@ -244,6 +245,48 @@ public partial class DueDatePicker : UserControl
                 editor.CommitDate(picked);
             }
         }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// 把键盘焦点交给日历里的某一天：已选日优先，其次今天，再次本月首个可用日。
+    /// 方向键移动高亮、Enter 提交，保留全键盘路径（R-1.4）。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Calendar"/> 本身 <c>Focusable=false</c>，直接 <c>Focus()</c> 会静默失败，
+    /// 可聚焦的是模板里的 <see cref="CalendarDayButton"/>。
+    /// </remarks>
+    private void FocusCalendarDay()
+    {
+        var days = DueCalendar.GetVisualDescendants()
+            .OfType<CalendarDayButton>()
+            .Where(b => b.IsEffectivelyVisible && b.IsEnabled)
+            .ToList();
+
+        // CalendarDayButton 的 IsSelected / IsToday 在 11.2 为 internal；
+        // 每个日按钮的 DataContext 是它代表的 DateTime，据此匹配。
+        static DateTime? DayOf(CalendarDayButton b) => b.DataContext is DateTime d ? d.Date : null;
+        var wanted = (DueCalendar.SelectedDate ?? DueDateDisplay.Today()).Date;
+
+        var target = days.FirstOrDefault(b => DayOf(b) == wanted)
+                     ?? days.FirstOrDefault(b => DayOf(b) is { } d
+                                                 && d.Month == DueCalendar.DisplayDate.Month
+                                                 && d.Year == DueCalendar.DisplayDate.Year)
+                     ?? days.FirstOrDefault();
+
+        target?.Focus(NavigationMethod.Directional);
+    }
+
+    private static bool IsWithin(Visual? source, Visual container)
+    {
+        for (var node = source; node is not null; node = node.GetVisualParent())
+        {
+            if (ReferenceEquals(node, container))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsOnDayButton(Visual? source)
