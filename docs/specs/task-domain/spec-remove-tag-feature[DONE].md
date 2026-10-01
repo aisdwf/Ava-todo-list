@@ -4,10 +4,10 @@
 
 - **ID**: spec-remove-tag-feature
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: done
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-24
-- **Last Updated**: 2026-09-24
+- **Last Updated**: 2026-10-01
 
 > ## ✅ 开工许可（rule-spec-review-gate）
 >
@@ -35,7 +35,7 @@
 1. 标签功能已完整实现，涉及 Core / Infrastructure / Desktop 三层 + 4 个测试文件，
    详见 §2.2 影响面清单（已通过 subagent 调研核实文件路径）。
 2. 本 SPEC **直接影响另外两份 IN-PROGRESS SPEC**，须在同一改动中同步修订：
-   - `spec-quick-window-hotkey-capture[IN-PROGRESS]`：已实现并机器验证通过的
+   - `spec-quick-window-hotkey-capture[DONE]`：已实现并机器验证通过的
      `#标签` 解析/补全/落库逐一移除，SPEC 正文与验收清单同步删除标签相关条目。
    - `spec-quick-window-single-project-list[DONE]`：调研确认未直接引用标签，
      实施时仍需二次确认无遗漏引用。
@@ -80,7 +80,7 @@
 | :--- | :--- |
 | 清理程度 | **完全移除**：Entity、Repository、ViewModel、UI、测试、数据库表创建逻辑全部删除，不保留"精简版" |
 | 数据库现有数据 | **不迁移**：不写 DROP TABLE；`Tags`/`TaskTags` 表在老库中保留但不再被引用；新库不再创建 |
-| QuickCapture 的 `#标签` 补全（IN-PROGRESS） | **一并删除**：连带修订 `spec-quick-window-hotkey-capture[IN-PROGRESS]` |
+| QuickCapture 的 `#标签` 补全（IN-PROGRESS） | **一并删除**：连带修订 `spec-quick-window-hotkey-capture[DONE]` |
 | `REQUIREMENTS.md` 中的标签条目 | **同步修订**：R-1.6 改为仅保留 `@项目`；R-1.8 同步移除标签部分；记录本次裁决变更 |
 
 ### 2.2 影响范围清单（已通过只读调研逐一核实）
@@ -135,7 +135,7 @@
 **跨 SPEC 文档修订**：
 - `docs/specs/task-domain/spec-tag-entity[DONE].md` → 重命名为
   `spec-tag-entity[OBSOLETE].md`，正文头部加废弃说明（废弃原因、指向本 SPEC）
-- `docs/specs/quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md`：
+- `docs/specs/quick-capture/spec-quick-window-hotkey-capture[DONE].md`：
   移除 `#标签` 相关的需求引用（R-1.6 措辞）、解析规则（§2.3）、落库规则（§2.4）、
   已裁决表（D2）、验收清单中含标签的条目（H7/H8 等，改为仅验证 `@项目`）
 - `docs/requirements/REQUIREMENTS.md`：
@@ -182,7 +182,7 @@
         `SchemaMigrationTests.cs` 由「验证建表」改写为「验证不再建 Tag 表」（回归防护）
 - [x] **Phase 3: 跨 SPEC 与需求文档修订**
   - [x] `spec-tag-entity[DONE]` → `[OBSOLETE]`（重命名 + 废弃说明）
-  - [x] `spec-quick-window-hotkey-capture[IN-PROGRESS]` 摘除标签相关条目
+  - [x] `spec-quick-window-hotkey-capture[DONE]` 摘除标签相关条目
         （历史记录保留，加 `[已随标签移除废弃]` 标注；验收清单去掉 H7，
         改写机器验证记录与前置条件）
   - [x] `REQUIREMENTS.md` R-1.6/R-1.8 修订 + §4.2 补充二次推翻记录
@@ -212,7 +212,7 @@
 - **[2026-09-24]** 用户确认数据库不做迁移，`Tags`/`TaskTags` 表保留为死表。
 - **[2026-09-24]** 用户确认 QuickCapture 的 `#标签` 补全一并删除。
 - **[2026-09-24]** 用户确认推翻 `REQUIREMENTS.md` R-1.6/R-1.8 中的标签裁决，同步修订文档。
-- **[2026-09-24]** 用户确认将 `spec-quick-window-hotkey-capture[IN-PROGRESS]` 一并修改，
+- **[2026-09-24]** 用户确认将 `spec-quick-window-hotkey-capture[DONE]` 一并修改，
   而非搁置或单独处理。
 - **[2026-09-24]** Phase 1-4 机器侧全部完成：Core/Infrastructure/Desktop/Tests 四层
   标签相关代码与测试已删除或摘除；跨 SPEC（`spec-tag-entity` → `OBSOLETE`、
@@ -225,6 +225,8 @@
   你自行决定」。评估后判定该修复涉及「全部任务」视图与 Default 项目信息架构合并，
   改动面超出本 SPEC 范围，**本轮不处理**，已登记至 `docs/specs/README.md`
   待办事项索引（关联 `spec-create-task-inherits-selected-project` §6）。
+- **[2026-10-01]** 用户确认人工验收通过，SPEC 转 `DONE`。上一条 `ProjectId` 为 null 的
+  遗留问题已随 Default 项目落地消解（见 `spec-create-task-inherits-selected-project` §6）。
 
 <!-- 以下按 Phase 实际完成情况追加，严禁提前填写 -->
 
@@ -239,10 +241,12 @@
 
 ### 人工验证（由用户执行）
 
-- [ ] 创建区、任务行、编辑区、设置页均无任何标签相关 UI 残留
-- [ ] 快捷小窗 `#标签` 语法不再解析（作为普通文本进入标题）
-- [ ] 现有数据库（若已有标签数据）应用启动正常，任务数据不受影响
-- [ ] 新建数据库不再包含 `Tags`/`TaskTags` 表
+- [x] 创建区、任务行、编辑区、设置页均无任何标签相关 UI 残留
+- [x] 快捷小窗 `#标签` 语法不再解析（作为普通文本进入标题）
+- [x] 现有数据库（若已有标签数据）应用启动正常，任务数据不受影响
+- [x] 新建数据库不再包含 `Tags`/`TaskTags` 表
+
+以上 4 项 2026-10-01 用户确认人工验收通过。
 
 ---
 

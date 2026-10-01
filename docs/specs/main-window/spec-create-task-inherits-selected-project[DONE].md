@@ -4,10 +4,14 @@
 
 - **ID**: spec-create-task-inherits-selected-project
 - **Type**: complex
-- **Status**: in-progress
+- **Status**: done
 - **Owner**: aisdwf
 - **Created Date**: 2026-09-24
-- **Last Updated**: 2026-09-24
+- **Last Updated**: 2026-10-01
+
+> **2026-10-01 收尾说明**：本 SPEC 写于 Default 项目落地之前。§2.1 中「全部任务 → `null`」
+> 已被 R-2.6（无项目归属 Default）取代：当前代码为 `projectId ?? DefaultProject.Id`
+> （`AddTaskViewModel.ExecuteAsync`）。下文历史记录保留原样，以本说明与 §5 为准。
 
 > ## ✅ 开工许可（rule-spec-review-gate）
 >
@@ -105,7 +109,7 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
 - [x] **Phase 3: 验证**
   - [x] `dotnet build` 0 警告 0 错误 —— 2026-09-24 实测
   - [x] `dotnet test` 全绿，不低于当前基线 —— 2026-09-24 实测 197 通过（基线 195 + 本轮新增 2）
-  - [ ] 文档同步（本 SPEC 转 `DONE`，需等待用户人工验证后再转终态）
+  - [x] 文档同步（本 SPEC 转 `DONE`）—— 2026-10-01 用户确认人工验收通过
 
 ---
 
@@ -126,6 +130,8 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
   `TaskItemFactory.Create()`；补测试 `AddTask_WhileProjectSelected_InheritsSelectedProjectId`
   与 `AddTask_WithoutProjectSelected_StaysUnassigned`；构建 0/0，测试 197 通过。
   等待用户人工验证后再转 `DONE`。
+- **[2026-10-01]** 用户确认人工验收通过，SPEC 转 `DONE`。期间 Default 项目（R-2.6）落地，
+  「全部任务」视图下新建任务改为归属 Default，§6 的 `null` 遗留项随之消解。
 
 <!-- 以下按 Phase 实际完成情况追加，严禁提前填写 -->
 
@@ -140,8 +146,8 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
 
 ### 人工验证（由用户执行）
 
-- [ ] 侧边栏选中某项目 → 新建任务 → 任务出现在该项目下，不在未分类
-- [ ] 侧边栏切到「全部任务」→ 新建任务 → 行为与当前一致（未分类）
+- [x] 侧边栏选中某项目 → 新建任务 → 任务出现在该项目下，不在未分类 —— 2026-10-01 用户确认通过
+- [x] 侧边栏切到「全部任务」→ 新建任务 → 落入 Default 项目（原预期「未分类」已随 R-2.6 改写）—— 2026-10-01 用户确认通过
 
 ---
 
@@ -156,6 +162,8 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
   推翻为级联物理删除，不再是本条的回退路径。
   本轮向用户核实是否要在本次一并修复（涉及是否将「全部任务」视图与 Default 项目的
   信息架构合并），用户原话：「我不想做这个抉择，你自行决定」。
+- **[2026-10-01 已核销]**：Default 项目落地后，创建路径统一回落 `DefaultProject.Id`
+  （`AddTaskViewModel.ExecuteAsync`），不再写入 `null`，下述不一致已不存在。以下为原始记录。
   经评估：合并「全部任务」与 Default 项目的信息架构改动面大（侧边栏结构、
   项目色条显示、`ProjectChoice.None` 语义等均受影响），超出本 SPEC 「继承选中项目」
   的原始范围，故**本轮不处理**，维持现状（`null` 表示未归属）。已登记至

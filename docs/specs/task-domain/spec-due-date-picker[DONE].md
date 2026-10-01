@@ -265,7 +265,7 @@
 
 ## Related documents
 
-- SPECs: [spec-due-date-calendar](./spec-due-date-calendar[DONE].md) · [spec-quick-window-single-project-list](../quick-capture/spec-quick-window-single-project-list[DONE].md) · [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) · [spec-classification-ui](../main-window/spec-classification-ui[DONE].md)
+- SPECs: [spec-due-date-calendar](./spec-due-date-calendar[DONE].md) · [spec-quick-window-single-project-list](../quick-capture/spec-quick-window-single-project-list[DONE].md) · [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[DONE].md) · [spec-classification-ui](../main-window/spec-classification-ui[DONE].md)
 - Design: [design-interaction-principles](../../design/design-interaction-principles.md) · [design-visual-language](../../design/design-visual-language.md) · [design-domain-contract](../../design/design-domain-contract.md)
 - Rules: [rule-no-invented-user-behavior](../../rules/rule-no-invented-user-behavior.md) · [technical-rules](../../rules/technical-rules.md)
 - Requirements: [REQUIREMENTS](../../requirements/REQUIREMENTS.md)

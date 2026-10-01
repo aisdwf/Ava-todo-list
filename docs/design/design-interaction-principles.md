@@ -118,7 +118,7 @@
 
 > **实现落地记录（2026-09-24）**：本节「某个项目 → 该项目」这一条此前虽已设计，
 > 但主窗创建路径（`AddTaskViewModel`）从未实际读取当前选中项目，一直硬编码为未归属。
-> 已由 [spec-create-task-inherits-selected-project](../specs/main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md)
+> 已由 [spec-create-task-inherits-selected-project](../specs/main-window/spec-create-task-inherits-selected-project[DONE].md)
 > 补齐。「Default 项目 / 已归档 → Default 项目」这一条仍是**已知未落地**的设计
 > （代码实际写 `null` 而非 `DefaultProject.Id`），已登记为待办事项
 > （见 `docs/specs/README.md`），本轮不在此修复范围内。
@@ -126,7 +126,7 @@
 **小窗**：不继承主窗口当前项目；无 `@项目` 时落入 **Default**。
 未知 `@` 在**保存时创建**对应项目（R-1.8，2026-09-18）；已存在的靠补全选中。
 **[已随标签移除废弃]**（2026-09-24）原文亦含 `#标签`；标签功能已完全移除，
-详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[IN-PROGRESS].md)。
+详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[DONE].md)。
 
 ---
 
@@ -150,7 +150,7 @@
 
 > **⚠ 本节已废弃（2026-09-24）**：标签功能已被用户裁决完全移除
 > （原话：「标签实际体验下来功能很累赘，可以考虑清理这个功能」），
-> 详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[IN-PROGRESS].md)。
+> 详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[DONE].md)。
 > 以下原文保留作历史记录，**不再是当前实现依据**。
 
 标签是**受管理的预设集合**（字段语义见
@@ -297,7 +297,7 @@
 **推断依据**：小窗职责是「快速打勾和查看」而非「审阅任务全貌」。
 
 > 实施拆分见：
-> [spec-quick-window-hotkey-capture](../specs/quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md) ·
+> [spec-quick-window-hotkey-capture](../specs/quick-capture/spec-quick-window-hotkey-capture[DONE].md) ·
 > [spec-project-managed-tasks](../specs/task-domain/spec-project-managed-tasks[DONE].md) ·
 > [spec-quick-window-single-project-list](../specs/quick-capture/spec-quick-window-single-project-list[DONE].md)。
 

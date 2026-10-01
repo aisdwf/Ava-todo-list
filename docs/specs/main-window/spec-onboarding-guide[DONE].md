@@ -183,7 +183,7 @@ Q1–Q4 未单独答复，已按建议值实现（见开工许可），预览时
   - [spec-settings-theme-button-order](./spec-settings-theme-button-order[DONE].md)
   - [spec-modal-overlay-block-hover](./spec-modal-overlay-block-hover[DONE].md)
   - [spec-viewmodel-command-decomposition](./spec-viewmodel-command-decomposition[DONE].md)
-  - [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md)
+  - [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[DONE].md)
 - Requirements: `docs/requirements/REQUIREMENTS.md` §1、§4.4、§6
 - Design: `docs/design/design-interaction-principles.md` §2、§9；`docs/design/design-visual-language.md` §2.4、§5、§7
 - Rules: `docs/rules/technical-rules.md` TR-1；`docs/rules/rule-no-invented-user-behavior.md`；`docs/rules/project-rules.md` BR-1（后续维护义务）

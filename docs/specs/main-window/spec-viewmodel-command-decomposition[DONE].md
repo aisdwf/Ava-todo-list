@@ -151,7 +151,7 @@
 
 | 项 | Owner | 说明 |
 | :--- | :--- | :--- |
-| 与 `spec-quick-window-hotkey-capture[IN-PROGRESS]` 并行 | 用户 | 建议本重构期间暂停往 MainViewModel **新增**内联逻辑；小窗 SPEC 若需改 MainViewModel，应先抽或等本 SPEC Phase 完成 |
+| 与 `spec-quick-window-hotkey-capture[DONE]` 并行 | 用户 | 建议本重构期间暂停往 MainViewModel **新增**内联逻辑；小窗 SPEC 若需改 MainViewModel，应先抽或等本 SPEC Phase 完成 |
 | 抽出类如何拿仓储/时钟 | AI | 构造注入接口引用（与现 MainViewModel 字段同源），不引入新 DI 框架 |
 | Actions 命名：`CreateProjectViewModel` vs `CreateProjectAction` | 用户 | 推荐 `*ViewModel` 以符合 CT MVVM；若用户偏好 Action 后缀则统一 |
 
