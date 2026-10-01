@@ -81,6 +81,7 @@
 - [ ] 完成 macOS 手动验证记录。
 - [ ] 完成 Windows 构建与测试回归。
 - [ ] 更新 SPEC 状态、进度日志和验证证据。
+- [ ] Guide: 待定 — 指南文字只引用侧栏键帽，macOS 下键帽由 `QuickCaptureHotkey.Describe` 显示 `⌥ Space`，与 Carbon 注册的 Option+Space 一致；「藏进托盘」与 Dock 重开主窗在 macOS 上的指南表述，待实机验收托盘行为后由 owner 裁定是否需要改。
 
 ## Progress log
 
@@ -123,6 +124,9 @@
 - Blocked for owner verification: 当前 UI 自动化通道不能发送系统级全局组合键；
   尝试用 `System Events` 注入真实 `Option+Space` 时被 macOS 拒绝，因为当前终端
   没有辅助功能权限。因此仍需所有者在实际桌面上确认失焦后呼出和再次按键隐藏。
+- Reconciled（合入本地 `dev` 时）：本分支从 `origin/main@7087fb3` 切出，早于 BR-1 指南同步规则；
+  合入后 `GuideMaintenanceTests.NewSpecsWithChecklist_DeclareGuideImpact` 因缺 `Guide:` 行失败。
+  已补待定的 `Guide:` 行（未作结论），并把已关闭的 `spec-quick-window-hotkey-capture` 链接改为 `[DONE]`。
 
 ## Verification
 
@@ -160,7 +164,7 @@
 
 ## Related documents
 
-- SPECs: [spec-close-to-tray](../main-window/spec-close-to-tray[DONE].md), [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md), [spec-quick-window-project-sync](../quick-capture/spec-quick-window-project-sync[DONE].md)
+- SPECs: [spec-close-to-tray](../main-window/spec-close-to-tray[DONE].md), [spec-quick-window-hotkey-capture](../quick-capture/spec-quick-window-hotkey-capture[DONE].md), [spec-quick-window-project-sync](../quick-capture/spec-quick-window-project-sync[DONE].md)
 - ADRs: [adr-technology-stack](../../adr/adr-technology-stack.md)
 - Rules: [workflow-methodology](../../rules/workflow-methodology.md), [docs-conventions](../../rules/docs-conventions.md), [rule-spec-complete-before-merge](../../rules/rule-spec-complete-before-merge.md)
 - Analysis: [analysis-codegraph-code-audit](../../analysis/analysis-codegraph-code-audit.md)
