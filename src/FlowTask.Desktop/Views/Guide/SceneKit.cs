@@ -243,15 +243,29 @@ internal sealed class SceneLayer
         return Add(dot, x, y);
     }
 
+    /// <summary>场景内描边图标的默认线宽（像素）。</summary>
+    public const double IconStroke = 1.6;
+
+    /// <summary>
+    /// 场景里模拟主窗顶栏三钮时用的加粗线宽（像素）。
+    /// </summary>
+    /// <remarks>
+    /// 主窗顶栏为 <c>Path.StrokeIcon.Bold</c>（2.25）× 20/24 ≈ 1.88px；场景图标画 18px，
+    /// 按同一比例取 1.88 × 18/20 ≈ 1.7，使指南里的顶栏与真实顶栏观感一致（spec-icon-refresh）。
+    /// 场景 Path 直接按像素绘制、没有 Viewbox，故不能复用样式类里的 24 基准值。
+    /// </remarks>
+    public const double HeaderIconStroke = 1.7;
+
     /// <summary>描边图标，几何取自 Icons.axaml。</summary>
-    public Path Icon(double x, double y, double size, string geometryKey, string stroke = "TextSecondaryBrush")
+    public Path Icon(double x, double y, double size, string geometryKey, string stroke = "TextSecondaryBrush",
+        double thickness = IconStroke)
     {
         var path = new Path
         {
             Width = size,
             Height = size,
             Stretch = Stretch.Uniform,
-            StrokeThickness = 1.6,
+            StrokeThickness = thickness,
             StrokeLineCap = PenLineCap.Round,
             StrokeJoin = PenLineJoin.Round,
             Data = ResolveGeometry(geometryKey)

@@ -861,13 +861,15 @@ internal static class GuideScenes
             .Select(i => content.Box(16, 72 + (i * 22), 120 + ((i * 41) % 100), 6, "HairlineStrongBrush", 3))
             .ToArray();
 
+        // 顶栏三钮与主窗同为加粗档（spec-icon-refresh）
+        const double bold = SceneLayer.HeaderIconStroke;
         var help = content.Box(208, 16, 28, 28, null, 14);
-        content.Icon(213, 21, 18, "IconHelp", "TextSecondaryBrush");
+        content.Icon(213, 21, 18, "IconHelp", "TextSecondaryBrush", bold);
         var gear = content.Box(240, 16, 28, 28, null, 14);
-        content.Icon(245, 21, 18, "IconSettings", "TextSecondaryBrush");
+        content.Icon(245, 21, 18, "IconSettings", "TextSecondaryBrush", bold);
         var themeButton = content.Box(272, 16, 28, 28, null, 14);
-        var sun = content.Icon(277, 21, 18, "IconSun", "TextSecondaryBrush");
-        var moon = content.Icon(277, 21, 18, "IconMoon", "TextSecondaryBrush");
+        var sun = content.Icon(277, 21, 18, "IconSun", "TextSecondaryBrush", bold);
+        var moon = content.Icon(277, 21, 18, "IconMoon", "TextSecondaryBrush", bold);
 
         // 波纹颜色即切换后的底色（场景里用 TextPrimary 充当"反相"底色）
         var ripple = content.Dot(286 - 360, 30 - 360, 720, "TextPrimaryBrush");
