@@ -81,7 +81,7 @@
 - [ ] 完成 macOS 手动验证记录。
 - [ ] 完成 Windows 构建与测试回归。
 - [ ] 更新 SPEC 状态、进度日志和验证证据。
-- [ ] Guide: 待定 — 指南文字只引用侧栏键帽，macOS 下键帽由 `QuickCaptureHotkey.Describe` 显示 `⌥ Space`，与 Carbon 注册的 Option+Space 一致；「藏进托盘」与 Dock 重开主窗在 macOS 上的指南表述，待实机验收托盘行为后由 owner 裁定是否需要改。
+- [ ] Guide: 待定 — 指南文字只引用侧栏键帽，macOS 下键帽由 `QuickWindowHotkeyViewModel.Label` 显示 `⌥ Space`，与 Carbon 注册的 Option+Space 一致；「藏进托盘」与 Dock 重开主窗在 macOS 上的指南表述，待实机验收托盘行为后由 owner 裁定是否需要改。
 
 ## Progress log
 
@@ -155,6 +155,11 @@
 - **Owner**: aisdwf — 当前环境缺少 PowerShell，是否在实施前补齐工具链，还是把 SPEC 索引生成作为外部环境步骤？
 - **Owner**: aisdwf — 需要在可识别的 macOS `.app` 或 Rider 启动环境中完成 Dock、
   菜单栏托盘、主窗关闭策略和失焦后 `Option+Space` 的人工验收。
+- **Owner**: aisdwf — **TODO(macos-custom-hotkey): [2026-10-15]** 快捷小窗自定义快捷键在 macOS 留接口未实现
+  （[spec-quick-window-custom-hotkey](../quick-capture/spec-quick-window-custom-hotkey[DONE].md) Q1，owner 原话
+  「如果可以留接口不实现，说明这是需要mac适配的，方便后续在mac继续开发」）。适配点：
+  `GlobalHotkeyService.TryApplyAsync` 把 `QuickWindowHotkey` 映射为 Carbon 键码与修饰位并按「先注册新、再注销旧」换键，
+  然后令 `SupportsCustomHotkey` 在 macOS 返回 true；设置 → 通用里的只读说明随之消失。需 macOS 实机验收。
 - 单实例替换中 `GetNamedPipeClientProcessId` 使用 `kernel32.dll`，在 macOS 上可能导致替换授权失败；需要用跨平台身份校验替代或安全降级。
 - 当前 CI 仅在 Windows runner 上执行，无法自动证明 macOS 原生运行时行为。
 
