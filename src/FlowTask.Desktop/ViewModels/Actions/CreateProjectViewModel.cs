@@ -1,6 +1,5 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
-using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
@@ -48,7 +47,6 @@ public sealed class CreateProjectViewModel
         {
             Name = normalized,
             SortOrder = sortOrder,
-            ColorHex = AppearanceCoordinator.PickPaletteColor(sortOrder),
             CreatedAt = _clock.UtcNow
         };
 

@@ -83,8 +83,7 @@
 
                                                 <Ellipse Grid.Column="0"
                                                          Classes="ProjectDot"
-                                                         Margin="0,0,10,0"
-                                                         Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                                         Margin="0,0,10,0" />
 
                                                 <!-- 常态：项目名，双击进入重命名 -->
                                                 <TextBlock Grid.Column="1"
@@ -173,7 +172,7 @@
                             </TextBox>
                             <TextBlock Classes="CaptionText"
                                        Margin="14,4,4,0"
-                                       Foreground="{DynamicResource DangerBrush}"
+                                       Foreground="{DynamicResource PriorityHighBrush}"
                                        TextWrapping="Wrap"
                                        IsVisible="{Binding HasCreateProjectError}"
                                        Text="{Binding CreateProjectError}" />
@@ -404,13 +403,14 @@
                                                           Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ToggleCompleteCommand}"
                                                           CommandParameter="{Binding Task}" />
 
-                                                <!-- 项目色条：跨两行，贯穿标题与元信息 (design-domain-contract §5.2)。
-                                                     无项目时整体不渲染，行布局与改动前一致 -->
+                                                <!-- 优先级色条：跨两行，贯穿标题与元信息。强度随优先级放大
+                                                     (spec-theme-bound-decoration-colors)，每条任务都有优先级，故常驻。
+                                                     [推断] 悬浮提示为优先级名：项目名已在元信息行显示 -->
                                                 <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
-                                                        Classes="ProjectStripe"
-                                                        IsVisible="{Binding HasProject}"
-                                                        Background="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
-                                                        ToolTip.Tip="{Binding ProjectName}" />
+                                                        Classes="PriorityStripe"
+                                                        Classes.P1="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=High}"
+                                                        Classes.P2="{Binding Task.Priority, Converter={x:Static conv:PriorityMatchConverter.Instance}, ConverterParameter=Medium}"
+                                                        ToolTip.Tip="{Binding Task.Priority, Converter={x:Static conv:PriorityTagConverter.DisplayName}}" />
 
                                                 <!-- 优先级微标签 P1/P2/P3 (spec-editorial-and-ripple-theme §2) -->
                                                 <Border Grid.Column="2" Grid.Row="0"
@@ -463,8 +463,7 @@
                                                                 Spacing="4"
                                                                 IsVisible="{Binding HasProject}">
                                                         <Ellipse Classes="ProjectDot"
-                                                                 Margin="6,0,2,0"
-                                                                 Fill="{Binding ProjectColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                                                 Margin="6,0,2,0" />
                                                         <TextBlock Classes="MetaText" Text="{Binding ProjectName}" />
                                                         <TextBlock Classes="MetaSeparator" Text="·" />
                                                     </StackPanel>
@@ -695,8 +694,7 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     MinWidth="360"
-                    Padding="24"
-                    Background="{DynamicResource SurfaceBrush}">
+                    Padding="24">
                 <StackPanel Spacing="16">
                     <TextBlock Text="关闭窗口" Classes="SectionTitle" />
                     <StackPanel Spacing="8">
@@ -767,11 +765,11 @@
                 VerticalAlignment="Top"
                 Margin="16"
                 Padding="16,12"
-                Background="{DynamicResource SurfaceBrush}"
+                Background="{DynamicResource CardSurfaceBrush}"
                 CornerRadius="8">
             <TextBlock Text="{Binding InitializationError}"
                        TextWrapping="Wrap"
-                       Foreground="{DynamicResource DangerBrush}" />
+                       Foreground="{DynamicResource PriorityHighBrush}" />
         </Border>
 
         <!-- 水波纹转场层 (spec-editorial-and-ripple-theme §2)：位于最顶层，扩散时覆盖全窗 -->

@@ -195,10 +195,15 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 相邻新建的项目应获得不同颜色，否则色条失去区分作用。
+    /// 连续新建的项目按创建顺序排在 Default 之后。
     /// </summary>
+    /// <remarks>
+    /// 原测试断言相邻项目颜色不同；owner 裁决项目色统一取主题强调色
+    /// （spec-theme-bound-decoration-colors），该断言失去意义。保留其中仍有效的
+    /// 排序部分：取色曾以 SortOrder 为输入，删除取色不得连带破坏排序。
+    /// </remarks>
     [AvaloniaFact]
-    public async Task CreateProject_AssignsDistinctColorsToConsecutiveProjects()
+    public async Task CreateProject_AppendsConsecutiveProjectsInOrder()
     {
         var vm = await CreateInitializedAsync();
 
@@ -208,8 +213,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         var users = UserProjects(vm).ToList();
-        Assert.Equal(2, users.Count);
-        Assert.NotEqual(users[0].ColorHex, users[1].ColorHex);
+        Assert.Equal(new[] { "甲", "乙" }, users.Select(p => p.Name));
+        Assert.True(users[0].Project.SortOrder < users[1].Project.SortOrder);
     }
 
     // ==================== 筛选正交性 ====================
@@ -623,7 +628,6 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
         var project = SoleUserProject(vm);
         var projectId = project.Id;
-        var colorHex = project.Project.ColorHex;
 
         vm.NewTaskTitle = "归档项目下的任务";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -634,7 +638,7 @@ public class ProjectInteractionTests : IDisposable
 
         var row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
         Assert.Equal(projectId, row.Task.ProjectId);
-        Assert.Equal(colorHex, row.ProjectColorHex);
+        Assert.Equal("待归档", row.ProjectName);
 
         await vm.ToggleEditCommand.ExecuteAsync(row);
         Assert.Equal(projectId, row.EditProject.ProjectId);

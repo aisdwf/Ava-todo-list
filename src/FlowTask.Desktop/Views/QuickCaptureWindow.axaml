@@ -63,10 +63,8 @@
                     <DataTemplate DataType="vm:ProjectItemViewModel">
                         <Grid ColumnDefinitions="Auto,*">
                             <Ellipse Grid.Column="0"
-                                     Width="8" Height="8"
-                                     Margin="0,0,8,0"
-                                     VerticalAlignment="Center"
-                                     Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                     Classes="ProjectDot"
+                                     Margin="0,0,8,0" />
                             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                         </Grid>
                     </DataTemplate>

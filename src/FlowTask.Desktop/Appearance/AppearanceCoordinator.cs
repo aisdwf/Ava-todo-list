@@ -2,19 +2,19 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Themes.Fluent;
 
 namespace FlowTask.Desktop.Appearance;
 
 /// <summary>
-/// 外观协调器：集中承载主题变体、强调色与窗口材质的运行时切换 (spec-editorial-and-ripple-theme Phase 4)。
+/// 外观协调器：集中承载主题变体、主题色板与窗口材质的运行时切换 (spec-editorial-and-ripple-theme Phase 4)。
 /// </summary>
 /// <remarks>
-/// 为什么需要这一层：原实现把强调色写入 <c>Application.Current.Resources["AccentBrush"]</c>，
+/// 为什么需要这一层：早期实现把强调色写入 <c>Application.Current.Resources["AccentBrush"]</c>，
 /// 但 AccentBrush 定义在 <c>ResourceDictionary.ThemeDictionaries</c> 内部。Avalonia 解析
 /// DynamicResource 时主题字典优先级高于宿主顶层字典，顶层写入被主题值直接遮蔽，
-/// 因此四个强调色按钮点击后毫无视觉变化。此处改为向两个主题字典同时写入
-/// <c>AccentColor</c> 种子色，令牌文件中所有强调派生笔刷都链式引用该色，
-/// 一次写入即完成级联（AI_CONSTITUTION Article 6 / Article 10）。
+/// 换色点击后毫无视觉变化。此处改为向两个主题字典同时写入整套色板
+/// （AI_CONSTITUTION Article 6 / Article 10）。
 /// </remarks>
 public static class AppearanceCoordinator
 {
@@ -54,21 +54,14 @@ public static class AppearanceCoordinator
     private const double GlowOpacityLight = 0.28;
 
     /// <summary>
-    /// 可选强调色预设。这是强调色的权威定义，UI 与命令层均从此处派生，
-    /// 禁止在视图或 ViewModel 中另建色值查找表。
+    /// 命名主题预设，也是强调色与全部修饰色的唯一来源（Article 6）。
+    /// 色值来自 dogapi.cc 与 linkapi.ai 同一套 New API 主题样式表（构建标识 2k6e8r7p）。
     /// </summary>
-    public static readonly IReadOnlyList<AppearanceOption> AccentPresets = new[]
-    {
-        new AppearanceOption("Blue", "科技蓝", "#4CA0FF", "#0067C0"),
-        new AppearanceOption("Purple", "极光紫", "#A78BFA", "#6D28D9"),
-        new AppearanceOption("Green", "翡翠绿", "#34D399", "#0E7C5A"),
-        new AppearanceOption("Orange", "日落橙", "#FB923C", "#C2410C")
-    };
-
-    /// <summary>
-    /// 命名主题预设。色值来自 dogapi.cc 与 linkapi.ai 同一套 New API 主题样式表
-    /// （构建标识 2k6e8r7p），不是由强调色列表派生。
-    /// </summary>
+    /// <remarks>
+    /// 曾另有一份独立的 4 色强调色列表，设置页撤下强调色选择后只剩新建项目取色在用，
+    /// 导致项目色点固定为紫 / 绿、不随主题变化。该列表已随项目色一并删除
+    /// （spec-theme-bound-decoration-colors）。
+    /// </remarks>
     /// <remarks>
     /// 除 Anthropic 外，各预设只覆写强调色，表面、文本、边框与状态色继承站点默认浅色/深色。
     /// 浅色样式表没有单独的 <c>--sidebar</c> 十六进制值，侧栏底用已采集的 <c>--muted</c>（#F5F5F5）。
@@ -107,33 +100,6 @@ public static class AppearanceCoordinator
         }
 
         Application.Current.RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
-    }
-
-    /// <summary>
-    /// 应用强调色预设，深浅两套主题字典同时更新，避免切换主题后强调色回退。
-    /// </summary>
-    /// <param name="presetId">预设标识，未知值回退至首个预设。</param>
-    /// <remarks>
-    /// 派生笔刷需逐个覆写而非依赖 <c>DynamicResource</c> 链式引用种子色：
-    /// 主题字典内的 <c>DynamicResource</c> 引用不会限定在本变体内解析，
-    /// 实测浅色主题会取到深色字典的值（AccentBrush 在 Light 下返回 #4CA0FF）。
-    /// 因此令牌文件使用字面色值，运行时换色在此处集中覆写全部派生笔刷。
-    /// </remarks>
-    public static void ApplyAccent(string presetId)
-    {
-        var preset = FindAccent(presetId);
-
-        ApplyAccentToVariant(ThemeVariant.Dark, Color.Parse(preset.DarkHex), SubtleOpacityDark, GlowOpacityDark);
-        ApplyAccentToVariant(ThemeVariant.Light, Color.Parse(preset.LightHex), SubtleOpacityLight, GlowOpacityLight);
-    }
-
-    private static void ApplyAccentToVariant(ThemeVariant variant, Color accent, double subtle, double glow)
-    {
-        WriteThemeResource(variant, AccentColorKey, accent);
-        WriteThemeResource(variant, "AccentBrush", new SolidColorBrush(accent));
-        WriteThemeResource(variant, "AccentSubtleBrush", new SolidColorBrush(accent, subtle));
-        WriteThemeResource(variant, "AccentGlowBrush", new SolidColorBrush(accent, glow));
-        WriteThemeResource(variant, "TextControlSelectionHighlightColor", new SolidColorBrush(accent));
     }
 
     /// <summary>
@@ -194,12 +160,6 @@ public static class AppearanceCoordinator
         => MaterialPresets.FirstOrDefault(p => p.Id == presetId) ?? MaterialPresets[0];
 
     /// <summary>
-    /// 查询指定强调色预设，供动画等需要提前获知目标色的场景使用。
-    /// </summary>
-    public static AppearanceOption FindAccent(string presetId)
-        => AccentPresets.FirstOrDefault(p => p.Id == presetId) ?? AccentPresets[0];
-
-    /// <summary>
     /// 查询指定命名主题预设，未知标识回退至首个预设。
     /// </summary>
     public static ThemePreset FindThemePreset(string presetId)
@@ -232,8 +192,9 @@ public static class AppearanceCoordinator
     /// 应用命名主题预设：把该预设的表面、文本、边框、状态色和强调色写入两套主题字典。
     /// </summary>
     /// <remarks>
-    /// 不能转调 <see cref="ApplyAccent"/>。主题强调色不在 <see cref="AccentPresets"/> 里，
-    /// 按 Id 查找会回退成科技蓝，表面色也不会被写上。
+    /// 派生笔刷需逐个覆写而非依赖 <c>DynamicResource</c> 链式引用种子色：
+    /// 主题字典内的 <c>DynamicResource</c> 引用不会限定在本变体内解析，
+    /// 实测浅色主题会取到深色字典的值。因此令牌文件使用字面色值，换色在此集中覆写。
     /// </remarks>
     public static void ApplyThemePreset(string presetId)
     {
@@ -329,6 +290,34 @@ public static class AppearanceCoordinator
         WriteThemeResource(variant, "AccentSubtleBrush", new SolidColorBrush(accent, subtle));
         WriteThemeResource(variant, "AccentGlowBrush", new SolidColorBrush(accent, glow));
         WriteThemeResource(variant, "TextControlSelectionHighlightColor", new SolidColorBrush(accent));
+
+        ApplyFluentAccent(variant, accent);
+    }
+
+    /// <summary>
+    /// 让 Fluent 原生控件（单选、复选、下拉、日历选中日等）也用主题强调色。
+    /// </summary>
+    /// <remarks>
+    /// 这些控件读 <c>SystemAccentColor</c> 及其 Dark1..3 / Light1..3 色阶。不覆写时
+    /// Fluent 取操作系统强调色，换主题也不变。<see cref="ColorPaletteResources.Accent"/>
+    /// 是 Fluent 定制强调色的公开入口，会一并派生各级色阶，无需手写 7 个键。
+    /// </remarks>
+    private static void ApplyFluentAccent(ThemeVariant variant, Color accent)
+    {
+        var fluent = Application.Current?.Styles.OfType<FluentTheme>().FirstOrDefault();
+        if (fluent is null)
+        {
+            return;
+        }
+
+        if (fluent.Palettes.TryGetValue(variant, out var palette))
+        {
+            palette.Accent = accent;
+        }
+        else
+        {
+            fluent.Palettes[variant] = new ColorPaletteResources { Accent = accent };
+        }
     }
 
     /// <summary>
@@ -389,24 +378,6 @@ public static class AppearanceCoordinator
             darkBasis with { AccentHex = darkAccent, OnAccentHex = darkOnAccent });
 
     /// <summary>
-    /// 按已有条目数循环取调色板中的下一默认色（DarkHex）。
-    /// </summary>
-    /// <remarks>
-    /// 权威定义集中于此，避免项目/标签创建路径各自取色而漂移（TR-1 / Article 6）。
-    /// </remarks>
-    public static string PickPaletteColor(int existingCount)
-    {
-        var palette = AccentPresets;
-        var index = existingCount % palette.Count;
-        if (index < 0)
-        {
-            index += palette.Count;
-        }
-
-        return palette[index].DarkHex;
-    }
-
-    /// <summary>
     /// 读取当前生效主题下的窗体底色，供水波纹转场取得准确的目标色。
     /// </summary>
     /// <remarks>
@@ -465,7 +436,8 @@ public static class AppearanceCoordinator
 }
 
 /// <summary>
-/// 强调色预设定义，深浅主题各持一份色值以保证两种底色下的对比度。
+/// 一种颜色的深浅两份取值，深浅主题各持一份以保证两种底色下的对比度。
+/// 目前只用作 <see cref="ThemePreset.Accent"/>。
 /// </summary>
 /// <param name="Id">稳定标识，用于持久化与命令参数。</param>
 /// <param name="DisplayName">界面展示名称。</param>
@@ -492,7 +464,7 @@ public sealed record AppearanceOption(string Id, string DisplayName, string Dark
 /// </summary>
 /// <param name="Id">稳定标识，用于持久化与命令参数；与内嵌 <see cref="Accent"/> 的 Id 一致。</param>
 /// <param name="DisplayName">界面展示名称，例如 "Anthropic"、"暗夜"、"海风"。</param>
-/// <param name="Accent">该主题的强调色。不加入 <see cref="AppearanceCoordinator.AccentPresets"/>，避免和「强调色」里的四色混成一份列表。</param>
+/// <param name="Accent">该主题的强调色，深浅各一份。</param>
 /// <param name="SurfaceOverride">窗体底色。与 <see cref="Dark"/> / <see cref="Light"/> 的窗体色相同，供水波纹与材质读取。</param>
 /// <param name="Dark">深色变体的完整色板。</param>
 /// <param name="Light">浅色变体的完整色板。</param>

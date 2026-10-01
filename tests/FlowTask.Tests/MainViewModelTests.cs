@@ -636,12 +636,12 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void SelectedAccent_DefaultsToFirstPreset()
+    public void AppearanceSelections_DefaultToFirstPreset()
     {
         var vm = CreateViewModel();
 
-        Assert.Equal("Blue", vm.SelectedAccent.Id);
-        Assert.Equal(4, vm.AccentPresets.Count);
+        Assert.Equal("default", vm.SelectedThemePreset.Id);
+        Assert.Equal(9, vm.ThemePresets.Count);
         Assert.Equal(4, vm.MaterialPresets.Count);
     }
 

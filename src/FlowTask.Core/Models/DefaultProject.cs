@@ -14,9 +14,6 @@ public static class DefaultProject
     /// <summary>侧边栏与补全中的显示名。</summary>
     public const string Name = "Default";
 
-    /// <summary>默认色（中性灰蓝）。</summary>
-    public const string ColorHex = "#64748B";
-
     /// <summary>排序靠前，便于当作「不想填」入口。</summary>
     public const int SortOrder = 0;
 
@@ -25,7 +22,6 @@ public static class DefaultProject
     {
         Id = Id,
         Name = Name,
-        ColorHex = ColorHex,
         SortOrder = SortOrder,
         IsArchived = false,
         CreatedAt = createdAtUtc
