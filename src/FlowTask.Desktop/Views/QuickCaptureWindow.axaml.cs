@@ -12,6 +12,11 @@ namespace FlowTask.Desktop.Views;
 public partial class QuickCaptureWindow : Window
 {
     /// <summary>
+    /// 请求宿主统一隐藏小窗，确保后台唤起时不会把主窗口带到前台。
+    /// </summary>
+    public event Action? RequestHide;
+
+    /// <summary>
     /// 小窗前台热键请求统一走主窗 Toggle，避免本窗 Hide 后同一次按键再被主窗打开。
     /// </summary>
     public event Action? RequestToggleHotkey;
@@ -42,7 +47,7 @@ public partial class QuickCaptureWindow : Window
     {
         _isSystemHotkeyActive = isSystemHotkeyActive;
         DataContext = vm;
-        vm.RequestClose += Hide;
+        vm.RequestClose += () => RequestHide?.Invoke();
 
         // 拖拽整窗：无系统装饰条时，用户只能靠窗体本身移动浮窗。
         // 单项目列表 (spec-quick-window-single-project-list) 加入项目下拉与任务勾选后，
