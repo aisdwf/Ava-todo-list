@@ -9,6 +9,12 @@ namespace FlowTask.Tests;
 public class SingleInstancePolicyTests
 {
     [Fact]
+    public void ReplacementSupport_MatchesCurrentOperatingSystem()
+    {
+        Assert.Equal(OperatingSystem.IsWindows(), SingleInstanceGuard.SupportsReplacement);
+    }
+
+    [Fact]
     public void MustExit_WhenMutexNotOwned()
     {
         Assert.True(SingleInstancePolicy.MustExit(ownsMutex: false));

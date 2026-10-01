@@ -34,6 +34,12 @@ public sealed class SingleInstanceGuard : IDisposable
     public static SingleInstanceGuard? Current { get; private set; }
 
     /// <summary>
+    /// Windows 才支持当前实现的旧进程身份校验与接管流程。
+    /// macOS 保留单实例互斥，但第二个实例安全失败退出，避免调用 Windows 专用进程 API。
+    /// </summary>
+    public static bool SupportsReplacement => OperatingSystem.IsWindows();
+
+    /// <summary>
     /// 成为唯一实例。若已有实例，先请它彻底退出；超时则只强杀同一可执行文件路径的进程。
     /// 仍拿不到锁时返回 null，调用方失败退出。
     /// </summary>
@@ -43,6 +49,17 @@ public sealed class SingleInstanceGuard : IDisposable
         if (createdNew)
         {
             return Current = new SingleInstanceGuard(mutex, ownsMutex: true);
+        }
+
+        if (!SupportsReplacement)
+        {
+            if (TryWaitForOwnership(mutex, GracefulWait))
+            {
+                return Current = new SingleInstanceGuard(mutex, ownsMutex: true);
+            }
+
+            mutex.Dispose();
+            return Current = null;
         }
 
         RequestPreviousInstanceExit();
@@ -66,6 +83,11 @@ public sealed class SingleInstanceGuard : IDisposable
     /// </summary>
     public void ListenForReplacement(Action onReplaceRequested)
     {
+        if (!SupportsReplacement)
+        {
+            return;
+        }
+
         _listenCts = new CancellationTokenSource();
         var token = _listenCts.Token;
         LoggedTasks.FireAndForget(
@@ -236,6 +258,11 @@ public sealed class SingleInstanceGuard : IDisposable
 
     private static string? TryGetPipeClientPath(NamedPipeServerStream server)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+
         try
         {
             if (!GetNamedPipeClientProcessId(server.SafePipeHandle.DangerousGetHandle(), out var pid) || pid == 0)

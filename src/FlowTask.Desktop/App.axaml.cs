@@ -48,6 +48,10 @@ public partial class App : Application
 
             // 托盘 Hide 主窗后窗口仍存在；退出必须显式 Shutdown，不能靠「最后一个窗口关完」。
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (desktop is IActivatableLifetime activatable)
+            {
+                activatable.Activated += OnApplicationActivated;
+            }
 
             if (OperatingSystem.IsMacOS())
             {
@@ -175,6 +179,14 @@ public partial class App : Application
         _mainWindow.Show();
         _mainWindow.WindowState = WindowState.Normal;
         _mainWindow.Activate();
+    }
+
+    private void OnApplicationActivated(object? sender, ActivatedEventArgs e)
+    {
+        if (e.Kind == ActivationKind.Reopen)
+        {
+            RestoreMainFromTray();
+        }
     }
 
     private void InstallTrayIcon()

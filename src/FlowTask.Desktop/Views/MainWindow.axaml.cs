@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -32,6 +33,7 @@ public partial class MainWindow : Window
 
     private readonly QuickCaptureViewModel? _quickCaptureVm;
     private QuickCaptureWindow? _quickCaptureWindow;
+    private bool _quickCaptureStartedWhileApplicationWasInactive;
 
     /// <summary>
     /// 热键关闭小窗后的短暂抑制：焦点回主窗时同一次 Option+Space 勿再打开。
@@ -252,7 +254,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起快捷小窗；按平台分流，不跨平台混判修饰键
+        // Alt+Space (Windows) / Option(Alt)+Space (macOS) 唤起快捷小窗。
         if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
             ToggleQuickCaptureWindow();
@@ -264,14 +266,12 @@ public partial class MainWindow : Window
     /// 判断按键修饰符是否命中当前平台的快捷小窗唤起手势。
     /// </summary>
     /// <remarks>
-    /// Windows 用 <c>Alt+Space</c>；macOS 用 <c>Option(Meta)+Space</c>。
-    /// 此前两平台的修饰键判断混在一起（<c>Alt || Meta</c>），
-    /// 导致 Windows 上 Win 键（映射为 <see cref="KeyModifiers.Meta"/>）也能误触唤起。
+    /// Windows 用 <c>Alt+Space</c>；macOS 的 Option 键同样映射为
+    /// <see cref="KeyModifiers.Alt"/>。不能使用 <see cref="KeyModifiers.Meta"/>
+    /// 代替 Option，否则 macOS 会把 Command+Space 与 Option+Space 混淆。
     /// </remarks>
     internal static bool IsQuickCaptureModifier(KeyModifiers modifiers)
-        => OperatingSystem.IsMacOS()
-            ? modifiers.HasFlag(KeyModifiers.Meta)
-            : modifiers.HasFlag(KeyModifiers.Alt);
+        => modifiers.HasFlag(KeyModifiers.Alt);
 
     /// <summary>
     /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (spec-editorial-and-ripple-theme §2)。
@@ -400,6 +400,7 @@ public partial class MainWindow : Window
             if (_quickCaptureWindow is null)
             {
                 _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm, () => _systemHotkeyActive);
+                _quickCaptureWindow.RequestHide += HideQuickCaptureWindow;
                 // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
                 _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
@@ -413,18 +414,24 @@ public partial class MainWindow : Window
                     }
 
                     e.Cancel = true;
-                    _quickCaptureWindow?.Hide();
-                    QuickCaptureVisibilityChanged?.Invoke();
+                    HideQuickCaptureWindow();
                 };
             }
 
             if (_quickCaptureWindow.IsVisible)
             {
-                // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
-                _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
-                _quickCaptureWindow.Hide();
-                QuickCaptureVisibilityChanged?.Invoke();
+                HideQuickCaptureWindow();
                 return;
+            }
+
+            _quickCaptureStartedWhileApplicationWasInactive = !IsActive;
+            if (_quickCaptureStartedWhileApplicationWasInactive
+                && OperatingSystem.IsMacOS()
+                && IsVisible)
+            {
+                // macOS 解除应用后台状态时会重新展示所有仍可见的窗口。
+                // 先从窗口层级隐藏主窗，保证后续只出现快捷小窗。
+                Hide();
             }
 
             if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
@@ -442,6 +449,40 @@ public partial class MainWindow : Window
             _isTogglingQuickCapture = false;
         }
     }
+
+    /// <summary>
+    /// 隐藏快捷小窗，并在它从后台唤起时让整个应用回到后台。
+    /// 主窗已在唤起小窗前隐藏，因此关闭过程不会产生主窗闪烁。
+    /// </summary>
+    private void HideQuickCaptureWindow()
+    {
+        if (_quickCaptureWindow is not { IsVisible: true })
+        {
+            return;
+        }
+
+        // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
+        _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
+        var returnApplicationToBackground =
+            _quickCaptureStartedWhileApplicationWasInactive && OperatingSystem.IsMacOS();
+
+        _quickCaptureWindow.Hide();
+        QuickCaptureVisibilityChanged?.Invoke();
+
+        if (returnApplicationToBackground
+            && Application.Current?.ApplicationLifetime is IActivatableLifetime activatable)
+        {
+            activatable.TryEnterBackground();
+        }
+
+        _quickCaptureStartedWhileApplicationWasInactive = false;
+    }
+
+    internal static bool ShouldHideMainWindowBeforeQuickCapture(
+        bool applicationWasActive,
+        bool mainWindowIsVisible,
+        bool isMacOS)
+        => isMacOS && !applicationWasActive && mainWindowIsVisible;
 
     /// <summary>
     /// 单击项目行：切换到该项目的任务列表。
