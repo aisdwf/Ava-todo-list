@@ -241,14 +241,9 @@ design-domain-contract 确立的数据契约尚未落地。当前 `TaskItem` 无
 
 ## 6. Deferred Items（显式追踪）
 
-- **TODO(desc-field): [2026-10-05] `Description` 仍为死字段。**
-  - 本段明确不启用（§2.2），避免混入分类变更边界。
-  - Owner: aisdwf
-- **TODO(recycle-bin): [2026-10-05] 软删除任务无恢复入口，`PermanentDeleteAsync` 仍无调用方。**
-  - 未纳入 REQUIREMENTS，需先决定是否作为需求。
-  - Owner: aisdwf
-- **TODO(appearance-persist): [2026-09-28] 外观偏好重启后回退默认（承自 spec-editorial-and-ripple-theme）。**
-  - Owner: aisdwf
+- ~~TODO(desc-field)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
+- ~~TODO(recycle-bin)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
+- ~~TODO(appearance-persist)~~：**已核销（2026-09-26）** —— 由 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md) 落地。
 
 ---
 
