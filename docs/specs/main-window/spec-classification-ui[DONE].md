@@ -258,13 +258,9 @@ spec-task-contract-and-clock 产出了 `Project` 实体、`ProjectId` / `Tags` �
   - **当前后果**：用户只能删除项目，无法归档。二者语义不同
     （归档保留任务归属，删除置空），因此这是一项真实的能力缺失。
   - Owner: aisdwf
-- **TODO(desc-field): [2026-10-05] `Description` 仍为死字段（承 spec-task-contract-and-clock）。**
-  - 编辑态已有五个字段，加备注需要多行文本框，会显著增高面板。
-  - Owner: aisdwf
-- **TODO(recycle-bin): [2026-10-05] 软删除任务无恢复入口（承 spec-task-contract-and-clock）。**
-  - Owner: aisdwf
-- **TODO(appearance-persist): [2026-09-28] 外观偏好重启后回退默认（承 spec-editorial-and-ripple-theme）。**
-  - Owner: aisdwf
+- ~~TODO(desc-field)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
+- ~~TODO(recycle-bin)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
+- ~~TODO(appearance-persist)~~：**已核销（2026-09-26）** —— 由 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md) 落地。
 
 ---
 

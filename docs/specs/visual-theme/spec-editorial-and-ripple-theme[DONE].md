@@ -208,10 +208,12 @@
   - **为什么推迟**：用户明确要求「具体功能的 design 还很不合理，需要单独做一次 design 再开始修改」。补到期日输入涉及数据契约与交互设计变更，超出 spec-editorial-and-ripple-theme 的视觉范围（Article 3 要求契约变更先经设计批准）。
   - **Owner**: aisdwf
   - **触发条件**：新建 design-domain-contract（任务时间语义与到期日交互）并获批准后立项。
+  - **已关闭（2026-10-01，不做）**：时钟注入由 spec-task-contract-and-clock 落地；视图入口经 spec-due-date-calendar 从主窗删除，本轮确认主窗与小窗均不做。见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
 
 - **TODO(cleanup): [2026-09-21] 移除 `FlowTask.Core/Class1.cs` 与 `FlowTask.Infrastructure/Class1.cs` 模板残留空类。**
   - **为什么推迟**：与本轮视觉改造无关，混入会污染本次变更的意图边界（Article 10 禁止拼凑式修改）。
   - **Owner**: aisdwf
+  - **已核销**：两处 `Class1.cs` 已不存在于 `src/`（2026-10-01 核实）。
 
 - **TODO(persistence): [2026-09-28] 外观偏好（主题、强调色、材质）当前仅存于内存，重启后回退默认值。**
   - **为什么推迟**：spec-editorial-and-ripple-theme 只要求「即时生效」，未要求持久化。持久化涉及配置存储位置与格式决策，应作为独立 SPEC 处理。

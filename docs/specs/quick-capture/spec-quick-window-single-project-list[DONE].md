@@ -100,7 +100,7 @@ Attribution：`Design Incomplete` —— §8 曾推迟小窗；列表范围曾�
 
 - 全局热键、`@` 解析 → hotkey-capture
 - 任务删除 / 完成套件权威定义 → spec-project-managed-tasks
-- 多项目总览 / 今日聚焦切片 → 仍为演进（due-date SPEC 的 TODO(quick-capture-today)）
+- 多项目总览 / 今日聚焦切片 → 今日聚焦已于 2026-10-01 关闭为不做（due-date SPEC 的 TODO(quick-capture-today)）
 
 ---
 
@@ -159,7 +159,7 @@ dotnet test  FlowTask.sln --nologo -v q
 
 | 事项 | 期限 | 触发条件 |
 | :--- | :--- | :--- |
-| TODO(quick-capture-today) 各项目+今日 | 随产品排期 | 单项目列表稳定后 |
+| ~~TODO(quick-capture-today) 各项目+今日~~ | 已关闭（2026-10-01，不做） | 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md) |
 | 多项目切换总览 | 演进 | 用户再次要求 |
 | 列表内纯键盘操作（上下选中行 + Space 勾选，无需鼠标） | 2026-10-31 | 用户反馈鼠标依赖影响使用体验 |
 | 可见行数上限精确调参（当前用 MaxHeight 兜底） | 2026-10-15 | 人工验收后目测调整 |
