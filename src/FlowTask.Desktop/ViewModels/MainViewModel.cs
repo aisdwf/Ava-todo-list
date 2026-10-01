@@ -120,10 +120,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private MaterialOption _selectedMaterial = AppearanceCoordinator.MaterialPresets[0];
 
-    /// <summary>当前强调色预设。</summary>
-    [ObservableProperty]
-    private AppearanceOption _selectedAccent = AppearanceCoordinator.AccentPresets[0];
-
     /// <summary>
     /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
     /// </summary>
@@ -248,7 +244,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 集合内容只能经 <see cref="LoadTasksAsync"/> 从仓储重建。
     /// <para>
     /// 元素为 <see cref="TaskRowViewModel"/> 而非裸实体：行需要承载编辑态与
-    /// 项目色等纯展示信息，这些不应污染 Core 层实体（Article 10）。
+    /// 项目名等纯展示信息，这些不应污染 Core 层实体（Article 10）。
     /// </para>
     /// </remarks>
     public ReadOnlyObservableCollection<TaskRowViewModel> Tasks { get; }
@@ -288,9 +284,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 使从不使用项目的用户获得与改动前完全一致的体验（design-domain-contract §3.3）。
     /// </remarks>
     public bool HasProjects => _projects.Count > 0;
-
-    /// <summary>可选强调色预设，直接引用权威定义避免影子副本 (Article 6)。</summary>
-    public IReadOnlyList<AppearanceOption> AccentPresets => AppearanceCoordinator.AccentPresets;
 
     /// <summary>可选窗口材质预设，直接引用权威定义。</summary>
     public IReadOnlyList<MaterialOption> MaterialPresets => AppearanceCoordinator.MaterialPresets;
@@ -608,7 +601,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
-        // 查找表必须含归档项目，否则色条为空、编辑候选也对不上归属。
+        // 查找表必须含归档项目，否则项目名为空、编辑候选也对不上归属。
         var allProjects = await _projectRepository.GetAllProjectsAsync();
         if (generation != Volatile.Read(ref _tasksLoadGeneration))
         {
@@ -1135,11 +1128,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         MaterialPresetChanged?.Invoke(value);
         QueueAppearancePersist();
     }
-
-    /// <summary>
-    /// 强调色预设选中变更时立即写入主题字典，实现即时生效。
-    /// </summary>
-    partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
 
     /// <summary>
     /// 命名主题预设选中后写入色板，并重建窗口底色。底色是代码里的笔刷实例，不跟主题字典自动刷新。

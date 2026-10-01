@@ -27,20 +27,22 @@ namespace FlowTask.Tests;
 public class AppearanceCoordinatorTests
 {
     /// <summary>
-    /// 强调色预设必须覆盖 spec-editorial-and-ripple-theme §2 要求的四种配色，且深浅色值各自独立。
+    /// 主题预设 id 唯一，且每个主题的强调色就是其深 / 浅色板里的强调色：
+    /// 修饰色只从主题派生，不允许出现第二份强调色表（Article 6）。
     /// </summary>
     [AvaloniaFact]
-    public void AccentPresets_ProvideFourDistinctOptions()
+    public void ThemePresets_AreUniqueAndOwnTheirAccent()
     {
-        Assert.Equal(4, AppearanceCoordinator.AccentPresets.Count);
+        Assert.Equal(9, AppearanceCoordinator.ThemePresets.Count);
         Assert.Equal(
-            AppearanceCoordinator.AccentPresets.Count,
-            AppearanceCoordinator.AccentPresets.Select(p => p.Id).Distinct().Count());
+            AppearanceCoordinator.ThemePresets.Count,
+            AppearanceCoordinator.ThemePresets.Select(p => p.Id).Distinct().Count());
 
-        foreach (var preset in AppearanceCoordinator.AccentPresets)
+        foreach (var preset in AppearanceCoordinator.ThemePresets)
         {
-            Assert.NotEqual(preset.DarkHex, preset.LightHex);
-            Assert.Equal(Color.Parse(preset.DarkHex), ((SolidColorBrush)preset.Swatch).Color);
+            Assert.Equal(preset.Dark.AccentHex, preset.Accent.DarkHex);
+            Assert.Equal(preset.Light.AccentHex, preset.Accent.LightHex);
+            Assert.Equal(Color.Parse(preset.Dark.AccentHex), ((SolidColorBrush)preset.Swatch).Color);
         }
     }
 
@@ -133,21 +135,8 @@ public class AppearanceCoordinatorTests
     [AvaloniaFact]
     public void UnknownPresetId_FallsBackToFirstOption()
     {
-        Assert.Equal(AppearanceCoordinator.AccentPresets[0].Id, AppearanceCoordinator.FindAccent("nope").Id);
         Assert.Equal(AppearanceCoordinator.MaterialPresets[0].Id, AppearanceCoordinator.FindMaterial("nope").Id);
         Assert.Equal(AppearanceCoordinator.ThemePresets[0].Id, AppearanceCoordinator.FindThemePreset("nope").Id);
-    }
-
-    /// <summary>
-    /// 新建项目的默认色必须走 AccentPresets 单一权威源（TR-1）。
-    /// </summary>
-    [AvaloniaFact]
-    public void PickPaletteColor_CyclesThroughAccentPresets()
-    {
-        var palette = AppearanceCoordinator.AccentPresets;
-        Assert.Equal(palette[0].DarkHex, AppearanceCoordinator.PickPaletteColor(0));
-        Assert.Equal(palette[1].DarkHex, AppearanceCoordinator.PickPaletteColor(1));
-        Assert.Equal(palette[0].DarkHex, AppearanceCoordinator.PickPaletteColor(palette.Count));
     }
 
     /// <summary>
@@ -201,51 +190,54 @@ public class AppearanceCoordinatorTests
     }
 
     /// <summary>
-    /// 换强调色必须真正改写主题字典中的全部派生笔刷。
+    /// 每个主题都必须改写全部强调派生笔刷，修饰色（项目色点、P2/P3 色条）才会随主题变。
     /// </summary>
     [AvaloniaFact]
-    public void ApplyAccent_MutatesAllDerivedBrushes()
+    public void ApplyThemePreset_MutatesAllAccentDerivedBrushes()
     {
         var resources = Application.Current!.Resources;
 
         try
         {
-            foreach (var preset in AppearanceCoordinator.AccentPresets)
+            foreach (var preset in AppearanceCoordinator.ThemePresets)
             {
-                AppearanceCoordinator.ApplyAccent(preset.Id);
+                AppearanceCoordinator.ApplyThemePreset(preset.Id);
 
-                AssertBrushColor(resources, "AccentBrush", ThemeVariant.Dark, Color.Parse(preset.DarkHex));
-                AssertBrushColor(resources, "AccentBrush", ThemeVariant.Light, Color.Parse(preset.LightHex));
+                AssertBrushColor(resources, "AccentBrush", ThemeVariant.Dark, Color.Parse(preset.Dark.AccentHex));
+                AssertBrushColor(resources, "AccentBrush", ThemeVariant.Light, Color.Parse(preset.Light.AccentHex));
 
-                // 弱化笔刷需同色但保持半透明，否则选中态会变成实心色块
-                var subtle = GetBrush(resources, "AccentSubtleBrush", ThemeVariant.Dark);
-                Assert.Equal(Color.Parse(preset.DarkHex), subtle.Color);
-                Assert.True(subtle.Opacity < 1.0);
+                // 弱化 / 光晕笔刷需同色但半透明：P3 色条与选中态靠它们和实色拉开层次
+                foreach (var key in new[] { "AccentSubtleBrush", "AccentGlowBrush" })
+                {
+                    var brush = GetBrush(resources, key, ThemeVariant.Dark);
+                    Assert.Equal(Color.Parse(preset.Dark.AccentHex), brush.Color);
+                    Assert.True(brush.Opacity < 1.0, $"{key} must stay translucent");
+                }
             }
         }
         finally
         {
-            AppearanceCoordinator.ApplyAccent(AppearanceCoordinator.AccentPresets[0].Id);
+            AppearanceCoordinator.ApplyThemePreset("default");
         }
     }
 
     /// <summary>
-    /// 换强调色不得破坏未被覆写的其他令牌。
+    /// 换主题不得破坏未被覆写的其他令牌。
     /// </summary>
     /// <remarks>
-    /// 覆写层若直接替换整个主题字典而未保留原内容，文本色、卡片底色等
-    /// 令牌会一并丢失，界面将退化为不可读状态。
+    /// 覆写层若直接替换整个主题字典而未保留原内容，浮层底色、键帽等
+    /// 只在令牌文件里声明的键会一并丢失。
     /// </remarks>
     [AvaloniaFact]
-    public void ApplyAccent_PreservesUnrelatedTokens()
+    public void ApplyThemePreset_PreservesUnrelatedTokens()
     {
         var resources = Application.Current!.Resources;
 
         try
         {
-            AppearanceCoordinator.ApplyAccent("Purple");
+            AppearanceCoordinator.ApplyThemePreset("lavender-dream");
 
-            foreach (var key in new[] { "TextPrimaryBrush", "CardSurfaceBrush", "HairlineBrush", "PriorityLowBrush" })
+            foreach (var key in new[] { "FloatingSurfaceBrush", "KeyCapSurfaceBrush", "KeyCapBorderBrush", "PriorityLowBrush" })
             {
                 Assert.True(resources.TryGetResource(key, ThemeVariant.Dark, out var dark), $"{key} lost in Dark");
                 Assert.True(resources.TryGetResource(key, ThemeVariant.Light, out var light), $"{key} lost in Light");
@@ -255,8 +247,39 @@ public class AppearanceCoordinatorTests
         }
         finally
         {
-            AppearanceCoordinator.ApplyAccent(AppearanceCoordinator.AccentPresets[0].Id);
+            AppearanceCoordinator.ApplyThemePreset("default");
         }
+    }
+
+    /// <summary>
+    /// 回归防护（spec-theme-bound-decoration-colors）：Fluent 原生控件读 <c>SystemAccentColor</c>，
+    /// 换主题必须连它一起改，否则单选框、复选框、日历选中日仍是系统强调色。
+    /// </summary>
+    [AvaloniaFact]
+    public void ApplyThemePreset_DrivesFluentSystemAccent()
+    {
+        try
+        {
+            foreach (var id in new[] { "rose-garden", "forest-whisper" })
+            {
+                var preset = AppearanceCoordinator.FindThemePreset(id);
+                AppearanceCoordinator.ApplyThemePreset(id);
+
+                AssertSystemAccent(ThemeVariant.Dark, Color.Parse(preset.Dark.AccentHex));
+                AssertSystemAccent(ThemeVariant.Light, Color.Parse(preset.Light.AccentHex));
+            }
+        }
+        finally
+        {
+            AppearanceCoordinator.ApplyThemePreset("default");
+        }
+    }
+
+    private static void AssertSystemAccent(ThemeVariant variant, Color expected)
+    {
+        var fluent = Application.Current!.Styles.OfType<Avalonia.Themes.Fluent.FluentTheme>().Single();
+        Assert.True(fluent.TryGetResource("SystemAccentColor", variant, out var value), $"SystemAccentColor missing for {variant}");
+        Assert.Equal(expected, Assert.IsType<Color>(value));
     }
 
     /// <summary>

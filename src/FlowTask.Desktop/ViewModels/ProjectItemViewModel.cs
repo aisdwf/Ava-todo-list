@@ -8,8 +8,8 @@ namespace FlowTask.Desktop.ViewModels;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么需要这层包装</b>：侧边栏每行要显示项目名、项目色与「该项目下未完成任务数」。
-/// 前两者是 <see cref="Project"/> 的持久化属性，而计数是**派生的展示态** ——
+/// <b>为什么需要这层包装</b>：侧边栏每行要显示项目名与「该项目下未完成任务数」。
+/// 项目名是 <see cref="Project"/> 的持久化属性，而计数是**派生的展示态** ——
 /// 它随任务增删实时变化，不属于项目自身的领域数据。
 /// </para>
 /// <para>
@@ -47,10 +47,6 @@ public partial class ProjectItemViewModel : ViewModelBase
     [ObservableProperty]
     private string _name;
 
-    /// <summary>项目色（`#RRGGBB`）。</summary>
-    [ObservableProperty]
-    private string _colorHex;
-
     /// <summary>该项目下未完成任务数。</summary>
     [ObservableProperty]
     private int _taskCount;
@@ -87,7 +83,6 @@ public partial class ProjectItemViewModel : ViewModelBase
     {
         Project = project;
         _name = project.Name;
-        _colorHex = project.ColorHex;
         _taskCount = taskCount;
     }
 
@@ -113,12 +108,11 @@ public partial class ProjectItemViewModel : ViewModelBase
     /// 将实体的最新值同步到展示属性。
     /// </summary>
     /// <remarks>
-    /// 用于重命名或改色落库后刷新界面，避免整体重建集合导致侧边栏选中态丢失。
+    /// 用于重命名落库后刷新界面，避免整体重建集合导致侧边栏选中态丢失。
     /// </remarks>
     public void SyncFromEntity()
     {
         Name = Project.Name;
-        ColorHex = Project.ColorHex;
     }
 
     partial void OnIsRenamingChanged(bool value)

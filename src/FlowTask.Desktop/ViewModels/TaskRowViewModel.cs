@@ -36,7 +36,7 @@ public sealed class ProjectChoice
 /// <para>
 /// <b>为什么在 <see cref="TaskItem"/> 之外再包一层</b>：任务行需要承载若干
 /// **纯展示态**：是否展开编辑面板、编辑中的各字段缓冲值、
-/// 以及为渲染色条而解析出的项目名与项目色。
+/// 以及为元信息行解析出的项目名。
 /// </para>
 /// <para>
 /// 这些都不属于持久化领域数据。若塞进 <see cref="TaskItem"/>，
@@ -76,15 +76,11 @@ public partial class TaskRowViewModel : ViewModelBase
     [ObservableProperty]
     private ProjectChoice _editProject = ProjectChoice.Default;
 
-    /// <summary>所属项目名，用于色条的悬浮提示。</summary>
+    /// <summary>所属项目名，用于元信息行。</summary>
     [ObservableProperty]
     private string _projectName = string.Empty;
 
-    /// <summary>所属项目色值，用于渲染色条。</summary>
-    [ObservableProperty]
-    private string _projectColorHex = string.Empty;
-
-    /// <summary>是否归属某个项目，驱动色条显隐。</summary>
+    /// <summary>是否归属某个项目，驱动元信息行项目名的显隐。</summary>
     public bool HasProject => !string.IsNullOrEmpty(Task.ProjectId);
 
     /// <summary>是否设有到期日，驱动到期徽标显隐。</summary>
@@ -136,7 +132,7 @@ public partial class TaskRowViewModel : ViewModelBase
     /// 构造任务行。
     /// </summary>
     /// <param name="task">任务实体。</param>
-    /// <param name="project">所属项目；查找失败时为 <c>null</c>（色条不画，编辑时回落到 Default）。</param>
+    /// <param name="project">所属项目；查找失败时为 <c>null</c>（项目名为空，编辑时回落到 Default）。</param>
     public TaskRowViewModel(TaskItem task, Project? project)
     {
         Task = task;
@@ -155,7 +151,7 @@ public partial class TaskRowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 用仓储读回的整行更新本行。归属项目变了则返回 false，由调用方整表重载以刷新色条。
+    /// 用仓储读回的整行更新本行。归属项目变了则返回 false，由调用方整表重载以刷新项目名。
     /// </summary>
     public void ApplyPersisted(TaskItem persisted)
     {
@@ -183,7 +179,6 @@ public partial class TaskRowViewModel : ViewModelBase
     public void ApplyProject(Project? project)
     {
         ProjectName = project?.Name ?? string.Empty;
-        ProjectColorHex = project?.ColorHex ?? string.Empty;
         OnPropertyChanged(nameof(HasProject));
     }
 

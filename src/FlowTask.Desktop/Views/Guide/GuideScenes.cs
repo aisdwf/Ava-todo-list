@@ -341,11 +341,11 @@ internal static class GuideScenes
         side.Cell(8, 22, 116, 20, "全部任务", null, "TextSecondaryBrush");
         side.Micro(12, 52, "PROJECTS");
         var work = side.Box(8, 64, 116, 20, null, 10);
-        side.Dot(16, 71, 6, "PriorityMediumBrush");
+        side.Dot(16, 71, 6, "AccentBrush");
         side.Text(28, 68, "工作", 9.5, "TextSecondaryBrush", FontWeight.Medium);
 
         var newRow = side.Box(8, 88, 116, 20, null, 10);
-        var newDot = side.Dot(16, 95, 6, "PriorityLowBrush");
+        var newDot = side.Dot(16, 95, 6, "AccentBrush");
         var newName = side.Text(28, 92, "读书", 9.5, "TextSecondaryBrush", FontWeight.Medium);
         var renameBox = side.Box(24, 89, 96, 18, null, 4, "AccentBrush");
 
@@ -438,11 +438,11 @@ internal static class GuideScenes
         var (_, side) = layer.Group(10, 10, 132, 110, "SidebarWashBrush", 8);
         side.Micro(12, 10, "PROJECTS");
         side.Box(8, 22, 116, 20, null, 10);
-        side.Dot(16, 29, 6, "PriorityMediumBrush");
+        side.Dot(16, 29, 6, "AccentBrush");
         side.Text(28, 26, "工作", 9.5, "TextSecondaryBrush", FontWeight.Medium);
 
         var target = side.Box(8, 46, 116, 20, null, 10);
-        var targetDot = side.Dot(16, 53, 6, "PriorityLowBrush");
+        var targetDot = side.Dot(16, 53, 6, "AccentBrush");
         var targetName = side.Text(28, 50, "旧项目", 9.5, "TextSecondaryBrush", FontWeight.Medium);
         var trash = side.Icon(106, 51, 10, "IconTrash", "TextTertiaryBrush");
 

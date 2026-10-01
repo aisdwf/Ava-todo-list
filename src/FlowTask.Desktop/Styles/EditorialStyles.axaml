@@ -627,14 +627,23 @@
         <Setter Property="Width" Value="8" />
     </Style>
 
-    <!-- ================= 分类：项目色条 =================
-         spec-classification-ui / design-domain-contract §5.2：以细窄竖条承载项目归属。
-         无项目时不渲染（IsVisible 由绑定控制），行布局与改动前完全一致。 -->
-    <Style Selector="Border.ProjectStripe">
+    <!-- ================= 优先级色条 =================
+         spec-theme-bound-decoration-colors：原「项目色条」改为按优先级放大的强度梯度。
+         owner 原话：「task 的修饰色可以通过优先级放大」「强度梯度（强调色→红）」。
+         P3 = 强调色光晕（半透明），P2 = 强调色实色，P1 = 语义红。前两档随主题变。
+         [推断] 三档同宽 3px，只靠颜色区分：变宽会让标题起点随优先级左右抖动。 -->
+    <Style Selector="Border.PriorityStripe">
         <Setter Property="Width" Value="3" />
         <Setter Property="CornerRadius" Value="2" />
         <Setter Property="VerticalAlignment" Value="Stretch" />
         <Setter Property="Margin" Value="0,2,14,2" />
+        <Setter Property="Background" Value="{DynamicResource AccentGlowBrush}" />
+    </Style>
+    <Style Selector="Border.PriorityStripe.P2">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.PriorityStripe.P1">
+        <Setter Property="Background" Value="{DynamicResource PriorityHighBrush}" />
     </Style>
 
     <!-- ================= 分类：标签 =================
@@ -803,11 +812,13 @@
         <Setter Property="Background" Value="{DynamicResource CardSurfaceHoverBrush}" />
     </Style>
 
-    <!-- 项目色点 -->
+    <!-- 项目色点：统一取主题强调色（spec-theme-bound-decoration-colors）。
+         曾按 Project.ColorHex 着色，字面 hex 存在库里，主题够不到，表现为固定紫 / 绿。 -->
     <Style Selector="Ellipse.ProjectDot">
         <Setter Property="Width" Value="8" />
         <Setter Property="Height" Value="8" />
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
     </Style>
 
     <!-- 标题点击触发器：完全透明的按钮外壳，仅提供点击热区，

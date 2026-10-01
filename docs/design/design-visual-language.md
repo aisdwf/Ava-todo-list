@@ -81,6 +81,9 @@ FlowTask 的视觉语言以「**Editorial（杂志排版）**」为基调，
 `PriorityHighBrush` `PriorityMediumBrush` `PriorityLowBrush`（各含对应 `*SurfaceBrush`）
 `KeyCapSurfaceBrush` `KeyCapBorderBrush`
 
+危险 / 错误文字用 `PriorityHighBrush`，弹层底色用 `CardSurfaceBrush`，不另设别名。
+`DecorationColorTests.EveryDynamicColorKeyInXaml_IsDefined` 扫描全部 axaml，引用未定义的颜色键即失败。
+
 **形状与尺寸**（`Tokens.Shared.axaml`）：`ControlCornerRadius` `CardCornerRadius`
 `WindowCornerRadius` `FloatingCapsuleCornerRadius` `PillCornerRadius`
 `FontSizeMicro` `FontSizeCaption` `FontSizeBody` `FontSizeTaskTitle`
@@ -164,7 +167,20 @@ FlowTask 的视觉语言以「**Editorial（杂志排版）**」为基调，
 | 删除、新建 | 垃圾桶、关闭、加号 | 三级文字 |
 | 快捷小窗输入标记 | 星标 | 强调色 |
 
-项目色只出现在色点与任务色条上，没有单独的「更换颜色」操作。
+## 7.1 修饰色
+
+修饰色全部从当前主题派生，不存进用户数据，也没有单独的配色设置（spec-theme-bound-decoration-colors，owner 裁决「绑定主题」「统一单色」）。
+
+| 修饰 | 颜色 |
+| :--- | :--- |
+| 项目色点（侧栏、任务元信息行、小窗项目下拉） | `AccentBrush`，所有项目同色 |
+| 任务行色条 P1 | `PriorityHighBrush`（语义红） |
+| 任务行色条 P2 | `AccentBrush` |
+| 任务行色条 P3 | `AccentGlowBrush`（强调色半透明） |
+| P1 / P2 / P3 微标签 | 保持语义色 `PriorityHigh/Medium/Low*` |
+| Fluent 原生控件（单选、复选、下拉、日历） | `SystemAccentColor*`，换主题时由 `AppearanceCoordinator` 写入主题强调色 |
+
+色条表达优先级强度，不再表达项目归属。曾经的项目色（`Project.ColorHex`）以字面 hex 存库、主题够不到，换主题后仍是固定紫 / 绿，已删除。
 
 ## 8. 历史沿革
 
