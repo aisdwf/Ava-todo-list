@@ -1,0 +1,29 @@
+name: CI
+
+# Why: PRs and pushes previously had no build/test gate; only tagged releases
+# published an exe. Scan M7 and rule-code-standards §4 require warnings-as-errors
+# plus tests before merge.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build with warnings as errors
+        run: dotnet build FlowTask.sln -c Release -p:TreatWarningsAsErrors=true --nologo
+
+      - name: Test
+        run: dotnet test FlowTask.sln -c Release --no-build --nologo

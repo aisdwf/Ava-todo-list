@@ -6,6 +6,9 @@
       色彩令牌按主题分置于 Tokens.Dark.axaml 与 Tokens.Light.axaml。
     -->
 
+    <!-- 运行时由 AppearanceCoordinator 覆写。Anthropic 使用站点的衬线栈，其余预设保持无衬线。 -->
+    <FontFamily x:Key="AppFontFamily">Inter, Segoe UI Variable, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif</FontFamily>
+
     <!-- ============ 圆角尺度 ============ -->
     <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
     <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>

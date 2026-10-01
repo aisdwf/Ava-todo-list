@@ -37,7 +37,7 @@
 2. 本 SPEC **直接影响另外两份 IN-PROGRESS SPEC**，须在同一改动中同步修订：
    - `spec-quick-window-hotkey-capture[IN-PROGRESS]`：已实现并机器验证通过的
      `#标签` 解析/补全/落库逐一移除，SPEC 正文与验收清单同步删除标签相关条目。
-   - `spec-quick-window-single-project-list[IN-PROGRESS]`：调研确认未直接引用标签，
+   - `spec-quick-window-single-project-list[DONE]`：调研确认未直接引用标签，
      实施时仍需二次确认无遗漏引用。
 3. `docs/specs/README.md` 的待办事项索引中 `spec-tag-entity` 的
    `TODO(tag-filter)`（按标签筛选任务）随标签实体删除一并核销（不再适用）。

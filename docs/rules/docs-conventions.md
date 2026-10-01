@@ -53,6 +53,7 @@ docs/specs/task-domain/       # task/project/tag data contract and clock
 docs/specs/main-window/       # main window layout and sidebar/selection
 docs/specs/quick-capture/      # quick-capture window and hotkey capture
 docs/specs/docs-system/       # documentation system restructuring itself
+docs/specs/packaging/         # release artifacts, CI build and distribution
 ```
 
 Invalid area examples:
@@ -277,8 +278,8 @@ Rules:
 3. Update `Last Updated` with the applicable current date.
 4. Add any required redirect or reason.
 5. Update every relative-path reference to the renamed file across `docs/` and code comments in the same change.
-6. Update `docs/specs/README.md` in the same change (see Index convention).
-7. Commit the rename, metadata change, redirect, and reference/index updates together.
+6. Run `powershell -File scripts/build-spec-index.ps1` so the **local** index matches disk. Do not commit `docs/specs/README.md` (gitignored).
+7. Commit the rename, metadata change, redirect, and reference updates together.
 
 ---
 
@@ -318,17 +319,21 @@ Terminal documents are retained for traceability. Do not silently delete them.
 - Duplicate SPECs must be merged or explicitly superseded.
 - Unowned open questions and TODOs are prohibited.
 
-These thresholds (14 / 30 days) are this project's canonical values. Changing them requires updating this file and any checker in the same change.
+These thresholds (14 / 30 days) are this project's canonical values. Changing them requires updating this file and any checker in the same change. Known checker: container `scripts/lib/Common.ps1` (`$SpecThresholdDays`, not in git).
 
 ---
 
 ## Index convention (`docs/specs/README.md`)
 
-- No automated doc-index generator exists for this .NET project (see `AGENTS.md` Commands table).
-- `docs/specs/README.md` is therefore **hand-maintained**, not machine-generated.
-- Any SPEC add, rename, area move, or status change **must** update `docs/specs/README.md` in the same change: the status-tag legend, the area/index table, and the "handoff entry point" section.
-- Do not let the index drift from the physical files. A stale index is treated the same as a stale SPEC: report it, do not silently leave it.
-- If a docs-index command is added later, this section must be rewritten to point to it and hand-editing must stop.
+- `docs/specs/README.md` is **generated** and **gitignored**. Do not hand-edit it. Do not commit it.
+- Generator: `powershell -File scripts/build-spec-index.ps1`
+- **New worktree / new branch — mandatory first task:** immediately after `git worktree add` and `codegraph init -y`, run the generator **in that worktree**. The index is local (same class of artifact as `.codegraph/`). Do not skip this and later search around a missing README.
+- After any SPEC add, rename, area move, or status change, run the generator locally so the working copy matches disk.
+- After merging into a worktree (`dev` included), regenerate the local index: SPEC files arrived via git; the gitignored README did not.
+- `powershell -File scripts/build-spec-index.ps1 -Check` exits non-zero if the local file is missing or stale.
+- The index lists area folders, status counts, in-progress SPECs, and every SPEC file. It is not a workflow manual, session handoff, command list, or cross-SPEC backlog.
+- Workflow, gates, and commands live in `AGENTS.md` and `docs/rules/`. Deferred work stays in the owning SPEC.
+- Close the SPEC on the task branch before merging `dev` (see `rule-spec-complete-before-merge.md`; open SPECs are merged only within their deadline or by owner deferral).
 
 ---
 
@@ -344,9 +349,9 @@ When project tooling is added, SPEC checks should validate:
 - `[IN-PROGRESS]` contains a staged plan, checklist, progress log, and resume point;
 - terminal states contain required redirects or reasons;
 - stale thresholds are reported;
-- `docs/specs/README.md` matches physical files.
+- `docs/specs/README.md` is generated locally (`scripts/build-spec-index.ps1`). It is gitignored; `-Check` only validates the working copy.
 
-Until tooling exists, `rule-doc-boundary.md` §4 provides the manually-run `grep`/`find` checks that cover naming and type-boundary violations. Run them before every commit that touches `docs/`.
+`powershell -File scripts/build-spec-index.ps1 -Check` is the local index freshness check. `docs/rules/rule-doc-boundary.md` §4 still covers naming and type-boundary `grep` checks. Run both when touching `docs/`; do not commit the generated README.
 
 ---
 

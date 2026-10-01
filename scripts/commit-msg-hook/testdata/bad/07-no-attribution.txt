@@ -1,0 +1,4 @@
+fix: hide delete on the Default project
+
+Why: the default project should not be deletable because it is the fallback inbox.
+What: Hide Default delete and add regression tests.

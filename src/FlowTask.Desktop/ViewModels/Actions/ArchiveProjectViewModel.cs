@@ -1,4 +1,5 @@
 using FlowTask.Core.Interfaces;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -18,7 +19,8 @@ public sealed class ArchiveProjectViewModel
         ProjectItemViewModel? project,
         bool wasSelected,
         Func<Task> reloadProjects,
-        Func<Task> reloadTasks)
+        Func<Task> reloadTasks,
+        object origin)
     {
         if (project is null)
         {
@@ -26,6 +28,7 @@ public sealed class ArchiveProjectViewModel
         }
 
         await _projectRepository.SetArchivedAsync(project.Id, true);
+        ProjectChangeBus.Changed(origin);
         await reloadProjects();
 
         if (!wasSelected)

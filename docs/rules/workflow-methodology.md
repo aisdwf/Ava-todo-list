@@ -66,7 +66,7 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - **Wait** for explicit confirmation. Silence, no reply, or the owner discussing something else does **not** count as confirmation.
 - Only then flip status to `[IN-PROGRESS]` **and rename** the file to `spec-<feature>[IN-PROGRESS].md`.
 - **Iron rule:** once implementation starts, status must not remain `[DRAFT]`.
-- Update `docs/specs/README.md` in the same change (hand-maintained index; see `docs-conventions.md`).
+- Run `powershell -File scripts/build-spec-index.ps1` locally. Do not hand-edit or commit `docs/specs/README.md` (gitignored).
 
 ### Step 3 — Staged execution
 
@@ -82,20 +82,26 @@ Classify every task before work starts. Classification decides SPEC depth and pa
 - Provide the owner a clear verification entry for manual review.
 - Passing build + tests proves the code matches the SPEC's own design. It does **not** prove the feature is usable — that is the owner's manual verification, not the agent's.
 
-### Step 5 — Docs review → `[DONE]`
+### Step 5 — Docs review → `[DONE]` (on the task branch)
 
+- Close the SPEC on the same `feature/*` or `bugfix/*` branch as the code.
+  Do not leave it `[IN-PROGRESS]` and close it later on `dev`, unless the owner
+  chooses to merge it open (deadline gate in `rule-spec-complete-before-merge.md` §3).
 - Sync docs with code (constitution: co-maintain).
 - Redirect superseded docs.
 - When acceptance and checklist are complete, set header status to `[DONE]` (or the appropriate terminal tag) **and rename** to `spec-<feature>[DONE].md` (or matching terminal tag).
-- Update `docs/specs/README.md` in the same change.
+- Run `powershell -File scripts/build-spec-index.ps1` locally. Do not hand-edit or commit `docs/specs/README.md` (gitignored).
+- See `docs/rules/rule-spec-complete-before-merge.md`.
 
-### Step 6 — Commit only after owner verification
+### Step 6 — Commit only after owner verification; then merge
 
 - **Do not** commit until the owner has manually verified.
 - Agent self-checks are necessary but **not** sufficient.
 - The owner decides commit timing; do not decide unilaterally that "this phase is ready to commit."
-- Code commits must follow `commit-conventions.md` (`Why:` / `What:` in English).
+- Code commits must follow `commit-conventions.md`: type subject on the first line; English `Why:` / `What:` in the body. Do not copy `git log` subjects that start with `Why:`. The `commit-msg` hook rejects the wrong layout; do not use `--no-verify`.
 - One commit = one independently-reviewable change. Do not bundle unrelated changes into a single commit.
+- After preview passes: commit SPEC-closed-as-`[DONE]` together with the code
+  on the task branch, **then** merge that branch into `dev`.
 
 ---
 
@@ -141,6 +147,7 @@ These are **hard rules**, not style preferences:
 ## Related
 
 - SPEC mechanics: `docs/rules/docs-conventions.md`
+- Finish SPEC + code on the task branch before merging `dev`: `docs/rules/rule-spec-complete-before-merge.md`
 - Type boundary (design vs spec): `docs/rules/rule-doc-boundary.md`
 - Commit attribution: `docs/rules/commit-conventions.md`
 - Human methodology: `docs/ai-workflow/02-SPEC驱动工作流.md` (private, gitignored)

@@ -44,12 +44,11 @@ public class Project
     ///   其下任务的 <c>ProjectId</c> 保持不变，仍可显示归属。
     ///   </description></item>
     ///   <item><description>
-    ///   <b>删除</b>：项目建错或不再需要，归属信息无价值。
-    ///   其下任务的 <c>ProjectId</c> 置 <c>null</c>，**任务本身永不被删除**。
+    ///   <b>删除</b>：项目建错或不再需要。其下任务一并物理删除（R-2.7）。
     ///   </description></item>
     /// </list>
-    /// 项目本身无软删除标记：那会引出「项目回收站」，
-    /// 而任务不被销毁已消除删除操作的主要风险，再建完整的删除-恢复生命周期属过度设计。
+    /// 项目本身无软删除标记：那会引出「项目回收站」。
+    /// 不可逆删除的闸门是确认条，不是把任务改挂到 Default。
     /// </remarks>
     public bool IsArchived { get; set; }
 

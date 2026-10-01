@@ -3,11 +3,11 @@ using FlowTask.Core.Models;
 namespace FlowTask.Core.Messages;
 
 /// <summary>
-/// 当有新任务被创建或更新时广播的消息
+/// 任务已写入 SQLite。各窗口按 <see cref="Origin"/> 判断是否跳过自己刚做过的刷新。
 /// </summary>
-public sealed record TaskSavedMessage(TaskItem Task);
+public sealed record TaskSavedMessage(TaskItem Task, object Origin);
 
 /// <summary>
-/// 当有任务被删除时广播的消息
+/// 任务已物理删除。各窗口按 <see cref="Origin"/> 判断是否跳过自己刚做过的刷新。
 /// </summary>
-public sealed record TaskDeletedMessage(string TaskId);
+public sealed record TaskDeletedMessage(string TaskId, object Origin);

@@ -138,10 +138,10 @@ Article 5 明令禁止 `v2` / `new` / `old` 这类时序命名，
    - `STATUS` 必须是七态之一的**全大写**形式：
      `DRAFT` / `IN-PROGRESS` / `DONE` / `DONE-REFACTORED` /
      `SUPERSEDED` / `ARCHIVED` / `OBSOLETE`
-   - 文件名中的 `[STATUS]`、文档内 Metadata 的 `Status`、以及
-     `docs/specs/README.md` 索引表**三者必须同轮一致**
+   - 文件名中的 `[STATUS]` 与 Metadata 的 `Status` **必须同轮一致**
    - 状态变更 = **同轮**完成：改 Metadata → 改文件名 → 更新全部相对路径引用 →
-     更新索引表。漏改任一项即违规
+     运行 `powershell -File scripts/build-spec-index.ps1` 重生**本地**索引。
+     漏改前三项即违规。禁止手改 `docs/specs/README.md`。该文件已 gitignore，不要提交。
 
    **反模式（仍禁止）**：文件名状态与 Metadata 漂移。
    例：`spec-fluent-ui[DONE].md` 而 Metadata 已是 `superseded` ——

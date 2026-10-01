@@ -69,7 +69,7 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
 | 当前选中态（`CurrentSelection.Kind`） | 新建任务的 `ProjectId` |
 | :--- | :--- |
 | `Project`（选中具体项目） | 该项目的 `Id` |
-| `Active` / `Completed`（全部任务 / 已完成归档视图） | `null`（维持现状，不推断） |
+| `Active`（全部任务看板） | `null`（维持现状，不推断） |
 
 ### 2.2 影响范围（已核实）
 
@@ -149,8 +149,11 @@ var task = TaskItemFactory.Create(_clock, title, priority, dueDate: dueDate);
 
 - **发现但未处理**：`design-domain-contract.md` §2.3 与 §3「继承当前上下文」早已规定
   「不想填项目时任务落入系统 Default 项目，`ProjectId` 不可为 null」，但当前代码
-  （本 SPEC 改动前后均如此）在「全部任务」视图下创建任务、以及删除项目后的回退路径，
-  实际写入的仍是 `null` 而非 `DefaultProject.Id`，与既定契约不一致。
+  （本 SPEC 改动前后均如此）在「全部任务」视图下创建任务时，
+  实际写入的仍可能是 `null` 而非 `DefaultProject.Id`，与既定契约不一致。
+  「删除项目后任务改挂 Default」已由
+  [`spec-delete-project-cascade-tasks`](../task-domain/spec-delete-project-cascade-tasks[DONE].md)
+  推翻为级联物理删除，不再是本条的回退路径。
   本轮向用户核实是否要在本次一并修复（涉及是否将「全部任务」视图与 Default 项目的
   信息架构合并），用户原话：「我不想做这个抉择，你自行决定」。
   经评估：合并「全部任务」与 Default 项目的信息架构改动面大（侧边栏结构、

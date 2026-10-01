@@ -18,7 +18,7 @@ AI 会话开始任务前必须先读这四份（见 `AGENTS.md` Gate 2）：
 | :--- | :--- |
 | [workflow-methodology.md](./workflow-methodology.md) | 任务分类、Complex Step 0-6、执行节奏硬规则、错误处理对照表 |
 | [docs-conventions.md](./docs-conventions.md) | SPEC 目录（area 子目录）/命名/状态机/新鲜度阈值的唯一权威 |
-| [commit-conventions.md](./commit-conventions.md) | `Why:`/`What:` 强制结构、归因分类、`TEMP_PATCH` |
+| [commit-conventions.md](./commit-conventions.md) | 第一行 type 摘要、正文 `Why:`/`What:`、归因分类、`TEMP_PATCH`、commit-msg hook |
 | [project-rules.md](./project-rules.md) | FlowTask 项目专属业务/技术/架构规则（宪法 Article 7） |
 | [technical-rules.md](./technical-rules.md) | 强制性技术/架构分解规则（如 ViewModel 命令拆分），来自结构性代码质量调研 |
 
@@ -45,7 +45,9 @@ AI 会话开始任务前必须先读这四份（见 `AGENTS.md` Gate 2）：
    （配色、字段语义、交互原则）→ `design/`。
    design 中严禁出现复选框、Phase、验证记录。文件名严禁含序号；design/rules/adr 严禁状态入名，SPEC 必须 `[STATUS]` 大写后缀，且置于对应 `docs/specs/<area>/` 子目录。
 8. **一个提交只做一件事？**（[commit-conventions.md](./commit-conventions.md)）
-   `Why:`/`What:` 缺一不可；不相关改动不得塞入同一提交。
+   第一行是 `feat|fix|docs: <摘要>`；`Why:`/`What:` 只写在空行后的正文。
+   禁止把 Why/What 放进第一行，禁止从 `git log --oneline` 抄以 `Why:` 开头的 subject。
+   不相关改动不得塞入同一提交。`commit-msg` hook 会拒绝错误版式；禁止 `--no-verify`。
 
 ---
 
@@ -63,6 +65,8 @@ AI 会话开始任务前必须先读这四份（见 `AGENTS.md` Gate 2）：
 | :--- | :--- | :--- | :--- |
 | [rule-code-standards](./rule-code-standards.md) | architecture / process | BLOCK | C# 12 / Avalonia 11 编码与注释规范 |
 | [rule-spec-review-gate](./rule-spec-review-gate.md) | process | BLOCK | SPEC 必须经用户审核方可开工；严禁预填未发生的事实（机制已上移至 `workflow-methodology.md`） |
+| [rule-spec-complete-before-merge](./rule-spec-complete-before-merge.md) | process | WARN（过期后 BLOCK） | SPEC + 代码应在任务分支上完成后再合入 `dev`；未关闭的 SPEC 按期限警告，过期须所有者延期或跳过 |
+| [rule-commit-msg-layout](./rule-commit-msg-layout.md) | process | BLOCK | 第一行是 type 摘要，Why/What 只写正文；禁止抄 `git log` 里错误 subject（机制已上移至 `commit-conventions.md` + hook） |
 | [rule-no-invented-user-behavior](./rule-no-invented-user-behavior.md) | process | BLOCK | 交互设计严禁凭推理产出用户行为假设 |
 | [rule-doc-boundary](./rule-doc-boundary.md) | process | BLOCK | 文档类型边界（design vs spec）与命名规范（机制已上移至 `docs-conventions.md`） |
 

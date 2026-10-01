@@ -1,4 +1,5 @@
 using FlowTask.Core.Interfaces;
+using FlowTask.Core.Models;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -18,7 +19,7 @@ public sealed class RequestDeleteProjectViewModel
         ProjectItemViewModel? project,
         Action<ProjectItemViewModel, int> setPendingDeletion)
     {
-        if (project is null)
+        if (project is null || project.Id == DefaultProject.Id)
         {
             return;
         }

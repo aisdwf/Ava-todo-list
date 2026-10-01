@@ -1,4 +1,5 @@
 using FlowTask.Core.Interfaces;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -18,7 +19,8 @@ public sealed class CommitDueDatePopupViewModel
         TaskRowViewModel? row,
         DateTime? dueDate,
         Action closePopup,
-        Func<Task> reloadTasks)
+        Func<Task> reloadTasks,
+        object origin)
     {
         if (row is null)
         {
@@ -26,8 +28,19 @@ public sealed class CommitDueDatePopupViewModel
             return;
         }
 
+        var previousDue = row.Task.DueDate;
         row.Task.DueDate = dueDate;
-        await _taskRepository.SaveTaskAsync(row.Task);
+        try
+        {
+            await _taskRepository.SaveTaskAsync(row.Task);
+        }
+        catch
+        {
+            row.Task.DueDate = previousDue;
+            throw;
+        }
+
+        TaskChangeBus.Saved(row.Task, origin);
         await reloadTasks();
         closePopup();
     }

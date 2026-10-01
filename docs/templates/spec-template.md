@@ -4,7 +4,7 @@
 File path: docs/specs/<area>/spec-${FEATURE}[STATUS].md
 Naming and lifecycle rules: docs/rules/docs-conventions.md (single authority, do not redefine here).
 Iron Law: Once development starts, never stay in [DRAFT] - switch immediately to [IN-PROGRESS] and rename the file.
-Index update required on add/rename/status change: docs/specs/README.md (hand-maintained, see docs-conventions.md).
+Index: after add/rename/status change run `powershell -File scripts/build-spec-index.ps1` (gitignored; do not commit docs/specs/README.md).
 -->
 
 ## Metadata
@@ -60,7 +60,7 @@ Once user approves, change Status from [DRAFT] to [IN-PROGRESS] and rename the f
   - [ ] ${TASK_2_1}
 - [ ] **Phase 3: Verification & Clean-up**
   - [ ] Run test suite & type checks
-  - [ ] Clean obsolete references & update `docs/specs/README.md` (hand-maintained index)
+  - [ ] Run `powershell -File scripts/build-spec-index.ps1` (do not commit the generated SPEC index)
 
 ---
 

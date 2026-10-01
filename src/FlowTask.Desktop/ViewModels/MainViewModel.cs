@@ -7,6 +7,7 @@ using FlowTask.Core.Interfaces;
 using FlowTask.Core.Messages;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
 
 namespace FlowTask.Desktop.ViewModels;
@@ -15,21 +16,12 @@ namespace FlowTask.Desktop.ViewModels;
 /// 任务视图筛选维度。
 /// </summary>
 /// <remarks>
-/// 为什么独立成枚举：原实现以裸字符串 "All" / "Today" / "Completed" / "Settings" 表示筛选，
-/// 把"设置页"混入任务筛选枚举，导致视图模式与数据筛选两个正交概念被耦合在同一状态里
-/// （Article 10）。此处只保留真正的任务筛选维度，设置页由 <see cref="MainViewModel.IsSettingsOpen"/>
-/// 独立表达。
+/// 设置页由 <see cref="MainViewModel.IsSettingsOpen"/> 独立表达，不进入本枚举。
 /// </remarks>
 public enum TaskFilter
 {
-    /// <summary>全部活跃任务。</summary>
-    Active,
-
-    /// <summary>已完成归档。</summary>
-    Completed,
-
-    /// <summary>设置。</summary>
-    Settings
+    /// <summary>全部任务看板。</summary>
+    Active
 }
 
 /// <summary>
@@ -41,9 +33,33 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly IProjectRepository _projectRepository;
     private readonly IAppSettingsRepository _settingsRepository;
     private readonly IClock _clock;
+    private readonly SemaphoreSlim _appearancePersistGate = new(1, 1);
+    private bool _suppressAppearancePersist;
+    private bool _appearanceLoaded;
+    private bool _suppressCloseActionPersist;
+    private int _tasksLoadGeneration;
 
     [ObservableProperty]
     private bool _isDarkTheme = true;
+
+    /// <summary>
+    /// 最近一次外观偏好写入。属性变更回调不能是 async，调用方与测试等待本任务确认已落盘。
+    /// </summary>
+    public Task AppearancePersistTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// 最近一次由 <see cref="TaskSavedMessage"/> 触发的任务流重载。
+    /// 对端勾选后测试等待本任务，避免用延时猜测 UI 刷新（Article 9）。
+    /// </summary>
+    public Task TaskListRefreshTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>启动加载失败时的可见文案；成功则为 null。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasInitializationError))]
+    private string? _initializationError;
+
+    /// <summary>驱动主窗顶部错误条显隐。</summary>
+    public bool HasInitializationError => !string.IsNullOrEmpty(InitializationError);
 
     /// <summary>
     /// 设置视图是否展开。与任务筛选正交，因此不占用 <see cref="ViewSelection"/> 的取值位。
@@ -62,7 +78,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedSettingsNavItem))]
-    private SettingsSection _selectedSettingsSection = SettingsSection.ThemePreset;
+    private SettingsSection _selectedSettingsSection = SettingsSection.Appearance;
 
     /// <summary>
     /// 左侧导航 <c>ListBox</c> 的 <c>SelectedItem</c> 绑定桥接：
@@ -95,7 +111,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [NotifyPropertyChangedFor(nameof(CurrentFilter))]
     [NotifyPropertyChangedFor(nameof(SelectedProject))]
     [NotifyPropertyChangedFor(nameof(IsActiveFilterSelected))]
-    [NotifyPropertyChangedFor(nameof(IsCompletedFilterSelected))]
     private ViewSelection _currentSelection = ViewSelection.Active;
 
     /// <summary>
@@ -113,8 +128,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
     /// </summary>
     /// <remarks>
-    /// 目前 <see cref="AppearanceCoordinator.ThemePresets"/> 只回填了现有强调色作为过渡，
-    /// 真实的 Anthropic / 暗夜 / 海风等预设色值尚未采集（见该 SPEC 的 Risks and open questions）。
+    /// <see cref="AppearanceCoordinator.ThemePresets"/> 使用参考站点采集的命名色板。
     /// </remarks>
     [ObservableProperty]
     private ThemePreset _selectedThemePreset = AppearanceCoordinator.ThemePresets[0];
@@ -128,11 +142,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// （侧边栏高亮统一经 <see cref="ViewSelection"/> 直接比对，见 §2.2），
     /// 仅在 <see cref="LoadTasksAsync"/> 判断项目筛选优先级时作为占位默认值。
     /// </remarks>
-    public TaskFilter CurrentFilter => CurrentSelection.Kind switch
-    {
-        ViewSelectionKind.Completed => TaskFilter.Completed,
-        _ => TaskFilter.Active
-    };
+    public TaskFilter CurrentFilter => TaskFilter.Active;
 
     /// <summary>
     /// 当前选中的项目，由 <see cref="CurrentSelection"/> 派生；<c>null</c> 表示未启用项目筛选。
@@ -144,14 +154,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>VIEWS「全部任务」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
     public bool IsActiveFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Active;
 
-    /// <summary>VIEWS「已完成归档」是否高亮，由 <see cref="CurrentSelection"/> 派生。</summary>
-    public bool IsCompletedFilterSelected => CurrentSelection.Kind == ViewSelectionKind.Completed;
-
     [ObservableProperty]
     private string _currentCategoryTitle = "全部任务";
 
     [ObservableProperty]
-    private string _currentCategorySubtitle = "聚焦所有活跃进行中的待办";
+    private string _currentCategorySubtitle = "所有任务的综合看板";
 
     [ObservableProperty]
     private string _newTaskTitle = string.Empty;
@@ -164,6 +171,47 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private int _defaultDueOffsetDays = DueDateOffset.DefaultDays;
 
+    /// <summary>设置页里的到期偏移编辑缓冲；点保存才写回 <see cref="DefaultDueOffsetDays"/>。</summary>
+    [ObservableProperty]
+    private int _editingDefaultDueOffsetDays = DueDateOffset.DefaultDays;
+
+    /// <summary>
+    /// 主窗关闭默认策略；<c>null</c> 表示未设默认，点 X 须询问（spec-close-to-tray）。
+    /// </summary>
+    [ObservableProperty]
+    private CloseActionKind? _closeAction;
+
+    /// <summary>关闭选择层里「设为默认」勾选，不跨会话记忆。</summary>
+    [ObservableProperty]
+    private bool _rememberCloseAction;
+
+    /// <summary>
+    /// 选择层当前圆点选项。与已持久化的 <see cref="CloseAction"/> 分开：
+    /// 未勾选设为默认时，确认只执行这一次，不改通用设置。
+    /// </summary>
+    [ObservableProperty]
+    private CloseActionKind _closePromptChoice = CloseActionKind.MinimizeToTray;
+
+    /// <summary>未设关闭默认时，主窗 X 弹出的选择层是否可见。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
+    private bool _isClosePromptOpen;
+
+    /// <summary>
+    /// 是否有必须先处理的全窗覆盖层。为 true 时主内容关闭命中，
+    /// 避免遮罩外的 <c>:pointerover</c> 高亮穿透到任务行 / 侧栏。
+    /// </summary>
+    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen;
+
+    /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
+    public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>请求把主窗藏进托盘。窗口句柄归视图层。</summary>
+    public event Action? RequestHideToTray;
+
+    /// <summary>请求彻底退出。与托盘「退出」、通用页按钮同一条路径。</summary>
+    public event Action? RequestExitApplication;
+
     /// <summary>创建区中的到期日编辑器。</summary>
     public DueDateEditorViewModel NewDueDateEditor { get; private set; } = null!;
 
@@ -172,6 +220,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>是否打开到期日编辑弹出层。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
     private bool _isDueDatePopupOpen;
 
     /// <summary>正在编辑的任务行（用于弹出层定位）；<c>null</c> 表示未在弹出编辑。</summary>
@@ -180,21 +229,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     [ObservableProperty]
     private int _activeCount;
-
-    /// <summary>「已完成归档」计数，语义为已归档任务数（spec-task-complete-before-archive）。</summary>
-    [ObservableProperty]
-    private int _completedCount;
-
-    /// <summary>
-    /// 已完成但尚未归档的任务数，驱动「归档全部已完成」按钮的可用/可见状态。
-    /// </summary>
-    /// <remarks>0 时该按钮应禁用或隐藏，避免空操作（spec-task-complete-before-archive §2.4 D3）。</remarks>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPendingArchive))]
-    private int _pendingArchiveCount;
-
-    /// <summary>是否存在可归档的已完成任务，驱动按钮 IsVisible/IsEnabled 绑定。</summary>
-    public bool HasPendingArchive => PendingArchiveCount > 0;
 
     /// <summary>
     /// 当前筛选下的任务行集合（只读投影）。
@@ -216,13 +250,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private readonly ObservableCollection<TaskRowViewModel> _tasks = new();
 
     /// <summary>
-    /// 编辑态「所属项目」下拉的候选项，首项恒为「未归属」。
+    /// 编辑态「所属项目」下拉的候选项，与侧边栏活跃项目同源（另含正在编辑的归档归属）。
     /// </summary>
     /// <remarks>
-    /// 「未归属」作为一等候选项而非以 <c>null</c> 表达：
-    /// 依零必填原则它是正常的默认状态，用户须能主动选回该状态。
+    /// R-2.6 以 Default 取代「未归属」，不再插入 <c>null</c> 候选项。
     /// </remarks>
-    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.None };
+    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.Default };
 
     /// <summary>任务流为空，用于驱动空状态提示。</summary>
     public bool IsTaskStreamEmpty => Tasks.Count == 0;
@@ -262,16 +295,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 固定列表，顺序即当前卷动流的既有顺序（外观主题 → 强调色 → 窗口材质 →
-    /// 默认到期偏移 → 标签管理 → 关于），未引入新的信息架构判断
-    /// （spec-settings-master-detail-and-theme-presets §Constraints [推断]）。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
-        new SettingsNavItem(SettingsSection.ThemePreset, "外观主题", "选择一套命名主题预设。"),
-        new SettingsNavItem(SettingsSection.Accent, "强调色", "点缀色实时应用于按钮与高光。"),
-        new SettingsNavItem(SettingsSection.Material, "窗口材质", "桌面原生视觉质感。"),
-        new SettingsNavItem(SettingsSection.DueDateOffset, "默认到期偏移", "「启用默认到期」的天数。"),
+        new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
+        new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -319,7 +349,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
 
-        // 弱引用消息总线：快捷小窗写入后通知主窗口刷新，双方互不持有强引用 (rule-code-standards §2.1)
+        // 弱引用消息总线：任一窗口写入后通知对端从 SQLite 重载，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
 
@@ -331,15 +361,88 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     public async Task InitializeAsync()
     {
+        try
+        {
+            await _settingsRepository.InitializeAsync();
+            DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
+            EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+            // 启动路径已在 Show 前恢复过外观；此处再刷会让已可见的窗口闪一次。
+            if (!_appearanceLoaded)
+            {
+                await LoadAppearanceAsync();
+            }
+            await LoadCloseActionAsync();
+
+            // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
+            // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
+            await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
+            await _projectRepository.MigrateNullProjectIdsToDefaultAsync();
+
+            await LoadProjectsAsync();
+            await LoadTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            ReportInitializationFailure(ex);
+        }
+    }
+
+    /// <summary>记录启动失败并露出可见文案。日志在无控制台的 WinExe 里是唯一诊断。</summary>
+    public void ReportInitializationFailure(Exception exception)
+    {
+        AppLog.Write("InitializeAsync", exception);
+        InitializationError = "无法加载任务数据。详情已写入本地日志。";
+    }
+
+    /// <summary>
+    /// 从 AppSettings 恢复外观三项，并立刻写入主题字典。
+    /// </summary>
+    /// <remarks>
+    /// 必须在主窗 Show 之前调用，否则首帧会闪过字段默认值。
+    /// 加载期间抑制回写，避免把回退后的默认 id 在用户尚未操作时写回库。
+    /// </remarks>
+    public async Task LoadAppearanceAsync()
+    {
         await _settingsRepository.InitializeAsync();
-        DefaultDueOffsetDays = await _settingsRepository.GetDefaultDueOffsetDaysAsync();
 
-        // R-2.6：启动时确保 Default 项目存在，并将历史 ProjectId=null 迁过去
-        await _projectRepository.EnsureDefaultProjectAsync(_clock.UtcNow);
+        var themeId = await _settingsRepository.GetAsync(AppearanceCoordinator.ThemePresetSettingsKey);
+        var materialId = await _settingsRepository.GetAsync(AppearanceCoordinator.MaterialSettingsKey);
+        var isDarkRaw = await _settingsRepository.GetAsync(AppearanceCoordinator.IsDarkSettingsKey);
 
-        AppearanceCoordinator.ApplyAccent(SelectedAccent.Id);
-        await LoadProjectsAsync();
-        await LoadTasksAsync();
+        _suppressAppearancePersist = true;
+        try
+        {
+            SelectedThemePreset = AppearanceCoordinator.FindThemePreset(themeId ?? string.Empty);
+            SelectedMaterial = AppearanceCoordinator.FindMaterial(materialId ?? string.Empty);
+            IsDarkTheme = AppearanceCoordinator.ParseIsDark(isDarkRaw);
+        }
+        finally
+        {
+            _suppressAppearancePersist = false;
+        }
+
+        AppearanceCoordinator.ApplyTheme(IsDarkTheme);
+        AppearanceCoordinator.ApplyThemePreset(SelectedThemePreset.Id);
+        _appearanceLoaded = true;
+        ThemeApplied?.Invoke();
+    }
+
+    /// <summary>
+    /// 从 AppSettings 恢复关闭策略。缺键或坏值保持 <c>null</c>（每次询问）。
+    /// </summary>
+    public async Task LoadCloseActionAsync()
+    {
+        await _settingsRepository.InitializeAsync();
+        var raw = await _settingsRepository.GetAsync(CloseBehaviorCoordinator.SettingsKey);
+        _suppressCloseActionPersist = true;
+        try
+        {
+            CloseAction = CloseBehaviorCoordinator.Parse(raw);
+        }
+        finally
+        {
+            _suppressCloseActionPersist = false;
+        }
     }
 
     /// <summary>
@@ -356,16 +459,16 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             ? CurrentSelection.ProjectId
             : null;
 
+        var counts = await _repository.CountTasksGroupedByProjectAsync();
         _projects.Clear();
         foreach (var project in projects)
         {
-            var count = await _projectRepository.CountTasksAsync(project.Id);
+            counts.TryGetValue(project.Id, out var count);
             _projects.Add(new ProjectItemViewModel(project, count));
         }
 
         // 候选项与项目列表保持同源，避免两份表示漂移（Article 6）
         ProjectChoices.Clear();
-        ProjectChoices.Add(ProjectChoice.None);
         foreach (var project in projects)
         {
             ProjectChoices.Add(new ProjectChoice(project.Id, project.Name));
@@ -402,9 +505,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     {
         (CurrentCategoryTitle, CurrentCategorySubtitle) = value.Kind switch
         {
-            ViewSelectionKind.Completed => ("已完成归档", "所有已达成的历史成果记录"),
-            ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下进行中的待办"),
-            _ => ("全部任务", "聚焦所有活跃进行中的待办")
+            ViewSelectionKind.Project => (ResolveProjectName(value.ProjectId), "该项目下的全部任务"),
+            _ => ("全部任务", "所有任务的综合看板")
         };
 
         SyncProjectSelectionFlags();
@@ -459,7 +561,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             CurrentSelection,
             () => IsSettingsOpen = false,
             selection => CurrentSelection = selection,
-            () => _ = LoadTasksAsync());
+            () => LoggedTasks.FireAndForget(LoadTasksAsync(), "ChangeFilter LoadTasks"));
 
     /// <summary>
     /// 按当前筛选载入任务，并同步侧边栏计数。
@@ -467,17 +569,27 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task LoadTasksAsync()
     {
+        var generation = Interlocked.Increment(ref _tasksLoadGeneration);
+
         // 项目筛选优先于 VIEWS 筛选：二者现由同一状态量表达为互斥的不同取值
         var items = CurrentSelection.Kind == ViewSelectionKind.Project
             ? await _repository.GetTasksByProjectAsync(CurrentSelection.ProjectId!)
-            : CurrentFilter switch
-            {
-                TaskFilter.Completed => await _repository.GetCompletedTasksAsync(),
-                _ => await _repository.GetAllActiveTasksAsync()
-            };
+            : await _repository.GetAllActiveTasksAsync();
 
-        // 建立 Id → 项目 的查找表，避免为每行任务各查一次库（N+1 查询）
-        var projectLookup = _projects.ToDictionary(p => p.Id, p => p.Project);
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
+        // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
+        // 查找表必须含归档项目，否则色条为空、编辑候选也对不上归属。
+        var allProjects = await _projectRepository.GetAllProjectsAsync();
+        if (generation != Volatile.Read(ref _tasksLoadGeneration))
+        {
+            return;
+        }
+
+        var projectLookup = allProjects.ToDictionary(p => p.Id);
 
         _tasks.Clear();
         foreach (var item in items)
@@ -495,12 +607,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 刷新侧边栏活跃与已完成计数，以及各项目行的任务数。
+    /// 刷新侧边栏全部任务计数，以及各项目行的任务数。
     /// </summary>
     /// <remarks>
-    /// 原实现声明了 ActiveCount / CompletedCount 却从未赋值，侧边栏徽标恒显 0。
-    /// 计数必须独立查询：当前筛选为"已完成"时，Tasks 集合内不含活跃项，
-    /// 无法从中推导出活跃数。
+    /// 原实现声明了 ActiveCount 却从未赋值，侧边栏徽标恒显 0。
+    /// 计数必须独立查询：当前若在某个项目下，<see cref="Tasks"/> 不含其他项目的行，
+    /// 无法从中推导出「全部任务」总数。
     /// <para>
     /// <b>项目行计数同理需独立查询</b>：<see cref="ProjectItemViewModel.TaskCount"/>
     /// 只在 <see cref="LoadProjectsAsync"/> 重建项目集合时被赋值一次；新增/删除任务、
@@ -511,19 +623,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     private async Task RefreshCountsAsync()
     {
-        var active = await _repository.GetAllActiveTasksAsync();
-        var completed = await _repository.GetCompletedTasksAsync();
-
-        ActiveCount = active.Count;
-        CompletedCount = completed.Count;
-
-        // 活动列表本身已含「已完成未归档」（完成 ≠ 归档），从中筛出待归档数，
-        // 无需新增仓储查询方法
-        PendingArchiveCount = active.Count(t => t.IsCompleted);
+        var counts = await _repository.CountTasksGroupedByProjectAsync();
+        ActiveCount = await _repository.CountActiveTasksAsync();
 
         foreach (var project in _projects)
         {
-            project.TaskCount = await _projectRepository.CountTasksAsync(project.Id);
+            counts.TryGetValue(project.Id, out var count);
+            project.TaskCount = count;
         }
     }
 
@@ -542,9 +648,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 NewTaskTitle = string.Empty;
                 NewDueDateEditor.Load(null);
             },
-            CurrentSelection.Kind == ViewSelectionKind.Completed,
-            () => CurrentSelection = ViewSelection.Active,
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 打开行编辑弹出层，用于修改到期日。
@@ -583,22 +688,74 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 IsDueDatePopupOpen = false;
                 EditingDueDateTarget = null;
             },
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 保存默认到期偏移设置。
     /// </summary>
     [RelayCommand]
-    private async Task SaveDefaultDueOffsetAsync(int days)
+    private async Task SaveDefaultDueOffsetAsync()
     {
-        if (!DueDateOffset.IsValid(days))
+        if (!DueDateOffset.IsValid(EditingDefaultDueOffsetDays))
         {
-            // 无效值时恢复到当前值
+            // 非法偏移不写库，也不改已保存的当前值。
             return;
         }
 
-        await _settingsRepository.SetDefaultDueOffsetDaysAsync(days);
+        await _settingsRepository.SetDefaultDueOffsetDaysAsync(EditingDefaultDueOffsetDays);
+        DefaultDueOffsetDays = EditingDefaultDueOffsetDays;
     }
+
+    /// <summary>
+    /// 打开关闭选择层：圆点预选「最小化到托盘」（与设置页推荐一致），勾选清空。
+    /// </summary>
+    public void OpenClosePrompt()
+    {
+        ClosePromptChoice = CloseActionKind.MinimizeToTray;
+        RememberCloseAction = false;
+        IsClosePromptOpen = true;
+    }
+
+    /// <summary>
+    /// 关闭选择层不执行关闭，主窗保持可见。
+    /// </summary>
+    [RelayCommand]
+    private void DismissClosePrompt()
+    {
+        IsClosePromptOpen = false;
+        RememberCloseAction = false;
+    }
+
+    /// <summary>
+    /// 按选择层当前圆点执行关闭；勾选设为默认时写入同一策略键。
+    /// </summary>
+    [RelayCommand]
+    private void ConfirmClosePrompt()
+    {
+        if (RememberCloseAction)
+        {
+            CloseAction = ClosePromptChoice;
+        }
+
+        IsClosePromptOpen = false;
+        RememberCloseAction = false;
+
+        if (ClosePromptChoice == CloseActionKind.Exit)
+        {
+            RequestExitApplication?.Invoke();
+        }
+        else
+        {
+            RequestHideToTray?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// 通用页底部与托盘菜单共用的彻底退出，不经过「关窗＝托盘」路径。
+    /// </summary>
+    [RelayCommand]
+    private void ExitApplication() => RequestExitApplication?.Invoke();
 
     /// <summary>
     /// 切换任务完成状态。
@@ -606,24 +763,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="item">目标任务；勾选框已通过双向绑定更新其 IsCompleted。</param>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
-        => await new ToggleCompleteTaskViewModel(_repository, _clock).ExecuteAsync(item, LoadTasksAsync);
+        => await new ToggleCompleteTaskViewModel(_repository, _clock)
+            .ExecuteAsync(item, LoadTasksAsync, this);
 
     /// <summary>
-    /// 手动归档全部已完成任务（spec-task-complete-before-archive D3：全局范围）。
-    /// </summary>
-    /// <remarks>
-    /// 完成 ≠ 归档：勾选完成只是划线低饱和地留在活动列表；
-    /// 用户需要显式点击这个动作才会真正移入「已完成归档」视图。
-    /// </remarks>
-    [RelayCommand]
-    private async Task ArchiveCompletedAsync()
-    {
-        await _repository.ArchiveAllCompletedAsync();
-        await LoadTasksAsync();
-    }
-
-    /// <summary>
-    /// 软删除任务。
+    /// 物理删除任务。
     /// </summary>
     /// <param name="item">目标任务。</param>
     /// <remarks>
@@ -633,7 +777,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     [RelayCommand]
     private async Task DeleteTaskAsync(TaskItem? item)
-        => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync);
+        => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync, this);
 
     /// <summary>
     /// 展开或收起某行的编辑面板。
@@ -650,7 +794,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 row,
                 _tasks,
                 ProjectChoices,
-                LoadTasksAsync);
+                LoadTasksAsync,
+                this);
 
     /// <summary>
     /// 提交某行的编辑缓冲并收起面板。
@@ -672,14 +817,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task SaveEditAsync(TaskRowViewModel? row)
         => await new SaveEditTaskViewModel(_repository)
-            .ExecuteAsync(row, LoadTasksAsync);
+            .ExecuteAsync(row, LoadTasksAsync, this);
 
 
     /// <summary>
-    /// 变更任务所属项目。
+    /// 变更任务所属项目。测试与无 UI 绑定的指派入口共用此方法。
     /// </summary>
     /// <param name="item">目标任务。</param>
-    /// <param name="projectId">目标项目 Id；<c>null</c> 表示移出项目回到未归属状态。</param>
+    /// <param name="projectId">目标项目 Id；<c>null</c> 或空串改挂 Default（R-2.6）。</param>
     public async Task AssignProjectAsync(TaskItem? item, string? projectId)
     {
         if (item is null)
@@ -687,8 +832,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        item.ProjectId = projectId;
+        item.ProjectId = string.IsNullOrEmpty(projectId) ? DefaultProject.Id : projectId;
         await _repository.SaveTaskAsync(item);
+        TaskChangeBus.Saved(item, this);
         await LoadTasksAsync();
     }
 
@@ -709,6 +855,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         item.DueDate = dueDate;
         await _repository.SaveTaskAsync(item);
+        TaskChangeBus.Saved(item, this);
         await LoadTasksAsync();
     }
 
@@ -717,6 +864,20 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>新建项目的名称输入。</summary>
     [ObservableProperty]
     private string _newProjectName = string.Empty;
+
+    /// <summary>
+    /// 新建项目名称非法时的提示文案；空字符串表示无提示。
+    /// </summary>
+    /// <remarks>
+    /// 文案来自 <see cref="ProjectName.Validate"/>，禁止在此另写一份。
+    /// 输入变化时立即清除；窗口侧再按短暂展示时长自动清空。
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCreateProjectError))]
+    private string _createProjectError = string.Empty;
+
+    /// <summary>是否正在显示新建项目校验提示。</summary>
+    public bool HasCreateProjectError => !string.IsNullOrEmpty(CreateProjectError);
 
     /// <summary>新建项目输入区是否展开。</summary>
     /// <remarks>
@@ -738,27 +899,60 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private void ToggleCreateProject()
     {
-        IsCreatingProject = !IsCreatingProject;
-        if (!IsCreatingProject)
+        if (IsCreatingProject)
         {
-            NewProjectName = string.Empty;
+            CollapseCreateProject();
+            return;
         }
+
+        IsCreatingProject = true;
     }
 
     /// <summary>
-    /// 创建项目。名称非法时静默忽略，与任务创建的交互预期一致。
+    /// 创建项目。名称非法时展示 <see cref="ProjectName.Validate"/> 文案，不落库。
     /// </summary>
     [RelayCommand]
     private async Task CreateProjectAsync()
         => await new CreateProjectViewModel(_projectRepository, _clock).ExecuteAsync(
             NewProjectName,
-            _projects.Count,
-            () =>
-            {
-                NewProjectName = string.Empty;
-                IsCreatingProject = false;
-            },
-            LoadProjectsAsync);
+            CollapseCreateProject,
+            LoadProjectsAsync,
+            error => CreateProjectError = error,
+            this);
+
+    /// <summary>
+    /// 离开新建输入框时提交：空白收起；非空走创建（非法则提示并保持输入区）。
+    /// </summary>
+    [RelayCommand]
+    private async Task ConfirmCreateProjectOnLeaveAsync()
+    {
+        if (!IsCreatingProject)
+        {
+            return;
+        }
+
+        await new CreateProjectViewModel(_projectRepository, _clock).ExecuteOnLeaveAsync(
+            NewProjectName,
+            CollapseCreateProject,
+            LoadProjectsAsync,
+            error => CreateProjectError = error,
+            this);
+    }
+
+    private void CollapseCreateProject()
+    {
+        IsCreatingProject = false;
+        NewProjectName = string.Empty;
+        CreateProjectError = string.Empty;
+    }
+
+    partial void OnNewProjectNameChanged(string value)
+    {
+        if (HasCreateProjectError)
+        {
+            CreateProjectError = string.Empty;
+        }
+    }
 
     /// <summary>
     /// 将选中状态同步到各项目行，供侧边栏高亮绑定。
@@ -796,14 +990,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new CommitRenameProjectViewModel(_projectRepository).ExecuteAsync(
             project,
             SelectedProject?.Id,
-            title => CurrentCategoryTitle = title);
-
-    /// <summary>
-    /// 变更项目颜色。
-    /// </summary>
-    [RelayCommand]
-    private async Task ChangeProjectColorAsync(ProjectItemViewModel? project)
-        => await new ChangeProjectColorViewModel(_projectRepository).ExecuteAsync(project, LoadTasksAsync);
+            title => CurrentCategoryTitle = title,
+            this);
 
     /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
     /// <remarks>
@@ -821,7 +1009,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             CurrentSelection.Kind == ViewSelectionKind.Project
                 && CurrentSelection.ProjectId == project?.Id,
             LoadProjectsAsync,
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
 
     /// <summary>
     /// 请求删除项目：先查询影响范围，交由界面确认。
@@ -848,9 +1037,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 确认删除项目。
     /// </summary>
     /// <remarks>
-    /// <b>其下任务不会被删除</b>，仅 <c>ProjectId</c> 置空退回未归属状态 ——
-    /// 任务是用户的核心资产，项目只是它的一个可选属性（design-domain-contract §2.2）。
-    /// 该语义由 <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
+    /// 确认后物理删除其下任务（R-2.7）。该语义由
+    /// <c>SqliteProjectRepository.DeleteAsync</c> 以单事务保证。
     /// <para>
     /// <b>回退逻辑同 <see cref="ArchiveProjectAsync"/></b>：由 <see cref="LoadProjectsAsync"/>
     /// 统一判定选中项目是否仍存在，无需在此重复记录 <c>wasSelected</c> 后再调用一次
@@ -867,7 +1055,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 && CurrentSelection.ProjectId == target?.Id,
             () => ProjectPendingDeletion = null,
             LoadProjectsAsync,
-            LoadTasksAsync);
+            LoadTasksAsync,
+            this);
     }
 
     /// <summary>
@@ -885,6 +1074,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         IsDarkTheme = isDark;
         AppearanceCoordinator.ApplyTheme(isDark);
         ThemeApplied?.Invoke();
+        QueueAppearancePersist();
     }
 
     /// <summary>
@@ -897,9 +1087,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 展开或收起外观设置视图。
     /// </summary>
     /// <remarks>
-    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项——
-    /// 与「返回清单」按钮的语义对称：外观偏好子标题永远描述"当前在设置页的哪里"，
-    /// 不需要跨会话记忆导航位置（spec-settings-master-detail-and-theme-presets）。
+    /// 每次从任务清单进入设置页都回到第一个设置项，而不是保留上次退出时的选中项。
+    /// 返回只在左侧选项栏顶部，不需要跨会话记忆导航位置
+    /// （spec-settings-master-detail-and-theme-presets）。
     /// </remarks>
     [RelayCommand]
     private void ToggleSettings()
@@ -907,7 +1097,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         IsSettingsOpen = !IsSettingsOpen;
         if (IsSettingsOpen)
         {
-            SelectedSettingsSection = SettingsSection.ThemePreset;
+            SelectedSettingsSection = SettingsSection.Appearance;
+            EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
         }
     }
 
@@ -920,7 +1111,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。
     /// </summary>
-    partial void OnSelectedMaterialChanged(MaterialOption value) => MaterialPresetChanged?.Invoke(value);
+    partial void OnSelectedMaterialChanged(MaterialOption value)
+    {
+        MaterialPresetChanged?.Invoke(value);
+        QueueAppearancePersist();
+    }
 
     /// <summary>
     /// 强调色预设选中变更时立即写入主题字典，实现即时生效。
@@ -928,9 +1123,72 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
 
     /// <summary>
-    /// 命名主题预设选中变更时立即应用（当前等价于应用其内嵌强调色）。
+    /// 命名主题预设选中后写入色板，并重建窗口底色。底色是代码里的笔刷实例，不跟主题字典自动刷新。
     /// </summary>
-    partial void OnSelectedThemePresetChanged(ThemePreset value) => AppearanceCoordinator.ApplyThemePreset(value.Id);
+    partial void OnSelectedThemePresetChanged(ThemePreset value)
+    {
+        AppearanceCoordinator.ApplyThemePreset(value.Id);
+        ThemeApplied?.Invoke();
+        QueueAppearancePersist();
+    }
+
+    private void QueueAppearancePersist()
+    {
+        if (_suppressAppearancePersist)
+        {
+            return;
+        }
+
+        AppearancePersistTask = LoggedTasks.Observe(PersistAppearanceAsync(), "PersistAppearance");
+    }
+
+    partial void OnCloseActionChanged(CloseActionKind? value)
+    {
+        if (_suppressCloseActionPersist || value is not { } kind)
+        {
+            return;
+        }
+
+        CloseActionPersistTask = LoggedTasks.Observe(
+            PersistCloseActionAsync(kind),
+            "PersistCloseAction");
+    }
+
+    private async Task PersistAppearanceAsync()
+    {
+        await _appearancePersistGate.WaitAsync();
+        try
+        {
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.ThemePresetSettingsKey, SelectedThemePreset.Id);
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.MaterialSettingsKey, SelectedMaterial.Id);
+            await _settingsRepository.SetAsync(
+                AppearanceCoordinator.IsDarkSettingsKey, IsDarkTheme ? "1" : "0");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("PersistAppearance", ex);
+        }
+        finally
+        {
+            _appearancePersistGate.Release();
+        }
+    }
+
+    private async Task PersistCloseActionAsync(CloseActionKind kind)
+    {
+        try
+        {
+            await _settingsRepository.SetAsync(
+                CloseBehaviorCoordinator.SettingsKey,
+                CloseBehaviorCoordinator.ToStorage(kind));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("PersistCloseAction", ex);
+        }
+    }
 
     /// <summary>
     /// 手动刷新任务流。
@@ -940,11 +1198,52 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <inheritdoc />
     public void Receive(TaskSavedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = RefreshAfterCaptureAsync());
+    {
+        if (ReferenceEquals(message.Origin, this))
+        {
+            return;
+        }
+
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(() => SyncFromStoreAsync(message.Task.Id)),
+            "TaskSavedMessage");
+    }
+
+    /// <summary>
+    /// 从 SQLite 读回该任务并就地写到当前列表里已有的行。
+    /// 新行（小窗新建）才走整表重载。
+    /// </summary>
+    private async Task SyncFromStoreAsync(string taskId)
+    {
+        var persisted = await _repository.GetByIdAsync(taskId);
+        if (persisted is null)
+        {
+            await RefreshAfterCaptureAsync();
+            return;
+        }
+
+        if (!TaskRowListSync.TryApply(_tasks, persisted))
+        {
+            await RefreshAfterCaptureAsync();
+            return;
+        }
+
+        TaskRowListSync.Reorder(_tasks);
+        await RefreshCountsAsync();
+    }
 
     /// <inheritdoc />
     public void Receive(TaskDeletedMessage message)
-        => Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadTasksAsync());
+    {
+        if (ReferenceEquals(message.Origin, this))
+        {
+            return;
+        }
+
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(() => LoadTasksAsync()),
+            "TaskDeletedMessage");
+    }
 
     /// <summary>
     /// 小窗可能在保存时新建项目，须连同侧边栏一并刷新。

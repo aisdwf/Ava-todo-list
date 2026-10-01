@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -12,6 +14,8 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Converters;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 
 namespace FlowTask.Desktop.Views;
@@ -29,6 +33,7 @@ public partial class MainWindow : Window
 
     private readonly QuickCaptureViewModel? _quickCaptureVm;
     private QuickCaptureWindow? _quickCaptureWindow;
+    private bool _quickCaptureStartedWhileApplicationWasInactive;
 
     /// <summary>
     /// 热键关闭小窗后的短暂抑制：焦点回主窗时同一次 Option+Space 勿再打开。
@@ -51,10 +56,22 @@ public partial class MainWindow : Window
     /// </summary>
     private bool _isTogglingQuickCapture;
 
+    /// <summary>小窗当前是否可见，供托盘右键菜单切换文案。</summary>
+    public bool IsQuickCaptureVisible => _quickCaptureWindow?.IsVisible == true;
+
+    /// <summary>小窗显隐变化，托盘菜单据此改「显示/隐藏小窗」。</summary>
+    public event Action? QuickCaptureVisibilityChanged;
+
     /// <summary>
     /// 转场进行中标志，防止连续点击导致多个动画叠加、遮罩残留。
     /// </summary>
     private bool _isRevealRunning;
+
+    /// <summary>
+    /// 新建项目非法提示的自动消失计时。展示时长不是业务门闩，只服务「短暂」这一观感。
+    /// </summary>
+    private DispatcherTimer? _createProjectErrorTimer;
+    private DispatcherTimer? _midnightTimer;
 
     /// <summary>
     /// 设计器与 XAML 预览专用构造函数。
@@ -83,6 +100,9 @@ public partial class MainWindow : Window
         // 因此昼夜切换后必须按当前材质档位重建底色。
         vm.ThemeApplied += () => AppearanceCoordinator.RefreshMaterialBackground(this, vm.SelectedMaterial.Id);
 
+        // 构造时立刻套材质：等 Opened / InitializeAsync 会让首帧先画出 XAML 默认底。
+        AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
+
         // 主题按钮不绑定命令：主题必须在水波纹覆盖全屏后才切换，
         // 否则用户会先看到底层界面突变、再看到遮罩扩散，动效失去意义。
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
@@ -106,15 +126,33 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
         // Tunnel：点击落在编辑框以外的任意位置（包括 Border/StackPanel 等本身不可
-        // 聚焦的空白区域）都要提交重命名 —— 见 OnWindowPointerPressed 备注。
+        // 聚焦的空白区域）都要提交重命名 / 新建 —— 见 OnWindowPointerPressed 备注。
         AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
 
-        Opened += async (_, _) =>
+        vm.PropertyChanged += OnMainViewModelPropertyChanged;
+
+        Closing += OnMainWindowClosing;
+        Closed += (_, _) => _midnightTimer?.Stop();
+
+        Opened += (_, _) => LoggedTasks.FireAndForget(OnOpenedAsync(), "MainWindow.Opened");
+    }
+
+    private async Task OnOpenedAsync()
+    {
+        if (DataContext is not MainViewModel vm)
         {
-            AppearanceCoordinator.ApplyTheme(vm.IsDarkTheme);
-            AppearanceCoordinator.ApplyMaterial(this, vm.SelectedMaterial.Id);
+            return;
+        }
+
+        try
+        {
             await vm.InitializeAsync();
-        };
+            ArmMidnightRefresh(vm);
+        }
+        catch (Exception ex)
+        {
+            vm.ReportInitializationFailure(ex);
+        }
     }
 
     /// <summary>
@@ -122,6 +160,54 @@ public partial class MainWindow : Window
     /// </summary>
     /// <param name="active">系统级热键是否注册成功。</param>
     public void SetSystemHotkeyActive(bool active) => _systemHotkeyActive = active;
+
+    private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (App.CurrentApp?.IsExiting == true)
+        {
+            return;
+        }
+
+        // 先 Cancel，再 Post 执行 Hide/Shutdown/弹层，避免在 Closing 栈上重入 Shutdown。
+        e.Cancel = true;
+        if (DataContext is not MainViewModel vm || vm.IsClosePromptOpen)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => ApplyClosePolicy(vm));
+    }
+
+    private void ArmMidnightRefresh(MainViewModel vm)
+    {
+        _midnightTimer?.Stop();
+        _midnightTimer = new DispatcherTimer
+        {
+            Interval = MidnightRefresh.DelayUntilNextMidnight(DateTime.Now)
+        };
+        _midnightTimer.Tick += (_, _) =>
+        {
+            LoggedTasks.FireAndForget(vm.RefreshTasksCommand.ExecuteAsync(null), "MidnightRefresh");
+            ArmMidnightRefresh(vm);
+        };
+        _midnightTimer.Start();
+    }
+
+    private static void ApplyClosePolicy(MainViewModel vm)
+    {
+        switch (ClosePolicyDispatcher.Decide(vm.CloseAction))
+        {
+            case ClosePolicyEffect.HideToTray:
+                App.CurrentApp?.HideMainToTray();
+                break;
+            case ClosePolicyEffect.Exit:
+                App.CurrentApp?.RequestExit();
+                break;
+            default:
+                vm.OpenClosePrompt();
+                break;
+        }
+    }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
@@ -131,7 +217,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Alt+Space (Windows) / Option(Meta)+Space (macOS) 唤起快捷小窗；按平台分流，不跨平台混判修饰键
+        // Alt+Space (Windows) / Option(Alt)+Space (macOS) 唤起快捷小窗。
         if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
         {
             ToggleQuickCaptureWindow();
@@ -143,14 +229,12 @@ public partial class MainWindow : Window
     /// 判断按键修饰符是否命中当前平台的快捷小窗唤起手势。
     /// </summary>
     /// <remarks>
-    /// Windows 用 <c>Alt+Space</c>；macOS 用 <c>Option(Meta)+Space</c>。
-    /// 此前两平台的修饰键判断混在一起（<c>Alt || Meta</c>），
-    /// 导致 Windows 上 Win 键（映射为 <see cref="KeyModifiers.Meta"/>）也能误触唤起。
+    /// Windows 用 <c>Alt+Space</c>；macOS 的 Option 键同样映射为
+    /// <see cref="KeyModifiers.Alt"/>。不能使用 <see cref="KeyModifiers.Meta"/>
+    /// 代替 Option，否则 macOS 会把 Command+Space 与 Option+Space 混淆。
     /// </remarks>
     internal static bool IsQuickCaptureModifier(KeyModifiers modifiers)
-        => OperatingSystem.IsMacOS()
-            ? modifiers.HasFlag(KeyModifiers.Meta)
-            : modifiers.HasFlag(KeyModifiers.Alt);
+        => modifiers.HasFlag(KeyModifiers.Alt);
 
     /// <summary>
     /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (spec-editorial-and-ripple-theme §2)。
@@ -249,12 +333,14 @@ public partial class MainWindow : Window
     /// <summary>
     /// 供进程级热键回调：切到 UI 线程后显隐小窗（spec-quick-window-hotkey-capture）。
     /// </summary>
-    public void ToggleQuickCaptureFromHotkey() => _ = ToggleQuickCaptureWindowAsync();
+    public void ToggleQuickCaptureFromHotkey()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromHotkey");
 
     /// <summary>
     /// 唤起或隐藏快捷小窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
     /// </summary>
-    private void ToggleQuickCaptureWindow() => _ = ToggleQuickCaptureWindowAsync();
+    private void ToggleQuickCaptureWindow()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureWindow");
 
     private async Task ToggleQuickCaptureWindowAsync()
     {
@@ -277,23 +363,38 @@ public partial class MainWindow : Window
             if (_quickCaptureWindow is null)
             {
                 _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm, () => _systemHotkeyActive);
+                _quickCaptureWindow.RequestHide += HideQuickCaptureWindow;
                 // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
                 _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
 
-                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟
+                // 拦截关闭改为隐藏：重建窗口会丢失焦点预热，导致再次唤起有可感知延迟。
+                // 彻底退出时必须放行，否则进程被钉死在无主窗状态（spec-close-to-tray）。
                 _quickCaptureWindow.Closing += (_, e) =>
                 {
+                    if (App.CurrentApp?.IsExiting == true)
+                    {
+                        return;
+                    }
+
                     e.Cancel = true;
-                    _quickCaptureWindow?.Hide();
+                    HideQuickCaptureWindow();
                 };
             }
 
             if (_quickCaptureWindow.IsVisible)
             {
-                // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
-                _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
-                _quickCaptureWindow.Hide();
+                HideQuickCaptureWindow();
                 return;
+            }
+
+            _quickCaptureStartedWhileApplicationWasInactive = !IsActive;
+            if (_quickCaptureStartedWhileApplicationWasInactive
+                && OperatingSystem.IsMacOS()
+                && IsVisible)
+            {
+                // macOS 解除应用后台状态时会重新展示所有仍可见的窗口。
+                // 先从窗口层级隐藏主窗，保证后续只出现快捷小窗。
+                Hide();
             }
 
             if (DateTime.UtcNow < _suppressQuickCaptureOpenUntil)
@@ -304,12 +405,47 @@ public partial class MainWindow : Window
             await _quickCaptureVm.PrepareAsync();
             _quickCaptureWindow.Show();
             _quickCaptureWindow.Activate();
+            QuickCaptureVisibilityChanged?.Invoke();
         }
         finally
         {
             _isTogglingQuickCapture = false;
         }
     }
+
+    /// <summary>
+    /// 隐藏快捷小窗，并在它从后台唤起时让整个应用回到后台。
+    /// 主窗已在唤起小窗前隐藏，因此关闭过程不会产生主窗闪烁。
+    /// </summary>
+    private void HideQuickCaptureWindow()
+    {
+        if (_quickCaptureWindow is not { IsVisible: true })
+        {
+            return;
+        }
+
+        // 不 Activate 主窗：会抢前台造成「跳动」；抑制窗避免焦点回流后同键再开
+        _suppressQuickCaptureOpenUntil = DateTime.UtcNow.AddMilliseconds(350);
+        var returnApplicationToBackground =
+            _quickCaptureStartedWhileApplicationWasInactive && OperatingSystem.IsMacOS();
+
+        _quickCaptureWindow.Hide();
+        QuickCaptureVisibilityChanged?.Invoke();
+
+        if (returnApplicationToBackground
+            && Application.Current?.ApplicationLifetime is IActivatableLifetime activatable)
+        {
+            activatable.TryEnterBackground();
+        }
+
+        _quickCaptureStartedWhileApplicationWasInactive = false;
+    }
+
+    internal static bool ShouldHideMainWindowBeforeQuickCapture(
+        bool applicationWasActive,
+        bool mainWindowIsVisible,
+        bool isMacOS)
+        => isMacOS && !applicationWasActive && mainWindowIsVisible;
 
     /// <summary>
     /// 单击项目行：切换到该项目的任务列表。
@@ -363,7 +499,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 点击窗口内任意位置时，若有正在编辑的重命名输入框且点击落在其外部，则提交该重命名。
+    /// 点击窗口内任意位置时，若有正在编辑的重命名或新建输入框且点击落在其外部，则提交。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -379,9 +515,8 @@ public partial class MainWindow : Window
     /// 因此能覆盖"点击空白区域"这一 LostFocus 覆盖不到的场景。
     /// </para>
     /// <para>
-    /// 仍保留 <see cref="OnProjectRenameLostFocus"/>（<c>TextBox.LostFocus</c>）
-    /// 作为 Tab 切焦点等非指针路径的兜底；两条路径都委托到同一个幂等的
-    /// <c>CommitRenameProjectCommand</c>，重复触发不会产生副作用。
+    /// 仍保留 <see cref="OnProjectRenameLostFocus"/> 与 <see cref="OnNewProjectLostFocus"/>
+    /// 作为 Tab 切焦点等非指针路径的兜底；提交命令均幂等，重复触发不会产生副作用。
     /// </para>
     /// </remarks>
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -398,6 +533,28 @@ public partial class MainWindow : Window
         {
             vm.CommitRenameProjectCommand.Execute(renamingProject);
         }
+
+        if (vm.IsCreatingProject && !IsInsideNewProjectEditor(target))
+        {
+            vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
+        }
+    }
+
+    /// <summary>
+    /// 判断点击目标是否位于新建项目输入区（输入框 + 校验提示）的可视树内。
+    /// </summary>
+    private bool IsInsideNewProjectEditor(Visual? target)
+    {
+        var editor = this.FindControl<Control>("NewProjectEditor");
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (ReferenceEquals(node, editor))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -435,6 +592,50 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
         {
             vm.CommitRenameProjectCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
+    /// 新建项目输入框失焦时提交，兜底 Tab 切焦点等非指针路径。
+    /// </summary>
+    private void OnNewProjectLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || !vm.IsCreatingProject)
+        {
+            return;
+        }
+
+        vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
+    }
+
+    private void OnMainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.CreateProjectError)
+            || DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        _createProjectErrorTimer?.Stop();
+        if (!vm.HasCreateProjectError)
+        {
+            return;
+        }
+
+        _createProjectErrorTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(2500)
+        };
+        _createProjectErrorTimer.Tick += OnCreateProjectErrorTimerTick;
+        _createProjectErrorTimer.Start();
+    }
+
+    private void OnCreateProjectErrorTimerTick(object? sender, EventArgs e)
+    {
+        _createProjectErrorTimer?.Stop();
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CreateProjectError = string.Empty;
         }
     }
 }

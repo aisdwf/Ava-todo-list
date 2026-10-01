@@ -1,6 +1,7 @@
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
 
@@ -19,29 +20,60 @@ public sealed class CreateProjectViewModel
     }
 
     /// <summary>
-    /// 名称非法时静默忽略；成功时清空输入并收起创建区。
+    /// 名称非法时回调可展示文案（来自 <see cref="ProjectName.Validate"/>）；成功时清空输入并收起创建区。
     /// </summary>
     public async Task ExecuteAsync(
         string name,
-        int sortOrder,
         Action clearAndCollapse,
-        Func<Task> reloadProjects)
+        Func<Task> reloadProjects,
+        Action<string> onInvalid,
+        object origin)
     {
-        if (!ProjectName.IsValid(name))
+        var error = ProjectName.Validate(name);
+        if (error is not null)
         {
+            onInvalid(error);
             return;
         }
 
+        var normalized = ProjectName.Normalize(name);
+        if (await _projectRepository.NameIsTakenAsync(normalized, exceptId: null))
+        {
+            onInvalid("项目名称已存在。");
+            return;
+        }
+
+        var sortOrder = await _projectRepository.NextSortOrderAsync();
         var project = new Project
         {
-            Name = ProjectName.Normalize(name),
+            Name = normalized,
             SortOrder = sortOrder,
             ColorHex = AppearanceCoordinator.PickPaletteColor(sortOrder),
             CreatedAt = _clock.UtcNow
         };
 
         await _projectRepository.SaveProjectAsync(project);
+        ProjectChangeBus.Changed(origin);
         clearAndCollapse();
         await reloadProjects();
+    }
+
+    /// <summary>
+    /// 离开输入框时提交：空白视为放弃（收起、不提示）；非空则走 <see cref="ExecuteAsync"/>。
+    /// </summary>
+    public Task ExecuteOnLeaveAsync(
+        string name,
+        Action collapse,
+        Func<Task> reloadProjects,
+        Action<string> onInvalid,
+        object origin)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            collapse();
+            return Task.CompletedTask;
+        }
+
+        return ExecuteAsync(name, collapse, reloadProjects, onInvalid, origin);
     }
 }

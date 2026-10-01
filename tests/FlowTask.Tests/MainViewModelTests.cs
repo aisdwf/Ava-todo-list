@@ -1,4 +1,7 @@
 using FlowTask.Core.Enums;
+using FlowTask.Core.Models;
+using FlowTask.Desktop.Appearance;
+using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
 using Avalonia.Headless.XUnit;
@@ -102,6 +105,7 @@ public class MainViewModelTests : IDisposable
         await vm.DeleteTaskCommand.ExecuteAsync(target);
 
         Assert.Empty(vm.Tasks);
+        Assert.Null(await _repo.GetByIdAsync(target.Id));
     }
 
     [AvaloniaFact]
@@ -116,10 +120,10 @@ public class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// 回归防护：ActiveCount / CompletedCount 此前从未被赋值，侧边栏徽标恒显 0。
+    /// 看板计数含已完成任务；勾选不把任务送出列表。
     /// </summary>
     [AvaloniaFact]
-    public async Task Counts_ReflectActiveAndCompletedTotals()
+    public async Task Counts_IncludeCompletedOnAllTasksBoard()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -130,24 +134,14 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         Assert.Equal(2, vm.ActiveCount);
-        Assert.Equal(0, vm.CompletedCount);
-        Assert.Equal(0, vm.PendingArchiveCount);
 
         var first = vm.Tasks[0].Task;
         first.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(first);
 
-        // 完成 ≠ 归档（spec-task-complete-before-archive）：勾选完成后任务仍留在活动列表，
-        // ActiveCount 不变；CompletedCount（=已归档数）在显式归档前也不变
         Assert.Equal(2, vm.ActiveCount);
-        Assert.Equal(0, vm.CompletedCount);
-        Assert.Equal(1, vm.PendingArchiveCount);
-
-        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, vm.ActiveCount);
-        Assert.Equal(1, vm.CompletedCount);
-        Assert.Equal(0, vm.PendingArchiveCount);
+        Assert.Equal(2, vm.Tasks.Count);
+        Assert.True(vm.Tasks.Last().Task.IsCompleted);
     }
 
     [AvaloniaFact]
@@ -170,7 +164,7 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task CompletedFilter_ShowsOnlyArchivedTasks()
+    public async Task CompletedTask_StaysInListAndCanBeDeleted()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -184,18 +178,14 @@ public class MainViewModelTests : IDisposable
         done.IsCompleted = true;
         await vm.ToggleCompleteCommand.ExecuteAsync(done);
 
-        // 完成 ≠ 归档：只勾选完成时，「已完成归档」视图仍应为空
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        await vm.LoadTasksCommand.ExecuteAsync(null);
-        Assert.Empty(vm.Tasks);
+        Assert.Equal(2, vm.Tasks.Count);
+        Assert.Equal("未办", vm.Tasks[0].Task.Title);
+        Assert.Equal("已办", vm.Tasks[1].Task.Title);
 
-        // 显式归档后才出现在「已完成归档」视图
-        await vm.ArchiveCompletedCommand.ExecuteAsync(null);
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
-        await vm.LoadTasksCommand.ExecuteAsync(null);
-
+        await vm.DeleteTaskCommand.ExecuteAsync(done);
         Assert.Single(vm.Tasks);
-        Assert.Equal("已办", vm.Tasks[0].Task.Title);
+        Assert.Equal("未办", vm.Tasks[0].Task.Title);
+        Assert.Null(await _repo.GetByIdAsync(done.Id));
     }
 
     [AvaloniaFact]
@@ -203,11 +193,10 @@ public class MainViewModelTests : IDisposable
     {
         var vm = CreateViewModel();
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
-        Assert.True(vm.IsCompletedFilterSelected);
-        Assert.False(vm.IsActiveFilterSelected);
-        Assert.Equal("已完成归档", vm.CurrentCategoryTitle);
+        Assert.True(vm.IsActiveFilterSelected);
+        Assert.Equal("全部任务", vm.CurrentCategoryTitle);
     }
 
     /// <summary>
@@ -220,10 +209,10 @@ public class MainViewModelTests : IDisposable
     {
         var vm = CreateViewModel();
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
-        Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);
-        Assert.False(vm.IsActiveFilterSelected);
+        Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
+        Assert.True(vm.IsActiveFilterSelected);
     }
 
     /// <summary>
@@ -253,10 +242,10 @@ public class MainViewModelTests : IDisposable
         var vm = CreateViewModel();
         vm.ToggleSettingsCommand.Execute(null);
 
-        vm.ChangeFilterCommand.Execute(TaskFilter.Completed);
+        vm.ChangeFilterCommand.Execute(TaskFilter.Active);
 
         Assert.False(vm.IsSettingsOpen);
-        Assert.Equal(TaskFilter.Completed, vm.CurrentFilter);
+        Assert.Equal(TaskFilter.Active, vm.CurrentFilter);
     }
 
     [AvaloniaFact]
@@ -528,9 +517,25 @@ public class MainViewModelTests : IDisposable
         await vm.AssignProjectAsync(task, "proj-42");
         Assert.Equal("proj-42", (await _repo.GetByIdAsync(task.Id))!.ProjectId);
 
-        // 置空回到未归属状态 —— 这是正常的默认状态，不是数据缺失
+        // R-2.6：不再允许写回 null，「清空」改挂 Default
         await vm.AssignProjectAsync(task, null);
-        Assert.Null((await _repo.GetByIdAsync(task.Id))!.ProjectId);
+        Assert.Equal(DefaultProject.Id, (await _repo.GetByIdAsync(task.Id))!.ProjectId);
+    }
+
+    /// <summary>
+    /// 主窗启动才把历史 <c>ProjectId IS NULL</c> 迁到 Default。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task InitializeAsync_MigratesNullProjectIdsToDefault()
+    {
+        var orphan = TaskItemFactory.Create(_clock, "历史未归属");
+        await _repo.SaveTaskAsync(orphan);
+        Assert.Null(orphan.ProjectId);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(DefaultProject.Id, (await _repo.GetByIdAsync(orphan.Id))!.ProjectId);
     }
 
     /// <summary>
@@ -657,5 +662,225 @@ public class MainViewModelTests : IDisposable
         Assert.True(vm.IsDarkTheme);
 
         Assert.Equal(2, notified);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_RestoresPersistedAppearance()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+        Assert.Equal("Solid", vm.SelectedMaterial.Id);
+        Assert.False(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task LoadAppearanceAsync_RestoresPersistedAppearanceWithoutInitialize()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.LoadAppearanceAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+        Assert.Equal("Solid", vm.SelectedMaterial.Id);
+        Assert.False(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_DoesNotReloadAppearanceAfterStartupLoad()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "ocean-breeze");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "Solid");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "0");
+
+        var vm = CreateViewModel();
+        await vm.LoadAppearanceAsync();
+
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "anthropic");
+        await vm.InitializeAsync();
+
+        Assert.Equal("ocean-breeze", vm.SelectedThemePreset.Id);
+    }
+
+    [AvaloniaFact]
+    public async Task AppearanceChanges_RoundTripAcrossViewModelInstances()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.SelectedThemePreset = vm.ThemePresets.First(p => p.Id == "anthropic");
+        vm.SelectedMaterial = vm.MaterialPresets.First(p => p.Id == "Acrylic");
+        vm.ApplyTheme(false);
+        await vm.AppearancePersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+
+        Assert.Equal("anthropic", restored.SelectedThemePreset.Id);
+        Assert.Equal("Acrylic", restored.SelectedMaterial.Id);
+        Assert.False(restored.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_UnknownAppearanceIds_FallBackToFirstPreset()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(AppearanceCoordinator.ThemePresetSettingsKey, "not-a-theme");
+        await settings.SetAsync(AppearanceCoordinator.MaterialSettingsKey, "not-a-material");
+        await settings.SetAsync(AppearanceCoordinator.IsDarkSettingsKey, "maybe");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(AppearanceCoordinator.ThemePresets[0].Id, vm.SelectedThemePreset.Id);
+        Assert.Equal(AppearanceCoordinator.MaterialPresets[0].Id, vm.SelectedMaterial.Id);
+        Assert.True(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_MissingAppearanceKeys_KeepsCompiledDefaults()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal("default", vm.SelectedThemePreset.Id);
+        Assert.Equal("Mica", vm.SelectedMaterial.Id);
+        Assert.True(vm.IsDarkTheme);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_MissingCloseAction_RemainsUnset()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_RestoresPersistedCloseAction()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(CloseBehaviorCoordinator.SettingsKey, CloseBehaviorCoordinator.TrayStorage);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Equal(CloseActionKind.MinimizeToTray, vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task CloseActionChange_RoundTripsAcrossViewModelInstances()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.CloseAction = CloseActionKind.Exit;
+        await vm.CloseActionPersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+        Assert.Equal(CloseActionKind.Exit, restored.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task InitializeAsync_UnknownCloseAction_TreatedAsUnset()
+    {
+        var settings = new SqliteAppSettingsRepository(_dbPath);
+        await settings.SetAsync(CloseBehaviorCoordinator.SettingsKey, "ask-every-time");
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmClosePrompt_WithoutRemember_DoesNotPersist()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        var hidden = false;
+        vm.RequestHideToTray += () => hidden = true;
+
+        vm.OpenClosePrompt();
+        vm.RememberCloseAction = false;
+        vm.ConfirmClosePromptCommand.Execute(null);
+
+        Assert.True(hidden);
+        Assert.False(vm.IsClosePromptOpen);
+        Assert.Null(vm.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public async Task ConfirmClosePrompt_WithRemember_PersistsSelectedChoice()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.OpenClosePrompt();
+        vm.ClosePromptChoice = CloseActionKind.Exit;
+        vm.RememberCloseAction = true;
+        vm.ConfirmClosePromptCommand.Execute(null);
+        await vm.CloseActionPersistTask;
+
+        var restored = CreateViewModel();
+        await restored.InitializeAsync();
+        Assert.Equal(CloseActionKind.Exit, restored.CloseAction);
+    }
+
+    [AvaloniaFact]
+    public void OpenClosePrompt_PreselectsRecommendedTray()
+    {
+        var vm = CreateViewModel();
+        vm.ClosePromptChoice = CloseActionKind.Exit;
+        vm.OpenClosePrompt();
+
+        Assert.True(vm.IsClosePromptOpen);
+        Assert.Equal(CloseActionKind.MinimizeToTray, vm.ClosePromptChoice);
+        Assert.False(vm.RememberCloseAction);
+    }
+
+    [AvaloniaFact]
+    public void BlockingOverlay_TracksClosePromptAndDueDatePopup()
+    {
+        var vm = CreateViewModel();
+        Assert.False(vm.IsBlockingOverlayOpen);
+
+        vm.OpenClosePrompt();
+        Assert.True(vm.IsBlockingOverlayOpen);
+
+        vm.DismissClosePromptCommand.Execute(null);
+        Assert.False(vm.IsBlockingOverlayOpen);
+
+        vm.IsDueDatePopupOpen = true;
+        Assert.True(vm.IsBlockingOverlayOpen);
+
+        vm.IsDueDatePopupOpen = false;
+        Assert.False(vm.IsBlockingOverlayOpen);
+    }
+
+    [AvaloniaFact]
+    public async Task EditingDueOffset_DoesNotApplyUntilSave()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.Equal(DueDateOffset.DefaultDays, vm.DefaultDueOffsetDays);
+
+        vm.EditingDefaultDueOffsetDays = 7;
+        Assert.Equal(DueDateOffset.DefaultDays, vm.DefaultDueOffsetDays);
+
+        await vm.SaveDefaultDueOffsetCommand.ExecuteAsync(null);
+        Assert.Equal(7, vm.DefaultDueOffsetDays);
+        Assert.Equal(7, await new SqliteAppSettingsRepository(_dbPath).GetDefaultDueOffsetDaysAsync());
     }
 }
