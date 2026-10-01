@@ -455,6 +455,11 @@
         <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
     </Style>
 
+    <!-- 快捷键占用 / 不合规提示：与新建项目非法提示同色 (spec-quick-window-custom-hotkey) -->
+    <Style Selector="TextBlock.CaptionText.HotkeyError">
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+    </Style>
+
     <!-- ================= 优先级微型标签 P1/P2/P3 =================
          spec-editorial-and-ripple-theme §2 要求"优先级采用微型标签（P1/P2/P3）与高光色彩呼应"。
          档位色以样式类表达而非行内绑定，确保昼夜切换时经 DynamicResource 重新求值。 -->

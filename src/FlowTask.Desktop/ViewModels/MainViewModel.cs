@@ -201,7 +201,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 到期日选择器已改为贴边浮层（spec-due-date-picker），不再是全窗遮罩，故不计入。
     /// 删除项目确认改为居中弹层后计入。
     /// </remarks>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDeleteProjectPromptOpen || Onboarding.IsActive;
+    public bool IsBlockingOverlayOpen
+        => IsClosePromptOpen || IsDeleteProjectPromptOpen || Onboarding.IsActive || Hotkey.IsConflictPromptOpen;
 
     /// <summary>首次聚光灯引导状态（spec-onboarding-guide）。</summary>
     public OnboardingViewModel Onboarding { get; }
@@ -302,19 +303,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     public event Action? RequestOpenQuickCapture;
 
     /// <summary>
-    /// 唤起小窗热键的平台正确按键提示（macOS 显示 ⌥ 符号，Windows 显示 Alt 文字）。
+    /// 快捷小窗快捷键：侧栏键帽、设置 → 通用录制行、启动占用弹窗（spec-quick-window-custom-hotkey）。
     /// </summary>
     /// <remarks>
-    /// 此前 UI 写死 macOS 的 <c>⌥ Space</c>，Windows 用户看到的图标与实际热键不符。
-    /// 其后又写死 Alt+Space，注册回退到 Win+Alt+Space 时同样教错，
-    /// 现由 <see cref="SetRegisteredHotkey"/> 按实际注册结果刷新（spec-onboarding-guide Q3）。
+    /// 键帽文案曾两次写死（先 <c>⌥ Space</c>，后 Alt+Space），注册回退时都会教错键；
+    /// 现由本实例按「当前组合 + 是否生效」推出，组合本身只在 <see cref="QuickWindowHotkey"/> 定义。
     /// </remarks>
-    [ObservableProperty]
-    private string _quickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(RegisteredHotkey.None);
-
-    /// <summary>记录进程级热键实际注册到的组合，刷新界面文案。</summary>
-    public void SetRegisteredHotkey(RegisteredHotkey registered)
-        => QuickCaptureHotkeyLabel = QuickCaptureHotkey.Describe(registered);
+    public QuickWindowHotkeyViewModel Hotkey { get; }
 
     /// <summary>请求应用窗口材质。窗口实例归视图层所有，故以事件外发。</summary>
     public event Action<MaterialOption>? MaterialPresetChanged;
@@ -329,11 +324,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="projectRepository">项目仓储。</param>
     /// <param name="clock">时间提供者，用于显式赋值任务的创建与完成时刻（Article 9）。</param>
     /// <param name="settingsRepository">应用设置仓储。</param>
+    /// <param name="hotkeyRegistrar">
+    /// 进程级快捷小窗快捷键注册器；未提供时视为没有系统级热键（测试与不支持的平台）。
+    /// </param>
     public MainViewModel(
         ITaskRepository repository,
         IProjectRepository projectRepository,
         IClock clock,
-        IAppSettingsRepository settingsRepository)
+        IAppSettingsRepository settingsRepository,
+        IQuickWindowHotkeyRegistrar? hotkeyRegistrar = null)
     {
         _repository = repository;
         _projectRepository = projectRepository;
@@ -348,6 +347,18 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 OnPropertyChanged(nameof(IsBlockingOverlayOpen));
             }
         };
+
+        Hotkey = new QuickWindowHotkeyViewModel(
+            hotkeyRegistrar ?? NoSystemHotkeyRegistrar.Instance,
+            settingsRepository);
+        Hotkey.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(QuickWindowHotkeyViewModel.IsConflictPromptOpen))
+            {
+                OnPropertyChanged(nameof(IsBlockingOverlayOpen));
+            }
+        };
+        Hotkey.RequestOpenGeneralSettings += OpenGeneralSettings;
 
         // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
@@ -1063,6 +1074,32 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </summary>
     [RelayCommand]
     private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
+
+    /// <summary>占用弹窗「去设置」：直接落在 通用 页的快捷键行所在分区。</summary>
+    private void OpenGeneralSettings()
+    {
+        IsSettingsOpen = true;
+        SelectedSettingsSection = SettingsSection.General;
+        EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+    }
+
+    /// <summary>离开设置页时放弃录制，否则回到任务页后按键仍被录制吞掉。</summary>
+    partial void OnIsSettingsOpenChanged(bool value)
+    {
+        if (!value)
+        {
+            Hotkey.CancelRecording();
+        }
+    }
+
+    /// <summary>切到其他设置项时放弃录制，理由同 <see cref="OnIsSettingsOpenChanged"/>。</summary>
+    partial void OnSelectedSettingsSectionChanged(SettingsSection value)
+    {
+        if (value != SettingsSection.General)
+        {
+            Hotkey.CancelRecording();
+        }
+    }
 
     /// <summary>
     /// 右上角「?」：直接进入设置 → 操作指南（spec-onboarding-guide）。

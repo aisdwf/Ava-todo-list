@@ -239,24 +239,15 @@ public class OnboardingTests : IDisposable
     public void Progress_ParseToleratesBadValues(string? raw, int expected)
         => Assert.Equal(expected, OnboardingProgress.Parse(raw));
 
-    [Theory]
-    [InlineData(RegisteredHotkey.AltSpace, false, "Alt+Space")]
-    [InlineData(RegisteredHotkey.WinAltSpace, false, "Win+Alt+Space")]
-    [InlineData(RegisteredHotkey.None, false, "Alt+Space")]
-    [InlineData(RegisteredHotkey.None, true, "⌥ Space")]
-    public void HotkeyLabel_FollowsActualRegistration(RegisteredHotkey registered, bool isMacOS, string expected)
-        => Assert.Equal(expected, QuickCaptureHotkey.Describe(registered, isMacOS));
-
-    [AvaloniaFact]
-    public void HotkeyLabel_UpdatesWhenFallbackRegistered()
+    [Fact]
+    public void QuickWindowTopic_TellsWhereToChangeTheHotkey()
     {
-        var vm = CreateViewModel();
-        var raised = new List<string?>();
-        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        // 指南只引用侧栏键帽，不写死组合：组合可改，写死就会再次教错键（spec-quick-window-custom-hotkey）
+        var topic = GuideCatalog.Topics.Single(t => t.Scene == GuideSceneKind.QuickCapture);
+        var text = string.Join(" ", topic.Points.Prepend(topic.Summary));
 
-        vm.SetRegisteredHotkey(RegisteredHotkey.WinAltSpace);
-
-        Assert.Equal("Win+Alt+Space", vm.QuickCaptureHotkeyLabel);
-        Assert.Contains(nameof(MainViewModel.QuickCaptureHotkeyLabel), raised);
+        Assert.Contains("设置 → 通用", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Alt+Space", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Win+Alt+Space", text, StringComparison.Ordinal);
     }
 }
