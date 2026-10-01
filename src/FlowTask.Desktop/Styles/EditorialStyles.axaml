@@ -743,6 +743,66 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
+    <!-- ================= 优先级选择器 (spec-inline-task-edit) =================
+         入口就是原来的 P 标签，外包透明按钮只提供命中与键盘焦点；悬停时标签略提亮提示可点。
+         浮层表面复用 DuePickerSurface，与日期框同一质感。 -->
+    <Style Selector="Button.PriorityTrigger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.PriorityTrigger /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.PriorityTrigger Border.PriorityTag">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.PriorityTrigger:pointerover Border.PriorityTag">
+        <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="Button.PriorityTrigger:focus-visible Border.PriorityTag">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style Selector="Border.PriorityPickerSurface">
+        <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="Button.PriorityOption">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.PriorityOption /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.PriorityOption:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="Button.PriorityOption:focus-visible /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="Button.PriorityOption.Current /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="TextBlock.PriorityOptionText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <!-- 小窗无到期日的行：入口静息隐藏、悬停整行浮现（首版形态，待 owner 预览裁决）。
          用 Opacity 而非 IsVisible：隐藏时仍占位且可点击，指针移入即出现，不产生布局跳动。 -->
     <Style Selector="Border.QuickTaskRow Controls|DueDatePicker.HoverOnly:unset">
@@ -821,19 +881,15 @@
         <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
     </Style>
 
-    <!-- 标题点击触发器：完全透明的按钮外壳，仅提供点击热区，
-         视觉上必须与普通文本无异 —— 否则 Editorial 排版会被按钮边框破坏。 -->
-    <Style Selector="Button.TitleTrigger">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="Button.TitleTrigger /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.TitleTrigger:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
+    <!-- 标题就地编辑输入框 (spec-inline-task-edit)：字号与字重对齐 TaskTitle，
+         切换时行高基本不变，不把下方元信息行推开。 -->
+    <Style Selector="TextBox.TitleInput">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTaskTitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Margin" Value="-7,-3,0,-3" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
     </Style>
 
     <!-- 新建项目触发器：克制呈现，不与导航项争夺视线 -->
@@ -850,16 +906,7 @@
         <Setter Property="Background" Value="{DynamicResource HairlineStrongBrush}" />
     </Style>
 
-    <!-- ================= 行内编辑态 =================
-         就地展开而非模态框：模态会遮挡任务流、打断视线连续性，
-         与 Editorial 沉浸式排版基调冲突（design-domain-contract §4.2）。 -->
-    <Style Selector="Border.EditPanel">
-        <Setter Property="Background" Value="{DynamicResource CardSurfaceBrush}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
-        <Setter Property="Padding" Value="18" />
-        <Setter Property="Margin" Value="0,10,0,4" />
-    </Style>
-
+    <!-- 表单字段标签：设置页各分区共用 -->
     <Style Selector="TextBlock.FieldLabel">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -868,7 +915,7 @@
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
 
-    <!-- 编辑态内的紧凑输入框：区别于贯穿式 EditorialInput 的大字号无边框风格 -->
+    <!-- 紧凑输入框（侧栏重命名 / 新建项目）：区别于贯穿式 EditorialInput 的大字号无边框风格 -->
     <Style Selector="TextBox.FieldInput">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
         <Setter Property="MinHeight" Value="32" />

@@ -252,14 +252,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>可变的内部集合，仅本类可写。</summary>
     private readonly ObservableCollection<TaskRowViewModel> _tasks = new();
 
-    /// <summary>
-    /// 编辑态「所属项目」下拉的候选项，与侧边栏活跃项目同源（另含正在编辑的归档归属）。
-    /// </summary>
-    /// <remarks>
-    /// R-2.6 以 Default 取代「未归属」，不再插入 <c>null</c> 候选项。
-    /// </remarks>
-    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.Default };
-
     /// <summary>任务流为空，用于驱动空状态提示。</summary>
     public bool IsTaskStreamEmpty => Tasks.Count == 0;
 
@@ -465,7 +457,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 载入未归档项目及其任务计数，并同步编辑态下拉候选。
+    /// 载入未归档项目及其任务计数。
     /// </summary>
     private async Task LoadProjectsAsync()
     {
@@ -484,13 +476,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         {
             counts.TryGetValue(project.Id, out var count);
             _projects.Add(new ProjectItemViewModel(project, count));
-        }
-
-        // 候选项与项目列表保持同源，避免两份表示漂移（Article 6）
-        ProjectChoices.Clear();
-        foreach (var project in projects)
-        {
-            ProjectChoices.Add(new ProjectChoice(project.Id, project.Name));
         }
 
         // 选中的项目可能已被删除或归档，此时须解除选中避免筛选到不存在的项目。
@@ -601,7 +586,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
-        // 查找表必须含归档项目，否则项目名为空、编辑候选也对不上归属。
+        // 查找表必须含归档项目，否则全部任务看板里归档项目下任务的项目名为空。
         var allProjects = await _projectRepository.GetAllProjectsAsync();
         if (generation != Volatile.Read(ref _tasksLoadGeneration))
         {
@@ -765,45 +750,25 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private async Task DeleteTaskAsync(TaskItem? item)
         => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync, this);
 
-    /// <summary>
-    /// 展开或收起某行的编辑面板。
-    /// </summary>
-    /// <remarks>
-    /// 同一时刻只允许一行处于编辑态：多行同时展开会让任务流被面板撑满、
-    /// 丧失 Editorial 排版的浏览性，也使「当前在改哪一条」变得不明确。
-    /// </remarks>
+    /// <summary>双击标题进入就地编辑，先提交其他正在编辑的行（spec-inline-task-edit）。</summary>
     [RelayCommand]
-    private async Task ToggleEditAsync(TaskRowViewModel? row)
-        => await new ToggleEditTaskViewModel(
-                new SaveEditTaskViewModel(_repository))
-            .ExecuteAsync(
-                row,
-                _tasks,
-                ProjectChoices,
-                LoadTasksAsync,
-                this);
+    private async Task BeginTitleEditAsync(TaskRowViewModel? row)
+        => await new BeginRowTitleEditViewModel(new CommitRowTitleViewModel(_repository))
+            .ExecuteAsync(row, _tasks, LoadTasksAsync, this);
 
-    /// <summary>
-    /// 提交某行的编辑缓冲并收起面板。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>为什么没有「取消」</b>：本地 SQLite 写入是微秒级的，不存在需要用户等待的提交成本。
-    /// 引入显式保存按钮反而带来「未保存状态」这一额外状态机，
-    /// 以及「改了却忘记点保存」的数据丢失风险（design-domain-contract §5.3）。
-    /// 代价是误改无法一键还原 —— 撤销栈的成本远高于其在此场景的收益，已明确排除。
-    /// </para>
-    /// <para>
-    /// <b>非法标题的处理</b>：视为无效输入并丢弃该项修改（保留原标题），
-    /// 而非拒绝整次提交 —— 否则用户改对了的日期与标签也会一并丢失。
-    /// 校验规则与创建路径共用 <see cref="TaskTitle"/>，
-    /// 同一约束不得在两处呈现不同行为（Article 6）。
-    /// </para>
-    /// </remarks>
+    /// <summary>Esc：丢弃标题缓冲，保留原标题。</summary>
     [RelayCommand]
-    private async Task SaveEditAsync(TaskRowViewModel? row)
-        => await new SaveEditTaskViewModel(_repository)
-            .ExecuteAsync(row, LoadTasksAsync, this);
+    private void CancelTitleEdit(TaskRowViewModel? row) => row?.EndTitleEdit();
+
+    /// <summary>Enter / 点击外部 / 失焦：提交标题缓冲。非法标题保留原值。</summary>
+    [RelayCommand]
+    private async Task CommitTitleEditAsync(TaskRowViewModel? row)
+        => await new CommitRowTitleViewModel(_repository).ExecuteAsync(row, LoadTasksAsync, this);
+
+    /// <summary>行上优先级浮层点选即生效（spec-inline-task-edit）。</summary>
+    [RelayCommand]
+    private async Task CommitRowPriorityAsync(PriorityCommit? commit)
+        => await new CommitRowPriorityViewModel(_repository).ExecuteAsync(commit, LoadTasksAsync, this);
 
 
     /// <summary>

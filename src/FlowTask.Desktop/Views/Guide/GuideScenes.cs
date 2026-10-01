@@ -242,20 +242,40 @@ internal static class GuideScenes
             .Wait(1600);
     }
 
+    /// <remarks>
+    /// 与真实任务行一致（spec-inline-task-edit）：勾选完成后沉底；双击标题原地变输入框，
+    /// 打字后回车保存；点 P 标签在其下方弹出三档小框，点一档即生效。不再有底部编辑面板。
+    /// </remarks>
     private static SceneScript EditAndComplete(SceneLayer layer)
     {
         var first = layer.TaskRow(12, "回复客户邮件");
         var second = layer.TaskRow(42, "准备周会材料");
-        var (panel, panelLayer) = layer.Group(12, 76, 296, 92, "CardSurfaceBrush", 6);
-        panelLayer.Micro(12, 10, "标题");
-        panelLayer.Box(12, 22, 272, 20, null, 4, "HairlineStrongBrush");
-        var editTitle = panelLayer.Text(20, 26, "准备周会材料", 9.5);
-        panelLayer.Micro(12, 50, "优先级");
-        panelLayer.Pill(12, 62, 28, "P1", "PriorityHighSurfaceBrush", "PriorityHighBrush");
-        panelLayer.Pill(42, 62, 28, "P2", null, "TextTertiaryBrush");
-        panelLayer.Pill(72, 62, 28, "P3", null, "TextTertiaryBrush");
-        panelLayer.Cell(222, 62, 62, 18, "完成编辑", "AccentBrush", "OnAccentBrush", 9, 8);
+
+        // 第二行标题上的就地输入框：与标题同位，双击后浮现
+        var (input, inputLayer) = layer.Group(34, 44, 170, 24, "CardSurfaceBrush", 4, "AccentBrush");
+        var inputText = inputLayer.Text(4, 5, "准备周会材料", 11, "TextPrimaryBrush", FontWeight.SemiBold);
+
+        // 第二行右侧的 P 标签与其下方的三档小框
+        const double tagX = 250;
+        const double tagY = 48;
+        var tag = layer.Pill(tagX, tagY, 26, "P2", "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
+        var (popover, pop) = layer.Group(tagX - 34, tagY + 22, 60, 62, "CardSurfaceBrush", 6, "HairlineStrongBrush");
+        var optionHigh = pop.Pill(6, 6, 48, "P1", "PriorityHighSurfaceBrush", "PriorityHighBrush");
+        pop.Pill(6, 24, 48, "P2", "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
+        pop.Pill(6, 42, 48, "P3", "PriorityLowSurfaceBrush", "PriorityLowBrush");
         var cursor = layer.Cursor();
+
+        void ShowInput(bool on)
+        {
+            Motion.Show(input, on);
+            second.Title.Opacity = on ? 0 : 1;
+        }
+
+        void ShowPopover(bool on)
+        {
+            Motion.Show(popover, on);
+            Motion.Place(popover, 0, on ? 0 : -6);
+        }
 
         var script = new SceneScript
         {
@@ -263,9 +283,14 @@ internal static class GuideScenes
             {
                 first.Reset();
                 second.Reset();
-                Motion.Hide(panel);
-                Motion.Place(panel, 0, -8);
-                editTitle.Text = "准备周会材料";
+                second.Title.Text = "准备周会材料";
+                inputText.Text = "准备周会材料";
+                ShowInput(false);
+                ShowPopover(false);
+                Motion.Place(tag, 0, 0);
+                SceneLayer.Relabel(tag, "P2");
+                layer.Tint(tag, "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
+                layer.Tint(optionHigh, "PriorityHighSurfaceBrush", "PriorityHighBrush");
                 cursor.Park();
             }
         };
@@ -274,23 +299,47 @@ internal static class GuideScenes
             .Then(240, () => layer.Brushes.Set(first.Ring, Avalonia.Controls.Shapes.Shape.StrokeProperty, "AccentBrush"))
             .Click(cursor, 22, 26)
             .Then(700, first.Complete)
-            // 已完成任务沉到底部：两行交换位置
+            // 已完成任务沉到底部：两行交换位置，第二行的 P 标签随行上移
             .Then(900, () =>
             {
                 Motion.Place(first.Frame, 0, 30);
                 Motion.Place(second.Frame, 0, -30);
+                Motion.Place(tag, 0, -30);
+                Motion.Place(input, 0, -30);
+                Motion.Place(popover, 0, -36);
             })
+            // 双击标题：两次点击环
             .MoveTo(cursor, 90, 26)
-            .Then(300, () => Motion.Show(second.Hover))
+            .Then(200, () => Motion.Show(second.Hover))
             .Click(cursor, 90, 26)
+            .Click(cursor, 90, 26)
+            .Then(400, () => ShowInput(true))
+            .Type(inputText, "准备周会材料和议程", 140, "准备周会材料")
+            // 回车保存：输入框收起，标题换成新文案
+            .Then(700, () =>
+            {
+                second.Title.Text = "准备周会材料和议程";
+                ShowInput(false);
+            })
+            // 点 P 标签，弹出三档小框，点 P1 即生效
+            .MoveTo(cursor, tagX + 13, tagY - 22)
+            .Click(cursor, tagX + 13, tagY - 22)
             .Then(500, () =>
             {
-                Motion.Show(panel);
-                Motion.Place(panel, 0, 0);
+                Motion.Show(popover);
+                Motion.Place(popover, 0, -30);
+            })
+            .MoveTo(cursor, tagX - 34 + 30, tagY + 22 + 14 - 30)
+            .Then(250, () => layer.Tint(optionHigh, "PriorityHighBrush", "OnAccentBrush"))
+            .Click(cursor, tagX - 34 + 30, tagY + 22 + 14 - 30)
+            .Then(900, () =>
+            {
+                Motion.Hide(popover);
+                SceneLayer.Relabel(tag, "P1");
+                layer.Tint(tag, "PriorityHighSurfaceBrush", "PriorityHighBrush");
                 cursor.Park();
             })
-            .Type(editTitle, "准备周会材料和议程", 150, "准备周会材料")
-            .Wait(1800);
+            .Wait(1600);
     }
 
     private static SceneScript DeleteTask(SceneLayer layer)

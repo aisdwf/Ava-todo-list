@@ -275,14 +275,14 @@ public class MainViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// 编辑任务标题后须落库。
+    /// 双击标题就地改名后回车须落库（spec-inline-task-edit）。
     /// </summary>
     /// <remarks>
     /// 回归防护：在此之前任务创建后完全无法修改，
     /// 打错一个字只能删除重建（且会丢失原 CreatedAt）。
     /// </remarks>
     [AvaloniaFact]
-    public async Task SaveEdit_PersistsTitleChange()
+    public async Task CommitTitleEdit_PersistsTitleChange()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -291,20 +291,21 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        Assert.True(row.IsEditing);
-        Assert.Equal("原标题", row.EditTitle);
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        Assert.True(row.IsEditingTitle);
+        Assert.Equal("原标题", row.TitleBuffer);
 
-        row.EditTitle = "改后的标题";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "改后的标题";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
 
-        Assert.False(row.IsEditing);
+        Assert.False(row.IsEditingTitle);
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal("改后的标题", stored!.Title);
+        Assert.Equal("改后的标题", vm.Tasks.Single(t => t.Task.Id == row.Task.Id).Title);
     }
 
     [AvaloniaFact]
-    public async Task SaveEdit_TrimsTitle()
+    public async Task CommitTitleEdit_TrimsTitle()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -313,23 +314,23 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditTitle = "   带空格的标题   ";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "   带空格的标题   ";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal("带空格的标题", stored!.Title);
     }
 
     /// <summary>
-    /// 编辑时清空标题须保留原值，而非保存空标题。
+    /// 清空标题后提交须保留原值，而非保存空标题。
     /// </summary>
     /// <remarks>
     /// 无标题任务在列表中不可识别，等同数据垃圾。
     /// 该行为须与创建路径的「空白标题静默忽略」一致（Article 6）。
     /// </remarks>
     [AvaloniaFact]
-    public async Task SaveEdit_KeepsOriginalTitleWhenCleared()
+    public async Task CommitTitleEdit_KeepsOriginalTitleWhenCleared()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -338,23 +339,20 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditTitle = "   ";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "   ";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
 
+        Assert.False(row.IsEditingTitle);
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal("不该丢失的标题", stored!.Title);
     }
 
     /// <summary>
-    /// 标题非法时只丢弃该项修改，其余字段照常保存。
+    /// Esc 取消：丢弃输入，实体与库都保持原标题（owner 裁决「Esc取消」）。
     /// </summary>
-    /// <remarks>
-    /// 若因标题非法而拒绝整次提交，用户改对了的日期与标签会一并丢失 ——
-    /// 那是比「标题没改成功」更严重的意外数据损失。
-    /// </remarks>
     [AvaloniaFact]
-    public async Task SaveEdit_AppliesOtherFieldsEvenWhenTitleInvalid()
+    public async Task CancelTitleEdit_DiscardsBuffer()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -363,14 +361,34 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditTitle = "";
-        row.EditPriority = TaskPriority.High;
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "不要的修改";
+        vm.CancelTitleEditCommand.Execute(row);
 
-        var stored = await _repo.GetByIdAsync(row.Task.Id);
-        Assert.Equal("原标题", stored!.Title);
-        Assert.Equal(TaskPriority.High, stored.Priority);
+        Assert.False(row.IsEditingTitle);
+        Assert.Equal("原标题", row.Task.Title);
+        Assert.Equal("原标题", (await _repo.GetByIdAsync(row.Task.Id))!.Title);
+    }
+
+    /// <summary>
+    /// 提交幂等：回车后失焦 / 点外部会再次触发提交，第二次不得覆盖或报错。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task CommitTitleEdit_IsIdempotentAfterFirstCommit()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.NewTaskTitle = "原标题";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+
+        var row = vm.Tasks[0];
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "新标题";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
+
+        Assert.Equal("新标题", (await _repo.GetByIdAsync(row.Task.Id))!.Title);
     }
 
     /// <summary>
@@ -438,19 +456,24 @@ public class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task SaveEdit_ToleratesNullParameter()
+    public async Task InlineEditCommands_TolerateNullParameter()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
 
-        await vm.SaveEditCommand.ExecuteAsync(null);
-        await vm.ToggleEditCommand.ExecuteAsync(null);
+        await vm.BeginTitleEditCommand.ExecuteAsync(null);
+        await vm.CommitTitleEditCommand.ExecuteAsync(null);
+        vm.CancelTitleEditCommand.Execute(null);
+        await vm.CommitRowPriorityCommand.ExecuteAsync(null);
 
         Assert.Empty(vm.Tasks);
     }
 
+    /// <summary>
+    /// 行上优先级浮层点选即持久化，行投影随之刷新（spec-inline-task-edit）。
+    /// </summary>
     [AvaloniaFact]
-    public async Task SaveEdit_PersistsPriorityChange()
+    public async Task CommitRowPriority_PersistsPickedPriority()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -460,24 +483,41 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditPriority = TaskPriority.High;
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        await vm.CommitRowPriorityCommand.ExecuteAsync(new PriorityCommit(row, TaskPriority.High));
 
         var stored = await _repo.GetByIdAsync(row.Task.Id);
         Assert.Equal(TaskPriority.High, stored!.Priority);
+        Assert.Equal(TaskPriority.High, vm.Tasks.Single(t => t.Task.Id == row.Task.Id).Priority);
     }
 
     /// <summary>
-    /// 同一时刻只允许一行处于编辑态。
+    /// 提升优先级后列表按新优先级重排（TaskListOrder：未完成内按优先级）。
     /// </summary>
-    /// <remarks>
-    /// 多行同时展开会让任务流被面板撑满、丧失浏览性，
-    /// 也使「当前在改哪一条」变得不明确。
-    /// 切换时前一行的改动须被提交而非静默丢弃。
-    /// </remarks>
     [AvaloniaFact]
-    public async Task ToggleEdit_ClosesOtherRowsAndCommitsTheirChanges()
+    public async Task CommitRowPriority_ReordersList()
+    {
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.NewTaskPriority = TaskPriority.Medium;
+        vm.NewTaskTitle = "中";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        vm.NewTaskPriority = TaskPriority.Low;
+        vm.NewTaskTitle = "低";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        Assert.Equal("中", vm.Tasks[0].Title);
+
+        var low = vm.Tasks.Single(t => t.Title == "低");
+        await vm.CommitRowPriorityCommand.ExecuteAsync(new PriorityCommit(low, TaskPriority.High));
+
+        Assert.Equal("低", vm.Tasks[0].Title);
+    }
+
+    /// <summary>
+    /// 同一时刻只允许一行处于标题编辑；双击另一行时前一行的输入须提交而非静默丢弃。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task BeginTitleEdit_CommitsOtherEditingRow()
     {
         var vm = CreateViewModel();
         await vm.InitializeAsync();
@@ -488,37 +528,16 @@ public class MainViewModelTests : IDisposable
         await vm.AddTaskCommand.ExecuteAsync(null);
 
         var first = vm.Tasks.First(t => t.Task.Title == "第一条");
-        await vm.ToggleEditCommand.ExecuteAsync(first);
-        first.EditTitle = "第一条改名";
+        await vm.BeginTitleEditCommand.ExecuteAsync(first);
+        first.TitleBuffer = "第一条改名";
 
         var second = vm.Tasks.First(t => t.Task.Title == "第二条");
-        await vm.ToggleEditCommand.ExecuteAsync(second);
+        await vm.BeginTitleEditCommand.ExecuteAsync(second);
 
-        // 前一行已收起，且其改动已落库（未被静默丢弃）
-        Assert.False(first.IsEditing);
-        Assert.True(second.IsEditing);
+        // 前一行的输入已落库；提交引起整表重载后，编辑态落在列表里的当前实例上
         Assert.Equal("第一条改名", (await _repo.GetByIdAsync(first.Task.Id))!.Title);
-    }
-
-    /// <summary>
-    /// 再次点击同一行即提交并收起。
-    /// </summary>
-    [AvaloniaFact]
-    public async Task ToggleEdit_OnOpenRowSavesAndCollapses()
-    {
-        var vm = CreateViewModel();
-        await vm.InitializeAsync();
-
-        vm.NewTaskTitle = "任务";
-        await vm.AddTaskCommand.ExecuteAsync(null);
-
-        var row = vm.Tasks[0];
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        row.EditTitle = "改了";
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-
-        Assert.False(row.IsEditing);
-        Assert.Equal("改了", (await _repo.GetByIdAsync(row.Task.Id))!.Title);
+        var editing = Assert.Single(vm.Tasks, t => t.IsEditingTitle);
+        Assert.Equal(second.Task.Id, editing.Task.Id);
     }
 
     [AvaloniaFact]
