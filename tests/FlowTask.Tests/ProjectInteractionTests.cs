@@ -1,4 +1,5 @@
 using Avalonia.Headless.XUnit;
+using FlowTask.Core.Enums;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
@@ -388,8 +389,6 @@ public class ProjectInteractionTests : IDisposable
 
         var created = Assert.Single(vm.Tasks, t => t.Task.Title == "未选中项目时新建");
         Assert.Equal(DefaultProject.Id, created.Task.ProjectId);
-        Assert.DoesNotContain(vm.ProjectChoices, c => c.DisplayName == "未归属");
-        Assert.All(vm.ProjectChoices, c => Assert.False(string.IsNullOrEmpty(c.ProjectId)));
     }
 
     /// <summary>
@@ -609,14 +608,15 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 归档项目下的任务仍出现在全部任务看板；只改标题保存时不得把归属写成 null。
+    /// 归档项目下的任务仍出现在全部任务看板；就地改标题、改优先级都不得动归属。
     /// </summary>
     /// <remarks>
-    /// 编辑候选原先只含活跃项目，<c>BeginEdit</c> 找不到归属就落到「未归属」，
-    /// <c>SaveEdit</c> 无条件写回 <c>ProjectId</c>，任务被静默清空后再被 Default 迁移。
+    /// 原编辑面板曾因候选只含活跃项目而把归档归属静默写成「未归属」。
+    /// 面板与项目编辑已移除（R-2.4 裁决：创建后不可改项目），本测试守住
+    /// 「行上编辑动作只写各自字段、从不写 ProjectId」这一约束。
     /// </remarks>
     [AvaloniaFact]
-    public async Task SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged()
+    public async Task InlineEdit_OnArchivedProjectTask_KeepsAssignment()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "待归档";
@@ -636,18 +636,17 @@ public class ProjectInteractionTests : IDisposable
         Assert.Equal(projectId, row.Task.ProjectId);
         Assert.Equal(colorHex, row.ProjectColorHex);
 
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        Assert.Equal(projectId, row.EditProject.ProjectId);
-        Assert.Same(
-            row.EditProject,
-            Assert.Single(vm.ProjectChoices, c => c.ProjectId == projectId));
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "只改标题";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
 
-        row.EditTitle = "只改标题";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
+        await vm.CommitRowPriorityCommand.ExecuteAsync(new PriorityCommit(row, TaskPriority.High));
 
         var stored = await _repo.GetByIdAsync(taskId);
         Assert.Equal(projectId, stored!.ProjectId);
         Assert.Equal("只改标题", stored.Title);
+        Assert.Equal(TaskPriority.High, stored.Priority);
     }
 
     // ==================== 删除 ====================

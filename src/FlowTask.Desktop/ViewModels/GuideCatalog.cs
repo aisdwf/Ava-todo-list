@@ -15,7 +15,7 @@ public enum GuideSceneKind
     /// <summary>「到期」日期框点选与 P1–P3。</summary>
     DueAndPriority,
 
-    /// <summary>圆环完成与点击标题展开编辑。</summary>
+    /// <summary>圆环完成、双击标题改名、点 P 标签改优先级（spec-inline-task-edit）。</summary>
     EditAndComplete,
 
     /// <summary>悬停出现删除按钮并删除任务。</summary>
@@ -124,17 +124,20 @@ public static class GuideCatalog
             {
                 "「默认 +N 天」按设置里的天数推算，「清除」去掉到期日，都是一下就生效。",
                 "键盘也能用：方向键移动日期，回车确认；Esc 或点框外取消。",
-                "列表里点任务标题下方的日期（或「到期」）可以随时改期；已完成的任务显示完成日。"
+                "列表里点任务标题下方的日期（或「到期」）可以随时改期；已完成的任务显示完成日。",
+                "列表里点任务的 P1–P3 标签，同样弹出小框改优先级。"
             },
             new[] { OnboardingTargets.AddBar }),
 
         new GuideTopic(string.Empty, GuideSceneKind.EditAndComplete, "基础",
-            "勾选完成，点标题编辑",
-            "点左侧圆环完成任务，它会划线并沉到底部；点标题展开编辑面板。",
+            "勾选完成，双击改名",
+            "点左侧圆环完成任务，它会划线并沉到底部；双击标题直接改名，回车或点旁边保存。",
             new[]
             {
                 "再点一次圆环即可撤销完成。",
-                "编辑面板可改标题、优先级和所属项目，修改即时保存。"
+                "改名时按 Esc 放弃修改；清空标题保存会保留原标题。",
+                "点标题左侧的 P1–P3 标签弹出小框，点一档即生效。",
+                "任务的所属项目在创建时决定，之后不能更改。"
             },
             new[] { OnboardingTargets.TaskRow, OnboardingTargets.TaskEmpty }),
 

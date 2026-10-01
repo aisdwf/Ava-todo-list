@@ -17,8 +17,9 @@ public static class OnboardingProgress
     /// <summary>当前引导内容版本。</summary>
     /// <remarks>
     /// 2：spec-due-date-picker 把添加栏改为「标题 | 到期入口 | P1–P3」单行，第 2 步「到期日与优先级」的讲解与挖空位置随之改变（BR-1 第 3 条）。
+    /// 3：spec-inline-task-edit 取消点标题展开编辑面板，改为双击标题改名、点 P 标签弹框改优先级，第 3 步讲解随之改变。
     /// </remarks>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     /// <summary>把存值解析为已完成的版本号；空、坏值、负数一律视为 0（未看过）。</summary>
     public static int Parse(string? raw)

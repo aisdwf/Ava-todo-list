@@ -473,6 +473,59 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 双击任务标题：进入就地改名，输入框出现后聚焦并全选（spec-inline-task-edit）。
+    /// </summary>
+    /// <remarks>
+    /// 已完成任务同样允许改名：完成态只影响视觉沉降，不锁定内容。
+    /// 输入框在 <c>IsEditingTitle</c> 翻转后的下一次布局才可见，聚焦须延到 Loaded 优先级，
+    /// 否则 <c>Focus()</c> 落在不可见控件上静默失败。
+    /// </remarks>
+    private async void OnTaskTitleDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Panel { DataContext: TaskRowViewModel row } || DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        try
+        {
+            await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("MainWindow.BeginTitleEdit failed", ex);
+            return;
+        }
+
+        // 提交别的行可能已重建列表，不能沿用 sender：按编辑态重新找输入框
+        Dispatcher.UIThread.Post(() =>
+        {
+            var editing = vm.Tasks.FirstOrDefault(t => t.IsEditingTitle);
+            var input = this.GetVisualDescendants()
+                .OfType<TextBox>()
+                .FirstOrDefault(t => t.Classes.Contains("TitleInput") && ReferenceEquals(t.DataContext, editing));
+            if (input is { IsEffectivelyVisible: true })
+            {
+                input.Focus();
+                input.SelectAll();
+            }
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// 标题输入框失焦时提交，兜底 Tab 切焦点等非指针路径（见 <see cref="OnWindowPointerPressed"/>）。
+    /// </summary>
+    private void OnTaskTitleLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: TaskRowViewModel { IsEditingTitle: true } row }
+            && DataContext is MainViewModel vm)
+        {
+            vm.CommitTitleEditCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
     /// 单击项目行切换筛选。重命名进行中时忽略，避免打断编辑。
     /// </summary>
     private void OnProjectRowTapped(object? sender, TappedEventArgs e)
@@ -534,6 +587,30 @@ public partial class MainWindow : Window
         {
             vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
         }
+
+        // 任务标题就地编辑：点到输入框以外即保存（owner 裁决「回车/点外面保存」）
+        var editingRow = vm.Tasks.FirstOrDefault(t => t.IsEditingTitle);
+        if (editingRow is not null && !IsInsideTextBoxOf(target, editingRow))
+        {
+            vm.CommitTitleEditCommand.Execute(editingRow);
+        }
+    }
+
+    /// <summary>
+    /// 点击目标是否落在某行自己的输入框内。与 <see cref="IsInsideRenamingTextBox"/> 不同，
+    /// 任务行其他部位（勾选、优先级、到期）也共享该行 DataContext，点它们应当算「外面」。
+    /// </summary>
+    private static bool IsInsideTextBoxOf(Visual? target, object row)
+    {
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (node is TextBox { DataContext: { } dataContext } && ReferenceEquals(dataContext, row))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

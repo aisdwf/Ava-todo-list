@@ -1,4 +1,5 @@
 using Avalonia.Headless.XUnit;
+using FlowTask.Core.Enums;
 using FlowTask.Core.Interfaces;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.ViewModels;
@@ -15,18 +16,32 @@ public class PersistThenWritebackTests
     private readonly FakeClock _clock = new(new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc));
 
     [AvaloniaFact]
-    public async Task SaveEdit_RestoresFieldsWhenSaveThrows()
+    public async Task CommitTitle_RestoresWhenSaveThrows()
     {
         var task = TaskItemFactory.Create(_clock, "原标题", projectId: DefaultProject.Id);
         var row = new TaskRowViewModel(task, null);
-        row.BeginEdit(new List<ProjectChoice> { ProjectChoice.Default });
-        row.EditTitle = "新标题";
+        row.BeginTitleEdit();
+        row.TitleBuffer = "新标题";
 
-        var sut = new SaveEditTaskViewModel(new ThrowingTaskRepository());
+        var sut = new CommitRowTitleViewModel(new ThrowingTaskRepository());
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => sut.ExecuteAsync(row, () => Task.CompletedTask, this));
 
         Assert.Equal("原标题", task.Title);
+        Assert.Equal("原标题", row.Title);
+    }
+
+    [AvaloniaFact]
+    public async Task CommitPriority_RestoresWhenSaveThrows()
+    {
+        var task = TaskItemFactory.Create(_clock, "优先级", TaskPriority.Low, projectId: DefaultProject.Id);
+        var row = new TaskRowViewModel(task, null);
+        var sut = new CommitRowPriorityViewModel(new ThrowingTaskRepository());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.ExecuteAsync(new PriorityCommit(row, TaskPriority.High), () => Task.CompletedTask, this));
+
+        Assert.Equal(TaskPriority.Low, task.Priority);
     }
 
     [AvaloniaFact]
