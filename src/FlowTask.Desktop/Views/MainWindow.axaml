@@ -271,8 +271,8 @@
                                 ToolTip.Tip="操作指南"
                                 AutomationProperties.Name="操作指南"
                                 IsVisible="{Binding !IsSettingsOpen}">
-                            <Viewbox Width="18" Height="18">
-                                <Path Classes="StrokeIcon" Data="{StaticResource IconHelp}" />
+                            <Viewbox Classes="HeaderIcon">
+                                <Path Classes="StrokeIcon Bold" Data="{StaticResource IconHelp}" />
                             </Viewbox>
                         </Button>
 
@@ -283,8 +283,8 @@
                                 ToolTip.Tip="设置"
                                 AutomationProperties.Name="设置"
                                 IsVisible="{Binding !IsSettingsOpen}">
-                            <Viewbox Width="18" Height="18">
-                                <Path Classes="StrokeIcon" Data="{StaticResource IconSettings}" />
+                            <Viewbox Classes="HeaderIcon">
+                                <Path Classes="StrokeIcon Bold" Data="{StaticResource IconSettings}" />
                             </Viewbox>
                         </Button>
 
@@ -294,11 +294,11 @@
                                 AutomationProperties.Name="切换昼夜主题">
                             <!-- 深色时显示太阳（提示可切亮），浅色时显示月亮；二者同一描边 -->
                             <Panel>
-                                <Viewbox Width="18" Height="18" IsVisible="{Binding IsDarkTheme}">
-                                    <Path Classes="StrokeIcon" Data="{StaticResource IconSun}" />
+                                <Viewbox Classes="HeaderIcon" IsVisible="{Binding IsDarkTheme}">
+                                    <Path Classes="StrokeIcon Bold" Data="{StaticResource IconSun}" />
                                 </Viewbox>
-                                <Viewbox Width="18" Height="18" IsVisible="{Binding !IsDarkTheme}">
-                                    <Path Classes="StrokeIcon" Data="{StaticResource IconMoon}" />
+                                <Viewbox Classes="HeaderIcon" IsVisible="{Binding !IsDarkTheme}">
+                                    <Path Classes="StrokeIcon Bold" Data="{StaticResource IconMoon}" />
                                 </Viewbox>
                             </Panel>
                         </Button>

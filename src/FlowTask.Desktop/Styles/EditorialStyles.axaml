@@ -160,6 +160,20 @@
     <Style Selector="Path.StrokeIcon.Accent">
         <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
     </Style>
+    <!-- 顶栏三钮加粗档（spec-icon-refresh）：配合 20px Viewbox，屏幕线宽约 1.88px。
+         只给 40px 圆钮用：行内 14px 图标保持 1.75，所有者原话「垃圾桶这些效果还不错」 -->
+    <Style Selector="Path.StrokeIcon.Bold">
+        <Setter Property="StrokeThickness" Value="2.25" />
+    </Style>
+    <!-- 顶栏图标的 Viewbox。必须关闭裁剪：Path 的 Stretch=Uniform 只把几何的**填充外框**
+         拉满 24×24，描边仍向外溢出半个线宽（2.25 时为 1.125）。Viewbox 默认 ClipToBounds=True，
+         会把齿顶、光芒末端、圆的最外沿切平，所有者预览反馈「四周有一点像是被切割一样的痕迹」。
+         40px 圆钮内留白充足，溢出的约 0.9px 不会碰到按钮边缘。 -->
+    <Style Selector="Viewbox.HeaderIcon">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
 
     <!-- ================= 主行动按钮 ================= -->
     <Style Selector="Button.PrimaryAction">
