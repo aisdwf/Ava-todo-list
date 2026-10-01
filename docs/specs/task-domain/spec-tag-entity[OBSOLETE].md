@@ -11,7 +11,7 @@
 
 > ## ⚠ 作废说明（docs-conventions §终态要求）
 >
-> **本 SPEC 记录的标签功能已被 [spec-remove-tag-feature](./spec-remove-tag-feature[IN-PROGRESS].md) 完全移除。**
+> **本 SPEC 记录的标签功能已被 [spec-remove-tag-feature](./spec-remove-tag-feature[DONE].md) 完全移除。**
 >
 > **作废原因**：标签功能本身按用户当时的明确裁决（见下方 §1.1 原话）正确落地并交付，
 > 机器验证与人工验证均已在 2026-09-15 通过 —— 本 SPEC 记录的实现**没有过失**。
@@ -21,7 +21,7 @@
 > **是否有部分保留**：无。Core/Infrastructure/ViewModel/UI/测试/内置预设标签全部移除；
 > 数据库中已存在的 `Tags`/`TaskTags` 表按用户裁决不做迁移，保留为死表，不再被代码引用。
 >
-> **当前应参照**：[spec-remove-tag-feature](./spec-remove-tag-feature[IN-PROGRESS].md)。
+> **当前应参照**：[spec-remove-tag-feature](./spec-remove-tag-feature[DONE].md)。
 > 本文件自本次作废起仅作历史留存，不可再作为实现依据。
 >
 > ---

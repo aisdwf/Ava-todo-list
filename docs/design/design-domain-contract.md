@@ -194,7 +194,7 @@ UI **严禁**对其做视觉标记、警告或催促补全。
 
 > **⚠ 本节已废弃（2026-09-24）**：标签功能（`Tag`/`TaskTag` 实体及全部关联代码）
 > 已被用户裁决完全移除（原话：「标签实际体验下来功能很累赘，可以考虑清理这个功能」），
-> 详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[IN-PROGRESS].md)。
+> 详见 [spec-remove-tag-feature](../specs/task-domain/spec-remove-tag-feature[DONE].md)。
 > 以下原文保留作历史记录（说明当时为何要实体化），**不再是当前数据契约**。
 
 **用户明示（历史记录）**：「我对标签的理解就是提供可删除的预设，

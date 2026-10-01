@@ -216,7 +216,7 @@
 
 ## Related documents
 
-- SPECs: [spec-quick-window-hotkey-capture[IN-PROGRESS]](../quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md)（进程级热键依赖进程存活）；[spec-appearance-persist[DONE]](../visual-theme/spec-appearance-persist[DONE].md)（AppSettings 键在 Desktop）；[spec-settings-master-detail-and-theme-presets[DONE]](../visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md)（通用页）
+- SPECs: [spec-quick-window-hotkey-capture[DONE]](../quick-capture/spec-quick-window-hotkey-capture[DONE].md)（进程级热键依赖进程存活）；[spec-appearance-persist[DONE]](../visual-theme/spec-appearance-persist[DONE].md)（AppSettings 键在 Desktop）；[spec-settings-master-detail-and-theme-presets[DONE]](../visual-theme/spec-settings-master-detail-and-theme-presets[DONE].md)（通用页）
 - Requirements: `REQUIREMENTS.md` R-1.5；本轮增补 R-5
 - Rules: `rule-no-invented-user-behavior`；`rule-spec-review-gate`；`technical-rules.md` TR-1
 - Archived: `design-task-domain-superseded.md` §1.4 曾排除「托盘常驻」，本 SPEC 按所有者原话覆盖该排除（不回写已归档文）

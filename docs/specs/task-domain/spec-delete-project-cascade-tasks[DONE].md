@@ -162,7 +162,7 @@ N 为确认时 `CountTasksAsync` 的结果（未删除任务，与用户在列�
 - SPECs：
   - [`spec-project-managed-tasks[DONE]`](./spec-project-managed-tasks[DONE].md)（行内 `X` 物理删除；本 SPEC 把同一删除语义扩到「删项目」）
   - [`spec-classification-ui[DONE]`](../main-window/spec-classification-ui[DONE].md)（历史清单仍写「确认后任务仍在」；以本 SPEC 为准，不回改那份已关闭 SPEC）
-  - [`spec-create-task-inherits-selected-project[IN-PROGRESS]`](../main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md)（删除项目回退已改为指向本 SPEC 的级联删除）
+  - [`spec-create-task-inherits-selected-project[DONE]`](../main-window/spec-create-task-inherits-selected-project[DONE].md)（删除项目回退已改为指向本 SPEC 的级联删除）
 - ADRs：无新增
 - Rules：`rule-no-invented-user-behavior.md`；`rule-spec-review-gate.md`；`rule-doc-boundary.md`
 - Design：`design-domain-contract.md` §2.3 / §4.2（本轮已修订）
