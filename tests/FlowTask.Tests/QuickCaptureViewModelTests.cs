@@ -248,4 +248,84 @@ public class QuickCaptureViewModelTests : IDisposable
             last.Id == projectA.Id ? ["甲的任务"] : Array.Empty<string>(),
             vm.Tasks.Select(t => t.Task.Title).ToArray());
     }
+
+    /// <summary>
+    /// R-1.10：底栏选择器的日期随新任务落库，保存后清空，下一条默认无到期日。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_WritesSelectedDueDateThenResets()
+    {
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        vm.NewDueDateEditor.Load(null);
+        vm.NewDueDateEditor.CommitDate(new DateTime(2026, 3, 12));
+        vm.InputText = "带日期";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Null(vm.NewTaskDueDate);
+        var saved = vm.Tasks.Single(t => t.Task.Title == "带日期");
+        Assert.Equal(new DateTime(2026, 3, 12), (await _taskRepo.GetByIdAsync(saved.Task.Id))!.DueDate);
+
+        vm.InputText = "无日期";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Null(vm.Tasks.Single(t => t.Task.Title == "无日期").Task.DueDate);
+    }
+
+    /// <summary>
+    /// 回车保存后优先级保持，便于连续录入同档任务；Esc 关闭才回到 P2。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_KeepsPriority_CancelResetsIt()
+    {
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        vm.Priority = FlowTask.Core.Enums.TaskPriority.High;
+        vm.InputText = "第一条";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(FlowTask.Core.Enums.TaskPriority.High, vm.Priority);
+
+        vm.InputText = "第二条";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(
+            FlowTask.Core.Enums.TaskPriority.High,
+            vm.Tasks.Single(t => t.Task.Title == "第二条").Task.Priority);
+
+        vm.CancelCommand.Execute(null);
+        Assert.Equal(FlowTask.Core.Enums.TaskPriority.Medium, vm.Priority);
+    }
+
+    /// <summary>
+    /// 小窗「默认 +N 天」读取主窗保存的偏移设置，而不是写死 1。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task DefaultPreset_UsesPersistedOffset()
+    {
+        await _settingsRepo.SetDefaultDueOffsetDaysAsync(5);
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        vm.NewDueDateEditor.Load(null);
+        vm.NewDueDateEditor.ApplyDefaultDueCommand.Execute(null);
+
+        Assert.Equal(new DateTime(2026, 3, 10).AddDays(5).Date, vm.NewTaskDueDate!.Value.Date);
+    }
+
+    /// <summary>
+    /// R-1.10：小窗行内改期即持久化，行展示值同步。
+    /// </summary>
+    [AvaloniaFact]
+    public async Task CommitRowDueDate_PersistsAndRefreshesRow()
+    {
+        var task = TaskItemFactory.Create(_clock, "改期", projectId: DefaultProject.Id);
+        await _taskRepo.SaveTaskAsync(task);
+        var vm = CreateViewModel();
+        await vm.PrepareAsync();
+
+        await vm.CommitRowDueDateCommand.ExecuteAsync(new DueDateCommit(vm.Tasks[0], new DateTime(2026, 3, 11)));
+
+        Assert.Equal(new DateTime(2026, 3, 11), (await _taskRepo.GetByIdAsync(task.Id))!.DueDate);
+        Assert.Equal(new DateTime(2026, 3, 11), vm.Tasks[0].DueDate);
+    }
 }

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FlowTask.Desktop.ViewModels"
         xmlns:conv="using:FlowTask.Desktop.Converters"
+        xmlns:controls="using:FlowTask.Desktop.Controls"
         x:Class="FlowTask.Desktop.Views.QuickCaptureWindow"
         x:DataType="vm:QuickCaptureViewModel"
         Title="FlowTask 快捷小窗"
@@ -62,10 +63,8 @@
                     <DataTemplate DataType="vm:ProjectItemViewModel">
                         <Grid ColumnDefinitions="Auto,*">
                             <Ellipse Grid.Column="0"
-                                     Width="8" Height="8"
-                                     Margin="0,0,8,0"
-                                     VerticalAlignment="Center"
-                                     Fill="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" />
+                                     Classes="ProjectDot"
+                                     Margin="0,0,8,0" />
                             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                         </Grid>
                     </DataTemplate>
@@ -87,10 +86,13 @@
                     <ItemsControl ItemsSource="{Binding Tasks}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:TaskRowViewModel">
-                                <Border BorderBrush="{DynamicResource HairlineBrush}"
+                                <!-- Background 透明而非空：否则行的空白处不参与命中，:pointerover 不触发，悬停入口不会浮现 -->
+                                <Border Classes="QuickTaskRow"
+                                        Background="Transparent"
+                                        BorderBrush="{DynamicResource HairlineBrush}"
                                         BorderThickness="0,0,0,1"
                                         Padding="0,8">
-                                    <Grid ColumnDefinitions="Auto,*">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
                                         <CheckBox Grid.Column="0"
                                                   Classes="RingCheck"
                                                   IsChecked="{Binding IsCompleted, Mode=TwoWay}"
@@ -106,6 +108,22 @@
                                                    Classes.QuickCaptureCompleted="{Binding IsCompleted}"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center" />
+
+                                        <!-- 到期日 (R-1.10)：有值常驻显示、点击修改；无值时悬停整行浮现「到期」入口。
+                                             首版形态，待 owner 预览裁决（spec-due-date-picker Q2）。 -->
+                                        <controls:DueDatePicker Grid.Column="2"
+                                                                Classes="HoverOnly"
+                                                                Margin="8,0,0,0"
+                                                                IsVisible="{Binding !IsCompleted}"
+                                                                Date="{Binding DueDate}"
+                                                                Editor="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).RowDueDateEditor}"
+                                                                CommitCommand="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).CommitRowDueDateCommand}"
+                                                                CommitTarget="{Binding}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="MetaText Done"
+                                                   Margin="8,0,0,0"
+                                                   IsVisible="{Binding IsCompleted}"
+                                                   Text="{Binding CompletedLocalText}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -114,8 +132,8 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- 底部：优先级分段选择 + 快捷键指引 -->
-            <Grid Grid.Row="3" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+            <!-- 底部：优先级分段选择 + 新任务到期日 + 快捷键指引 -->
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,Auto,*" Margin="0,14,0,0">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                     <RadioButton Classes="SegmentChoice" GroupName="CapturePriority" Content="P1"
                                  IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=High, Mode=TwoWay}" />
@@ -125,7 +143,15 @@
                                  IsChecked="{Binding Priority, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Low, Mode=TwoWay}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                <!-- 新任务到期日：常驻可点击（用户裁决「绝对需要有直接点击的入口」），Ctrl+D 仅为补充 -->
+                <controls:DueDatePicker Grid.Column="1"
+                                        x:Name="NewDuePicker"
+                                        Margin="10,0,0,0"
+                                        Date="{Binding NewTaskDueDate}"
+                                        Editor="{Binding NewDueDateEditor}"
+                                        ToolTip.Tip="设置到期日（Ctrl+D）" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"
                             Spacing="8" VerticalAlignment="Center">
                     <Border Classes="KeyCap">
                         <TextBlock Text="Ctrl+Tab" />

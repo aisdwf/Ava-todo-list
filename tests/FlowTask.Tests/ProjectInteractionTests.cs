@@ -1,4 +1,5 @@
 using Avalonia.Headless.XUnit;
+using FlowTask.Core.Enums;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
@@ -195,10 +196,15 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 相邻新建的项目应获得不同颜色，否则色条失去区分作用。
+    /// 连续新建的项目按创建顺序排在 Default 之后。
     /// </summary>
+    /// <remarks>
+    /// 原测试断言相邻项目颜色不同；owner 裁决项目色统一取主题强调色
+    /// （spec-theme-bound-decoration-colors），该断言失去意义。保留其中仍有效的
+    /// 排序部分：取色曾以 SortOrder 为输入，删除取色不得连带破坏排序。
+    /// </remarks>
     [AvaloniaFact]
-    public async Task CreateProject_AssignsDistinctColorsToConsecutiveProjects()
+    public async Task CreateProject_AppendsConsecutiveProjectsInOrder()
     {
         var vm = await CreateInitializedAsync();
 
@@ -208,8 +214,8 @@ public class ProjectInteractionTests : IDisposable
         await vm.CreateProjectCommand.ExecuteAsync(null);
 
         var users = UserProjects(vm).ToList();
-        Assert.Equal(2, users.Count);
-        Assert.NotEqual(users[0].ColorHex, users[1].ColorHex);
+        Assert.Equal(new[] { "甲", "乙" }, users.Select(p => p.Name));
+        Assert.True(users[0].Project.SortOrder < users[1].Project.SortOrder);
     }
 
     // ==================== 筛选正交性 ====================
@@ -388,8 +394,6 @@ public class ProjectInteractionTests : IDisposable
 
         var created = Assert.Single(vm.Tasks, t => t.Task.Title == "未选中项目时新建");
         Assert.Equal(DefaultProject.Id, created.Task.ProjectId);
-        Assert.DoesNotContain(vm.ProjectChoices, c => c.DisplayName == "未归属");
-        Assert.All(vm.ProjectChoices, c => Assert.False(string.IsNullOrEmpty(c.ProjectId)));
     }
 
     /// <summary>
@@ -609,21 +613,21 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 归档项目下的任务仍出现在全部任务看板；只改标题保存时不得把归属写成 null。
+    /// 归档项目下的任务仍出现在全部任务看板；就地改标题、改优先级都不得动归属。
     /// </summary>
     /// <remarks>
-    /// 编辑候选原先只含活跃项目，<c>BeginEdit</c> 找不到归属就落到「未归属」，
-    /// <c>SaveEdit</c> 无条件写回 <c>ProjectId</c>，任务被静默清空后再被 Default 迁移。
+    /// 原编辑面板曾因候选只含活跃项目而把归档归属静默写成「未归属」。
+    /// 面板与项目编辑已移除（R-2.4 裁决：创建后不可改项目），本测试守住
+    /// 「行上编辑动作只写各自字段、从不写 ProjectId」这一约束。
     /// </remarks>
     [AvaloniaFact]
-    public async Task SaveEdit_OnArchivedProjectTask_KeepsAssignmentWhenProjectUnchanged()
+    public async Task InlineEdit_OnArchivedProjectTask_KeepsAssignment()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "待归档";
         await vm.CreateProjectCommand.ExecuteAsync(null);
         var project = SoleUserProject(vm);
         var projectId = project.Id;
-        var colorHex = project.Project.ColorHex;
 
         vm.NewTaskTitle = "归档项目下的任务";
         await vm.AddTaskCommand.ExecuteAsync(null);
@@ -634,20 +638,19 @@ public class ProjectInteractionTests : IDisposable
 
         var row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
         Assert.Equal(projectId, row.Task.ProjectId);
-        Assert.Equal(colorHex, row.ProjectColorHex);
+        Assert.Equal("待归档", row.ProjectName);
 
-        await vm.ToggleEditCommand.ExecuteAsync(row);
-        Assert.Equal(projectId, row.EditProject.ProjectId);
-        Assert.Same(
-            row.EditProject,
-            Assert.Single(vm.ProjectChoices, c => c.ProjectId == projectId));
+        await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        row.TitleBuffer = "只改标题";
+        await vm.CommitTitleEditCommand.ExecuteAsync(row);
 
-        row.EditTitle = "只改标题";
-        await vm.SaveEditCommand.ExecuteAsync(row);
+        row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
+        await vm.CommitRowPriorityCommand.ExecuteAsync(new PriorityCommit(row, TaskPriority.High));
 
         var stored = await _repo.GetByIdAsync(taskId);
         Assert.Equal(projectId, stored!.ProjectId);
         Assert.Equal("只改标题", stored.Title);
+        Assert.Equal(TaskPriority.High, stored.Priority);
     }
 
     // ==================== 删除 ====================

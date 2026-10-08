@@ -1,27 +1,41 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia.Threading;
 
 namespace FlowTask.Desktop.Services;
 
 /// <summary>
-/// 进程级热键：Windows 使用 <c>RegisterHotKey</c>，macOS 使用 Carbon Event Hot Key；
-/// 其它平台返回 false 并由窗内回退。
+/// 进程级快捷小窗快捷键：Windows 使用 <c>RegisterHotKey</c>，组合由用户配置；
+/// macOS 使用 Carbon Event Hot Key，暂固定 Option+Space；其它平台不注册，由窗内回退。
 /// </summary>
-public sealed class GlobalHotkeyService : IDisposable
+/// <remarks>
+/// 此前 Windows 先试 Alt+Space、失败就静默改注册 Win+Alt+Space，用户只看到键帽变了却不知道原因
+/// （design wrong，spec-quick-window-custom-hotkey）。现在只注册用户选定的组合，失败如实返回，
+/// 由调用方提示并停用；每次注册的结果写入 <see cref="AppLog"/>。
+/// </remarks>
+public sealed class GlobalHotkeyService : IQuickWindowHotkeyRegistrar, IDisposable
 {
-    private const int HotkeyId = 0x46_54; // "FT"
-    private const uint ModAlt = 0x0001;
-    private const uint ModWin = 0x0008;
+    /// <summary>两个 id 轮换：换键时先注册新 id，成功后才注销旧 id，失败则旧组合不受影响。</summary>
+    private const int HotkeyIdA = 0x46_54; // "FT"
+    private const int HotkeyIdB = 0x46_55;
     private const uint ModNorepeat = 0x4000;
-    private const uint VkSpace = 0x20;
+    private const uint WmHotkey = 0x0312;
+    private const uint WmQuit = 0x0012;
+    private const uint WmAppInvoke = 0x8000 + 0x46; // WM_APP + n：让消息线程执行排队的注册请求
+    private const int ErrorHotkeyAlreadyRegistered = 1409;
 
     private readonly Action _onHotkey;
-    private readonly TaskCompletionSource<bool> _registration =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly object _startGate = new();
+    private readonly ConcurrentQueue<Action> _pending = new();
+    private TaskCompletionSource<bool>? _ready;
     private Thread? _messageThread;
     private volatile bool _running;
     private IntPtr _hwnd;
-    private volatile bool _registered;
+
+    /// <summary>当前生效的 id；0 表示没有注册任何组合。只在消息线程读写。</summary>
+    private int _activeId;
+    private QuickWindowHotkey _activeHotkey;
+
     private readonly List<IntPtr> _macHotKeys = [];
     private MacEventHandlerProc? _macEventHandler;
     private IntPtr _macEventHandlerRef;
@@ -32,46 +46,170 @@ public sealed class GlobalHotkeyService : IDisposable
         _onHotkey = onHotkey;
     }
 
-    /// <summary>
-    /// 尝试注册全局热键。Windows 使用 Alt+Space；macOS 使用 Option+Space。
-    /// 返回是否注册成功。
-    /// </summary>
-    public bool TryStart()
+    /// <inheritdoc />
+    public bool SupportsCustomHotkey => OperatingSystem.IsWindows();
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// TODO(macos-custom-hotkey): [2026-10-15] macOS 需要把 <see cref="QuickWindowHotkey"/> 映射为
+    /// Carbon 键码（kVK_*）与修饰位（cmdKey / optionKey / controlKey / shiftKey），
+    /// 并按「先注册新、再注销旧」改写 <see cref="TryStartMacOS"/>；完成后让
+    /// <see cref="SupportsCustomHotkey"/> 在 macOS 返回 true。期限与 spec-macos-initial-support 一致，
+    /// 该 SPEC 的 Risks 中登记了本项。
+    /// </remarks>
+    public async Task<HotkeyRegistrationOutcome> TryApplyAsync(QuickWindowHotkey hotkey)
     {
-        if (OperatingSystem.IsWindows())
+        if (!OperatingSystem.IsWindows())
         {
-            return TryStartWindows();
+            return HotkeyRegistrationOutcome.Unsupported;
         }
 
-        return OperatingSystem.IsMacOS() && TryStartMacOS();
+        if (!await EnsureWindowsThreadAsync().ConfigureAwait(false))
+        {
+            AppLog.Write($"GlobalHotkey Windows message thread unavailable; {hotkey} not registered");
+            return HotkeyRegistrationOutcome.Failed;
+        }
+
+        var result = new TaskCompletionSource<HotkeyRegistrationOutcome>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pending.Enqueue(() => ApplyOnMessageThread(hotkey, result));
+        if (!PostMessage(_hwnd, WmAppInvoke, IntPtr.Zero, IntPtr.Zero))
+        {
+            AppLog.Write($"GlobalHotkey Windows PostMessage failed: {Marshal.GetLastPInvokeError()}");
+            return HotkeyRegistrationOutcome.Failed;
+        }
+
+        var outcome = await HotkeyRegistrationWait
+            .WaitAsync(result, HotkeyRegistrationWait.DefaultTimeout, HotkeyRegistrationOutcome.Failed)
+            .ConfigureAwait(false);
+        return outcome;
     }
 
-    private bool TryStartWindows()
+    /// <inheritdoc />
+    public Task<bool> TryStartFixedAsync()
+        => Task.FromResult(OperatingSystem.IsMacOS() && TryStartMacOS());
+
+    private Task<bool> EnsureWindowsThreadAsync()
     {
-        _running = true;
-        _messageThread = new Thread(MessageLoop)
+        lock (_startGate)
         {
-            IsBackground = true,
-            Name = "FlowTask.GlobalHotkey"
-        };
-        if (OperatingSystem.IsWindows())
-        {
-            _messageThread.SetApartmentState(ApartmentState.STA);
-        }
-        _messageThread.Start();
+            if (_ready is null)
+            {
+                _ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _running = true;
+                _messageThread = new Thread(MessageLoop)
+                {
+                    IsBackground = true,
+                    Name = "FlowTask.GlobalHotkey"
+                };
+                if (OperatingSystem.IsWindows())
+                {
+                    _messageThread.SetApartmentState(ApartmentState.STA);
+                }
 
-        if (HotkeyRegistrationWait.Wait(_registration, HotkeyRegistrationWait.DefaultTimeout))
-        {
-            return true;
-        }
-
-        // 超时仍未发布结果：停掉消息线程，避免随后注册成功却与窗内 KeyDown 双路径并存。
-        if (!_registration.Task.IsCompleted)
-        {
-            Dispose();
+                _messageThread.Start();
+            }
         }
 
-        return false;
+        return HotkeyRegistrationWait.WaitAsync(_ready, HotkeyRegistrationWait.DefaultTimeout, false);
+    }
+
+    /// <summary>
+    /// 在消息线程上注册：<c>RegisterHotKey</c> 把热键绑在调用线程的窗口上，只能在这里调用。
+    /// </summary>
+    private void ApplyOnMessageThread(QuickWindowHotkey hotkey, TaskCompletionSource<HotkeyRegistrationOutcome> result)
+    {
+        // 同一组合再注册会因「已被注册」失败（占用者就是自己），不能误报成被其他程序占用
+        if (_activeId != 0 && hotkey == _activeHotkey)
+        {
+            result.TrySetResult(HotkeyRegistrationOutcome.Registered);
+            return;
+        }
+
+        var nextId = _activeId == HotkeyIdA ? HotkeyIdB : HotkeyIdA;
+        if (!RegisterHotKey(_hwnd, nextId, hotkey.Win32Modifiers | ModNorepeat, hotkey.Win32VirtualKey))
+        {
+            var error = Marshal.GetLastPInvokeError();
+            var outcome = error == ErrorHotkeyAlreadyRegistered
+                ? HotkeyRegistrationOutcome.Occupied
+                : HotkeyRegistrationOutcome.Failed;
+            AppLog.Write($"GlobalHotkey Windows registration failed: {hotkey}, Win32 error {error} ({outcome})");
+            result.TrySetResult(outcome);
+            return;
+        }
+
+        // 调用方已超时放弃：立刻撤掉，避免界面以为失败、系统里却多挂一个热键
+        if (!result.TrySetResult(HotkeyRegistrationOutcome.Registered))
+        {
+            UnregisterHotKey(_hwnd, nextId);
+            AppLog.Write($"GlobalHotkey Windows registration of {hotkey} arrived after timeout; unregistered");
+            return;
+        }
+
+        if (_activeId != 0)
+        {
+            UnregisterHotKey(_hwnd, _activeId);
+            AppLog.Write($"GlobalHotkey Windows unregistered: {_activeHotkey}");
+        }
+
+        _activeId = nextId;
+        _activeHotkey = hotkey;
+        AppLog.Write($"GlobalHotkey Windows registered: {hotkey}");
+    }
+
+    private void MessageLoop()
+    {
+        try
+        {
+            _hwnd = CreateMessageWindow();
+            if (_hwnd == IntPtr.Zero)
+            {
+                AppLog.Write($"GlobalHotkey Windows CreateWindowEx failed: {Marshal.GetLastPInvokeError()}");
+                _ready!.TrySetResult(false);
+                return;
+            }
+
+            _ready!.TrySetResult(true);
+
+            while (_running && GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
+            {
+                if (msg.message == WmAppInvoke)
+                {
+                    while (_pending.TryDequeue(out var action))
+                    {
+                        action();
+                    }
+
+                    continue;
+                }
+
+                if (msg.message == WmHotkey && _activeId != 0 && (int)msg.wParam == _activeId)
+                {
+                    Dispatcher.UIThread.Post(_onHotkey);
+                }
+
+                TranslateMessage(ref msg);
+                DispatchMessage(ref msg);
+            }
+        }
+        catch (Exception ex)
+        {
+            _ready?.TrySetResult(false);
+            AppLog.Write("GlobalHotkey MessageLoop", ex);
+        }
+        finally
+        {
+            if (_hwnd != IntPtr.Zero)
+            {
+                if (_activeId != 0)
+                {
+                    UnregisterHotKey(_hwnd, _activeId);
+                    _activeId = 0;
+                }
+
+                DestroyWindow(_hwnd);
+                _hwnd = IntPtr.Zero;
+            }
+        }
     }
 
     private bool TryStartMacOS()
@@ -104,7 +242,7 @@ public sealed class GlobalHotkeyService : IDisposable
             var hotKeyId = new EventHotKeyID
             {
                 Signature = MacHotkeySignature,
-                Id = HotkeyId
+                Id = HotkeyIdA
             };
 
             status = RegisterEventHotKey(
@@ -164,59 +302,12 @@ public sealed class GlobalHotkeyService : IDisposable
         }
     }
 
-    private void MessageLoop()
-    {
-        try
-        {
-            _hwnd = CreateMessageWindow();
-            // Alt+Space；部分环境被 shell 占用时再试 Win+Alt+Space
-            _registered = RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModNorepeat, VkSpace)
-                          || RegisterHotKey(_hwnd, HotkeyId, ModAlt | ModWin | ModNorepeat, VkSpace);
-            _registration.TrySetResult(_registered);
-
-            if (!_registered)
-            {
-                return;
-            }
-
-            while (_running && GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
-            {
-                if (msg.message == 0x0312 && (int)msg.wParam == HotkeyId)
-                {
-                    Dispatcher.UIThread.Post(() => _onHotkey());
-                }
-
-                TranslateMessage(ref msg);
-                DispatchMessage(ref msg);
-            }
-        }
-        catch (Exception ex)
-        {
-            _registration.TrySetResult(false);
-            AppLog.Write("GlobalHotkey MessageLoop", ex);
-        }
-        finally
-        {
-            if (_hwnd != IntPtr.Zero)
-            {
-                if (_registered)
-                {
-                    UnregisterHotKey(_hwnd, HotkeyId);
-                    _registered = false;
-                }
-
-                DestroyWindow(_hwnd);
-                _hwnd = IntPtr.Zero;
-            }
-        }
-    }
-
     public void Dispose()
     {
         _running = false;
         if (_hwnd != IntPtr.Zero)
         {
-            PostMessage(_hwnd, 0x0012, IntPtr.Zero, IntPtr.Zero); // WM_QUIT
+            PostMessage(_hwnd, WmQuit, IntPtr.Zero, IntPtr.Zero);
         }
 
         _messageThread?.Join(500);
@@ -361,7 +452,7 @@ public sealed class GlobalHotkeyService : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr DispatchMessage(ref Msg lpMsg);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]

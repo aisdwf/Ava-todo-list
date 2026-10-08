@@ -41,15 +41,15 @@ public partial class MainWindow : Window
     private DateTime _suppressQuickCaptureOpenUntil = DateTime.MinValue;
 
     /// <summary>
-    /// 进程级全局热键（Windows <see cref="Services.GlobalHotkeyService"/>）是否已注册成功。
+    /// 快捷小窗快捷键状态。窗内回退只在 <see cref="QuickWindowHotkeyViewModel.ShouldHandleInWindow"/> 为 true 时响应。
     /// </summary>
     /// <remarks>
-    /// 注册成功后，主窗/小窗内的 Alt+Space 键盘监听必须停用：否则当主窗或小窗恰好持有键盘焦点时，
+    /// 系统级热键生效时，主窗/小窗内的键盘监听必须停用：否则当主窗或小窗恰好持有键盘焦点时，
     /// 同一次物理按键会被「系统级热键」与「窗内 KeyDown」两条路径分别触发一次 Toggle，
     /// 二者之间存在 <see cref="ToggleQuickCaptureWindowAsync"/> 的 await 间隙，
-    /// 导致小窗被连续 Show 两次或开关状态错乱（Windows 上可复现，macOS 无系统级热键不受影响）。
+    /// 导致小窗被连续 Show 两次或开关状态错乱。停用状态下窗内同样不响应（W4「临时禁用」）。
     /// </remarks>
-    private bool _systemHotkeyActive;
+    private readonly QuickWindowHotkeyViewModel? _hotkey;
 
     /// <summary>
     /// <see cref="ToggleQuickCaptureWindowAsync"/> 重入锁，防止同一时刻有多次 Toggle 逻辑并发执行。
@@ -92,6 +92,7 @@ public partial class MainWindow : Window
 
         DataContext = vm;
         _quickCaptureVm = quickCaptureVm;
+        _hotkey = vm.Hotkey;
 
         vm.RequestOpenQuickCapture += ToggleQuickCaptureWindow;
         vm.MaterialPresetChanged += preset => AppearanceCoordinator.ApplyMaterial(this, preset.Id);
@@ -108,12 +109,12 @@ public partial class MainWindow : Window
         if (this.FindControl<Button>("ThemeToggleButton") is { } themeButton)
         {
             themeButton.Click += async (_, _) => await RunThemeRevealAsync(themeButton, vm);
-            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；命中小窗热键修饰键时必须让给快捷小窗热键
+            // 焦点留在按钮时，macOS 会把 Space 当「激活按钮」；命中窗内回退组合时必须让给快捷小窗
             themeButton.AddHandler(
                 KeyDownEvent,
                 (_, e) =>
                 {
-                    if (!_systemHotkeyActive && e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
+                    if (_hotkey?.ShouldHandleInWindow(e.KeyModifiers, e.Key) == true)
                     {
                         ToggleQuickCaptureWindow();
                         e.Handled = true;
@@ -148,6 +149,7 @@ public partial class MainWindow : Window
         {
             await vm.InitializeAsync();
             ArmMidnightRefresh(vm);
+            ArmFirstRunOnboarding(vm);
         }
         catch (Exception ex)
         {
@@ -156,10 +158,32 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 记录进程级全局热键是否已生效，据此关闭窗内重复监听（见 <see cref="_systemHotkeyActive"/>）。
+    /// 首次启动自动播放引导（spec-onboarding-guide Q1）。
     /// </summary>
-    /// <param name="active">系统级热键是否注册成功。</param>
-    public void SetSystemHotkeyActive(bool active) => _systemHotkeyActive = active;
+    /// <remarks>
+    /// 等主窗真正可见、任务列表载入后的一小段时间再开始：挖空要量控件位置，
+    /// 布局没稳时框会先对错再滑过去。延时只服务观感，不参与业务判断（Article 9 动画豁免）。
+    /// 启动失败时不播：错误条比引导更要紧。
+    /// </remarks>
+    private void ArmFirstRunOnboarding(MainViewModel vm)
+    {
+        if (!vm.Onboarding.ShouldAutoStart || vm.HasInitializationError)
+        {
+            return;
+        }
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            // 用户可能已经自己打开了弹层或设置；有阻断层时让位，下次启动再播
+            if (IsVisible && !vm.IsBlockingOverlayOpen && vm.Onboarding.ShouldAutoStart)
+            {
+                vm.StartOnboardingCommand.Execute(null);
+            }
+        };
+        timer.Start();
+    }
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
@@ -211,30 +235,37 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        // 系统级热键已生效时窗内不再重复响应，否则同一次按键会触发两次 Toggle
-        if (_systemHotkeyActive)
+        // 删除项目确认弹层：Esc = 取消，与点击遮罩一致
+        if (e.Key == Key.Escape && DataContext is MainViewModel { IsDeleteProjectPromptOpen: true } deleteVm)
         {
+            deleteVm.CancelDeleteProjectCommand.Execute(null);
+            e.Handled = true;
             return;
         }
 
-        // Alt+Space (Windows) / Option(Alt)+Space (macOS) 唤起快捷小窗。
-        if (e.Key == Key.Space && IsQuickCaptureModifier(e.KeyModifiers))
+        // 启动占用弹窗：Esc = 知道了，与点击遮罩一致
+        if (e.Key == Key.Escape && _hotkey is { IsConflictPromptOpen: true })
+        {
+            _hotkey.DismissConflictPromptCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // 设置 → 通用录制快捷键：Tunnel 先于按钮/输入框收到按键，录制期间全部吞掉
+        if (_hotkey is { IsRecording: true })
+        {
+            e.Handled = true;
+            LoggedTasks.FireAndForget(_hotkey.RecordAsync(e.KeyModifiers, e.Key), "QuickWindowHotkey.Record");
+            return;
+        }
+
+        // 只在既没有系统级热键、也没有停用时回退到窗内监听（见 _hotkey 注释）
+        if (_hotkey?.ShouldHandleInWindow(e.KeyModifiers, e.Key) == true)
         {
             ToggleQuickCaptureWindow();
             e.Handled = true;
         }
     }
-
-    /// <summary>
-    /// 判断按键修饰符是否命中当前平台的快捷小窗唤起手势。
-    /// </summary>
-    /// <remarks>
-    /// Windows 用 <c>Alt+Space</c>；macOS 的 Option 键同样映射为
-    /// <see cref="KeyModifiers.Alt"/>。不能使用 <see cref="KeyModifiers.Meta"/>
-    /// 代替 Option，否则 macOS 会把 Command+Space 与 Option+Space 混淆。
-    /// </remarks>
-    internal static bool IsQuickCaptureModifier(KeyModifiers modifiers)
-        => modifiers.HasFlag(KeyModifiers.Alt);
 
     /// <summary>
     /// 以按钮圆心为原点执行全屏径向水波纹扩散，并在遮罩完全覆盖后切换主题 (spec-editorial-and-ripple-theme §2)。
@@ -334,7 +365,19 @@ public partial class MainWindow : Window
     /// 供进程级热键回调：切到 UI 线程后显隐小窗（spec-quick-window-hotkey-capture）。
     /// </summary>
     public void ToggleQuickCaptureFromHotkey()
-        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromHotkey");
+    {
+        // 录制中按下当前组合：系统级热键先于窗口收到它，这次按键是「录制输入」不是「切换小窗」
+        if (_hotkey?.TryConsumeWhileRecording() == true)
+        {
+            return;
+        }
+
+        LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromHotkey");
+    }
+
+    /// <summary>托盘菜单「显示/隐藏小窗」：不受快捷键录制或停用影响。</summary>
+    public void ToggleQuickCaptureFromTray()
+        => LoggedTasks.FireAndForget(ToggleQuickCaptureWindowAsync(), "ToggleQuickCaptureFromTray");
 
     /// <summary>
     /// 唤起或隐藏快捷小窗。窗口实例复用以保证亚秒级唤起 (design-visual-language §3)。
@@ -350,7 +393,7 @@ public partial class MainWindow : Window
         }
 
         // 重入锁：同一次物理按键可能被系统级热键与窗内 KeyDown 两条路径分别触发一次 Toggle
-        // （见 _systemHotkeyActive 注释）；PrepareAsync 的 await 期间没有它会被第二次调用抢先，
+        // （见 _hotkey 注释）；PrepareAsync 的 await 期间没有它会被第二次调用抢先，
         // 表现为小窗被连续 Show 两次或开关状态错乱。多余的调用直接忽略，不排队。
         if (_isTogglingQuickCapture)
         {
@@ -362,7 +405,9 @@ public partial class MainWindow : Window
         {
             if (_quickCaptureWindow is null)
             {
-                _quickCaptureWindow = new QuickCaptureWindow(_quickCaptureVm, () => _systemHotkeyActive);
+                _quickCaptureWindow = new QuickCaptureWindow(
+                    _quickCaptureVm,
+                    (modifiers, key) => _hotkey?.ShouldHandleInWindow(modifiers, key) == true);
                 _quickCaptureWindow.RequestHide += HideQuickCaptureWindow;
                 // 小窗前台热键统一走本方法，避免小窗自 Hide 后同一次按键再被主窗打开
                 _quickCaptureWindow.RequestToggleHotkey += ToggleQuickCaptureWindow;
@@ -477,6 +522,59 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 双击任务标题：进入就地改名，输入框出现后聚焦并全选（spec-inline-task-edit）。
+    /// </summary>
+    /// <remarks>
+    /// 已完成任务同样允许改名：完成态只影响视觉沉降，不锁定内容。
+    /// 输入框在 <c>IsEditingTitle</c> 翻转后的下一次布局才可见，聚焦须延到 Loaded 优先级，
+    /// 否则 <c>Focus()</c> 落在不可见控件上静默失败。
+    /// </remarks>
+    private async void OnTaskTitleDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Panel { DataContext: TaskRowViewModel row } || DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        try
+        {
+            await vm.BeginTitleEditCommand.ExecuteAsync(row);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("MainWindow.BeginTitleEdit failed", ex);
+            return;
+        }
+
+        // 提交别的行可能已重建列表，不能沿用 sender：按编辑态重新找输入框
+        Dispatcher.UIThread.Post(() =>
+        {
+            var editing = vm.Tasks.FirstOrDefault(t => t.IsEditingTitle);
+            var input = this.GetVisualDescendants()
+                .OfType<TextBox>()
+                .FirstOrDefault(t => t.Classes.Contains("TitleInput") && ReferenceEquals(t.DataContext, editing));
+            if (input is { IsEffectivelyVisible: true })
+            {
+                input.Focus();
+                input.SelectAll();
+            }
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// 标题输入框失焦时提交，兜底 Tab 切焦点等非指针路径（见 <see cref="OnWindowPointerPressed"/>）。
+    /// </summary>
+    private void OnTaskTitleLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: TaskRowViewModel { IsEditingTitle: true } row }
+            && DataContext is MainViewModel vm)
+        {
+            vm.CommitTitleEditCommand.Execute(row);
+        }
+    }
+
+    /// <summary>
     /// 单击项目行切换筛选。重命名进行中时忽略，避免打断编辑。
     /// </summary>
     private void OnProjectRowTapped(object? sender, TappedEventArgs e)
@@ -538,6 +636,30 @@ public partial class MainWindow : Window
         {
             vm.ConfirmCreateProjectOnLeaveCommand.Execute(null);
         }
+
+        // 任务标题就地编辑：点到输入框以外即保存（owner 裁决「回车/点外面保存」）
+        var editingRow = vm.Tasks.FirstOrDefault(t => t.IsEditingTitle);
+        if (editingRow is not null && !IsInsideTextBoxOf(target, editingRow))
+        {
+            vm.CommitTitleEditCommand.Execute(editingRow);
+        }
+    }
+
+    /// <summary>
+    /// 点击目标是否落在某行自己的输入框内。与 <see cref="IsInsideRenamingTextBox"/> 不同，
+    /// 任务行其他部位（勾选、优先级、到期）也共享该行 DataContext，点它们应当算「外面」。
+    /// </summary>
+    private static bool IsInsideTextBoxOf(Visual? target, object row)
+    {
+        for (var node = target; node is not null; node = node.GetVisualParent())
+        {
+            if (node is TextBox { DataContext: { } dataContext } && ReferenceEquals(dataContext, row))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

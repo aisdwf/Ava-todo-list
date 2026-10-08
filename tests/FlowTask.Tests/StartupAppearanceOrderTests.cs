@@ -35,7 +35,7 @@ public class StartupAppearanceOrderTests
     {
         var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "FlowTask.Desktop", "Views", "MainWindow.axaml.cs"));
         var opened = text.IndexOf("private async Task OnOpenedAsync()", StringComparison.Ordinal);
-        var nextMember = text.IndexOf("public void SetSystemHotkeyActive", opened, StringComparison.Ordinal);
+        var nextMember = text.IndexOf("private void OnMainWindowClosing", opened, StringComparison.Ordinal);
         Assert.True(opened >= 0 && nextMember > opened);
 
         var body = text[opened..nextMember];

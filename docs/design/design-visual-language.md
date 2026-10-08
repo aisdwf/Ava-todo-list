@@ -81,6 +81,9 @@ FlowTask 的视觉语言以「**Editorial（杂志排版）**」为基调，
 `PriorityHighBrush` `PriorityMediumBrush` `PriorityLowBrush`（各含对应 `*SurfaceBrush`）
 `KeyCapSurfaceBrush` `KeyCapBorderBrush`
 
+危险 / 错误文字用 `PriorityHighBrush`，弹层底色用 `CardSurfaceBrush`，不另设别名。
+`DecorationColorTests.EveryDynamicColorKeyInXaml_IsDefined` 扫描全部 axaml，引用未定义的颜色键即失败。
+
 **形状与尺寸**（`Tokens.Shared.axaml`）：`ControlCornerRadius` `CardCornerRadius`
 `WindowCornerRadius` `FloatingCapsuleCornerRadius` `PillCornerRadius`
 `FontSizeMicro` `FontSizeCaption` `FontSizeBody` `FontSizeTaskTitle`
@@ -130,6 +133,14 @@ FlowTask 的视觉语言以「**Editorial（杂志排版）**」为基调，
 - 行内操作按钮：静默隐藏，悬停整行才浮现，避免视觉噪音
 - 快速添加栏：按回车「如呼吸般自然落入列表」
 
+### 5.3 浮层与展开不突变
+
+用户原话（2026-09-29）：「日历展开感觉违背了 ui 不能突变的原则，突然展开了一块。」
+
+- 临时内容（选择器等）以浮层叠加，**不推动**既有布局；
+- 出现：透明度 0→1 + 约 6px 下移归位，≈160ms，CubicEaseOut；消失可直接关闭；
+- 受 §5.1 框架边界约束，位移用 `Transitions` 而非 `Animation` 实现。
+
 ---
 
 ## 6. 双窗口的视觉分工
@@ -147,16 +158,43 @@ FlowTask 的视觉语言以「**Editorial（杂志排版）**」为基调，
 
 ## 7. 操作图标
 
-纯操作图标共用一套 24×24 描边几何（`Styles/Icons.axaml`），线宽 1.75、圆头、圆角连接。光学尺寸由按钮决定，不另造填充版或彩色变体。
+纯操作图标共用一套 24×24 描边几何（`Styles/Icons.axaml`），圆头、圆角连接。光学尺寸由按钮决定，不另造填充版或彩色变体。
+
+线宽分两档（spec-icon-refresh，所有者原话「对于这样的几个按钮来说，我觉得线条有点太细了」「垃圾桶这些效果还不错」）：
+
+| 档位 | 描边（24 基准） | 显示尺寸 | 屏幕线宽 | 用于 |
+| :--- | :--- | :--- | :--- | :--- |
+| 常规 `Path.StrokeIcon` | 1.75 | 13–16px | 约 1.0px | 行内与弱操作 |
+| 加粗 `Path.StrokeIcon.Bold` | 2.25 | 20px | 约 1.9px | 右上角 40px 圆钮 |
+
+圆形一律写成两段半圆并闭合，不用「终点差 0.01」的近似闭合：圆头端点会在接缝处叠出鼓包。
+
+承载描边图标的 `Viewbox` 不得裁剪（`ClipToBounds=False`，顶栏用 `Viewbox.HeaderIcon`）：`Stretch=Uniform` 只把几何外框拉满，描边会向外溢出半个线宽，默认裁剪会把外沿切平。
 
 | 用途 | 几何 | 颜色 |
 | :--- | :--- | :--- |
 | 昼夜切换 | 太阳 / 月亮 | 次级文字 |
-| 设置、返回 | 齿轮、左箭头 | 次级文字 |
+| 设置、指南 | 6 齿齿轮、圆内问号 | 次级文字 |
+| 返回 | 左箭头 | 次级文字 |
 | 删除、新建 | 垃圾桶、关闭、加号 | 三级文字 |
+| 置顶 | 图钉 | 未置顶三级文字，已置顶强调色 |
+| 归档、恢复 | 归档盒、归档盒 + 上箭头 | 三级文字 |
 | 快捷小窗输入标记 | 星标 | 强调色 |
 
-项目色只出现在色点与任务色条上，没有单独的「更换颜色」操作。
+## 7.1 修饰色
+
+修饰色全部从当前主题派生，不存进用户数据，也没有单独的配色设置（spec-theme-bound-decoration-colors，owner 裁决「绑定主题」「统一单色」）。
+
+| 修饰 | 颜色 |
+| :--- | :--- |
+| 项目色点（侧栏、任务元信息行、小窗项目下拉） | `AccentBrush`，所有项目同色 |
+| 任务行色条 P1 | `PriorityHighBrush`（语义红） |
+| 任务行色条 P2 | `AccentBrush` |
+| 任务行色条 P3 | `AccentGlowBrush`（强调色半透明） |
+| P1 / P2 / P3 微标签 | 保持语义色 `PriorityHigh/Medium/Low*` |
+| Fluent 原生控件（单选、复选、下拉、日历） | `SystemAccentColor*`，换主题时由 `AppearanceCoordinator` 写入主题强调色 |
+
+色条表达优先级强度，不再表达项目归属。曾经的项目色（`Project.ColorHex`）以字面 hex 存库、主题够不到，换主题后仍是固定紫 / 绿，已删除。
 
 ## 8. 历史沿革
 

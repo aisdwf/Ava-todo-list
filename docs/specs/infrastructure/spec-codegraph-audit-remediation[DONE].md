@@ -120,7 +120,7 @@
 ## Related documents
 
 - Analysis: [analysis-codegraph-code-audit](../../analysis/analysis-codegraph-code-audit.md)
-- SPECs: [spec-project-managed-tasks[DONE]](../task-domain/spec-project-managed-tasks[DONE].md)；[spec-cross-window-complete-sync[DONE]](../quick-capture/spec-cross-window-complete-sync[DONE].md)；[spec-quick-window-hotkey-capture[IN-PROGRESS]](../quick-capture/spec-quick-window-hotkey-capture[IN-PROGRESS].md)；[spec-close-to-tray[DONE]](../main-window/spec-close-to-tray[DONE].md)；[spec-viewmodel-command-decomposition[DONE]](../main-window/spec-viewmodel-command-decomposition[DONE].md)
+- SPECs: [spec-project-managed-tasks[DONE]](../task-domain/spec-project-managed-tasks[DONE].md)；[spec-cross-window-complete-sync[DONE]](../quick-capture/spec-cross-window-complete-sync[DONE].md)；[spec-quick-window-hotkey-capture[DONE]](../quick-capture/spec-quick-window-hotkey-capture[DONE].md)；[spec-close-to-tray[DONE]](../main-window/spec-close-to-tray[DONE].md)；[spec-viewmodel-command-decomposition[DONE]](../main-window/spec-viewmodel-command-decomposition[DONE].md)
 - ADRs: [adr-technology-stack](../../adr/adr-technology-stack.md)；[adr-orm-on-core-entities](../../adr/adr-orm-on-core-entities.md)
 - Rules: `AI_CONSTITUTION.md`；`project-rules.md`；`technical-rules.md`；`rule-code-standards.md`
 - Requirements: [REQUIREMENTS.md](../../requirements/REQUIREMENTS.md) R-2.6

@@ -120,10 +120,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [ObservableProperty]
     private MaterialOption _selectedMaterial = AppearanceCoordinator.MaterialPresets[0];
 
-    /// <summary>当前强调色预设。</summary>
-    [ObservableProperty]
-    private AppearanceOption _selectedAccent = AppearanceCoordinator.AccentPresets[0];
-
     /// <summary>
     /// 当前命名主题预设（spec-settings-master-detail-and-theme-presets）。
     /// </summary>
@@ -201,7 +197,18 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 是否有必须先处理的全窗覆盖层。为 true 时主内容关闭命中，
     /// 避免遮罩外的 <c>:pointerover</c> 高亮穿透到任务行 / 侧栏。
     /// </summary>
-    public bool IsBlockingOverlayOpen => IsClosePromptOpen || IsDueDatePopupOpen;
+    /// <remarks>
+    /// 到期日选择器已改为贴边浮层（spec-due-date-picker），不再是全窗遮罩，故不计入。
+    /// 删除项目确认改为居中弹层后计入。
+    /// </remarks>
+    public bool IsBlockingOverlayOpen
+        => IsClosePromptOpen || IsDeleteProjectPromptOpen || Onboarding.IsActive || Hotkey.IsConflictPromptOpen;
+
+    /// <summary>首次聚光灯引导状态（spec-onboarding-guide）。</summary>
+    public OnboardingViewModel Onboarding { get; }
+
+    /// <summary>设置 → 操作指南页状态。</summary>
+    public GuideViewModel Guide { get; } = new();
 
     /// <summary>最近一次关闭策略写入，供测试等待落盘。</summary>
     public Task CloseActionPersistTask { get; private set; } = Task.CompletedTask;
@@ -212,20 +219,17 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>请求彻底退出。与托盘「退出」、通用页按钮同一条路径。</summary>
     public event Action? RequestExitApplication;
 
-    /// <summary>创建区中的到期日编辑器。</summary>
-    public DueDateEditorViewModel NewDueDateEditor { get; private set; } = null!;
+    /// <summary>创建栏到期日选择器的编辑器；其已提交值随新任务写入。</summary>
+    public DueDateEditorViewModel NewDueDateEditor { get; }
 
-    /// <summary>行编辑弹出层中的到期日编辑器。</summary>
-    public DueDateEditorViewModel EditingDueDateEditor { get; private set; } = null!;
+    /// <summary>
+    /// 任务行到期日选择器共享的编辑器。同一时刻只有一个浮层打开，故全列表共用一个实例。
+    /// </summary>
+    public DueDateEditorViewModel RowDueDateEditor { get; }
 
-    /// <summary>是否打开到期日编辑弹出层。</summary>
+    /// <summary>创建栏选择器的展示值，与 <see cref="NewDueDateEditor"/> 已提交值同步。</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
-    private bool _isDueDatePopupOpen;
-
-    /// <summary>正在编辑的任务行（用于弹出层定位）；<c>null</c> 表示未在弹出编辑。</summary>
-    [ObservableProperty]
-    private TaskRowViewModel? _editingDueDateTarget;
+    private DateTime? _newTaskDueDate;
 
     [ObservableProperty]
     private int _activeCount;
@@ -241,21 +245,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 集合内容只能经 <see cref="LoadTasksAsync"/> 从仓储重建。
     /// <para>
     /// 元素为 <see cref="TaskRowViewModel"/> 而非裸实体：行需要承载编辑态与
-    /// 项目色等纯展示信息，这些不应污染 Core 层实体（Article 10）。
+    /// 项目名等纯展示信息，这些不应污染 Core 层实体（Article 10）。
     /// </para>
     /// </remarks>
     public ReadOnlyObservableCollection<TaskRowViewModel> Tasks { get; }
 
     /// <summary>可变的内部集合，仅本类可写。</summary>
     private readonly ObservableCollection<TaskRowViewModel> _tasks = new();
-
-    /// <summary>
-    /// 编辑态「所属项目」下拉的候选项，与侧边栏活跃项目同源（另含正在编辑的归档归属）。
-    /// </summary>
-    /// <remarks>
-    /// R-2.6 以 Default 取代「未归属」，不再插入 <c>null</c> 候选项。
-    /// </remarks>
-    public ObservableCollection<ProjectChoice> ProjectChoices { get; } = new() { ProjectChoice.Default };
 
     /// <summary>任务流为空，用于驱动空状态提示。</summary>
     public bool IsTaskStreamEmpty => Tasks.Count == 0;
@@ -282,9 +278,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// </remarks>
     public bool HasProjects => _projects.Count > 0;
 
-    /// <summary>可选强调色预设，直接引用权威定义避免影子副本 (Article 6)。</summary>
-    public IReadOnlyList<AppearanceOption> AccentPresets => AppearanceCoordinator.AccentPresets;
-
     /// <summary>可选窗口材质预设，直接引用权威定义。</summary>
     public IReadOnlyList<MaterialOption> MaterialPresets => AppearanceCoordinator.MaterialPresets;
 
@@ -295,13 +288,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观（主题 + 材质）→ 通用（功能项）→ 关于。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
+        new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
 
@@ -309,12 +303,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     public event Action? RequestOpenQuickCapture;
 
     /// <summary>
-    /// 唤起小窗热键的平台正确按键提示（macOS 显示 ⌥ 符号，Windows 显示 Alt 文字）。
+    /// 快捷小窗快捷键：侧栏键帽、设置 → 通用录制行、启动占用弹窗（spec-quick-window-custom-hotkey）。
     /// </summary>
     /// <remarks>
-    /// 此前 UI 写死 macOS 的 <c>⌥ Space</c>，Windows 用户看到的图标与实际热键不符。
+    /// 键帽文案曾两次写死（先 <c>⌥ Space</c>，后 Alt+Space），注册回退时都会教错键；
+    /// 现由本实例按「当前组合 + 是否生效」推出，组合本身只在 <see cref="QuickWindowHotkey"/> 定义。
     /// </remarks>
-    public string QuickCaptureHotkeyLabel => OperatingSystem.IsMacOS() ? "⌥ Space" : "Alt+Space";
+    public QuickWindowHotkeyViewModel Hotkey { get; }
 
     /// <summary>请求应用窗口材质。窗口实例归视图层所有，故以事件外发。</summary>
     public event Action<MaterialOption>? MaterialPresetChanged;
@@ -329,20 +324,46 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <param name="projectRepository">项目仓储。</param>
     /// <param name="clock">时间提供者，用于显式赋值任务的创建与完成时刻（Article 9）。</param>
     /// <param name="settingsRepository">应用设置仓储。</param>
+    /// <param name="hotkeyRegistrar">
+    /// 进程级快捷小窗快捷键注册器；未提供时视为没有系统级热键（测试与不支持的平台）。
+    /// </param>
     public MainViewModel(
         ITaskRepository repository,
         IProjectRepository projectRepository,
         IClock clock,
-        IAppSettingsRepository settingsRepository)
+        IAppSettingsRepository settingsRepository,
+        IQuickWindowHotkeyRegistrar? hotkeyRegistrar = null)
     {
         _repository = repository;
         _projectRepository = projectRepository;
         _clock = clock;
         _settingsRepository = settingsRepository;
 
-        // 初始化到期日编辑器（Func<int> 绑定 DefaultDueOffsetDays 属性）
+        Onboarding = new OnboardingViewModel(settingsRepository);
+        Onboarding.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OnboardingViewModel.IsActive))
+            {
+                OnPropertyChanged(nameof(IsBlockingOverlayOpen));
+            }
+        };
+
+        Hotkey = new QuickWindowHotkeyViewModel(
+            hotkeyRegistrar ?? NoSystemHotkeyRegistrar.Instance,
+            settingsRepository);
+        Hotkey.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(QuickWindowHotkeyViewModel.IsConflictPromptOpen))
+            {
+                OnPropertyChanged(nameof(IsBlockingOverlayOpen));
+            }
+        };
+        Hotkey.RequestOpenGeneralSettings += OpenGeneralSettings;
+
+        // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
-        EditingDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
+        NewDueDateEditor.Committed += date => NewTaskDueDate = date;
+        RowDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
 
         Tasks = new ReadOnlyObservableCollection<TaskRowViewModel>(_tasks);
         Projects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_projects);
@@ -372,6 +393,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 await LoadAppearanceAsync();
             }
             await LoadCloseActionAsync();
+            await Onboarding.LoadAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
             // 迁移只在主窗启动：小窗 PrepareAsync 只种子，避免用户刚设的归属被后台改写。
@@ -446,7 +468,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     }
 
     /// <summary>
-    /// 载入未归档项目及其任务计数，并同步编辑态下拉候选。
+    /// 载入未归档项目及其任务计数。
     /// </summary>
     private async Task LoadProjectsAsync()
     {
@@ -465,13 +487,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         {
             counts.TryGetValue(project.Id, out var count);
             _projects.Add(new ProjectItemViewModel(project, count));
-        }
-
-        // 候选项与项目列表保持同源，避免两份表示漂移（Article 6）
-        ProjectChoices.Clear();
-        foreach (var project in projects)
-        {
-            ProjectChoices.Add(new ProjectChoice(project.Id, project.Name));
         }
 
         // 选中的项目可能已被删除或归档，此时须解除选中避免筛选到不存在的项目。
@@ -582,7 +597,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         }
 
         // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
-        // 查找表必须含归档项目，否则色条为空、编辑候选也对不上归属。
+        // 查找表必须含归档项目，否则全部任务看板里归档项目下任务的项目名为空。
         var allProjects = await _projectRepository.GetAllProjectsAsync();
         if (generation != Volatile.Read(ref _tasksLoadGeneration))
         {
@@ -641,55 +656,22 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new AddTaskViewModel(_repository, _clock).ExecuteAsync(
             NewTaskTitle,
             NewTaskPriority,
-            NewDueDateEditor.TakeValue(),
+            NewTaskDueDate,
             SelectedProject?.Id,
             () =>
             {
                 NewTaskTitle = string.Empty;
-                NewDueDateEditor.Load(null);
+                NewTaskDueDate = null;
             },
             LoadTasksAsync,
             this);
 
     /// <summary>
-    /// 打开行编辑弹出层，用于修改到期日。
+    /// 持久化任务行到期日选择器的一次提交（spec-due-date-picker）。
     /// </summary>
     [RelayCommand]
-    private void OpenDueDatePopup(TaskRowViewModel? row)
-        => new OpenDueDatePopupViewModel().Execute(
-            row,
-            target =>
-            {
-                EditingDueDateTarget = target;
-                EditingDueDateEditor.Load(target.Task.DueDate, expandCalendar: true);
-                IsDueDatePopupOpen = true;
-            });
-
-    /// <summary>
-    /// 关闭到期日编辑弹出层，不保存更改。
-    /// </summary>
-    [RelayCommand]
-    private void CloseDueDatePopup()
-    {
-        IsDueDatePopupOpen = false;
-        EditingDueDateTarget = null;
-    }
-
-    /// <summary>
-    /// 保存到期日编辑弹出层的更改。
-    /// </summary>
-    [RelayCommand]
-    private async Task CommitDueDatePopupAsync()
-        => await new CommitDueDatePopupViewModel(_repository).ExecuteAsync(
-            EditingDueDateTarget,
-            EditingDueDateEditor.TakeValue(),
-            () =>
-            {
-                IsDueDatePopupOpen = false;
-                EditingDueDateTarget = null;
-            },
-            LoadTasksAsync,
-            this);
+    private async Task CommitRowDueDateAsync(DueDateCommit? commit)
+        => await new CommitRowDueDateViewModel(_repository).ExecuteAsync(commit, LoadTasksAsync, this);
 
     /// <summary>
     /// 保存默认到期偏移设置。
@@ -779,45 +761,25 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private async Task DeleteTaskAsync(TaskItem? item)
         => await new DeleteTaskViewModel(_repository).ExecuteAsync(item, LoadTasksAsync, this);
 
-    /// <summary>
-    /// 展开或收起某行的编辑面板。
-    /// </summary>
-    /// <remarks>
-    /// 同一时刻只允许一行处于编辑态：多行同时展开会让任务流被面板撑满、
-    /// 丧失 Editorial 排版的浏览性，也使「当前在改哪一条」变得不明确。
-    /// </remarks>
+    /// <summary>双击标题进入就地编辑，先提交其他正在编辑的行（spec-inline-task-edit）。</summary>
     [RelayCommand]
-    private async Task ToggleEditAsync(TaskRowViewModel? row)
-        => await new ToggleEditTaskViewModel(
-                new SaveEditTaskViewModel(_repository))
-            .ExecuteAsync(
-                row,
-                _tasks,
-                ProjectChoices,
-                LoadTasksAsync,
-                this);
+    private async Task BeginTitleEditAsync(TaskRowViewModel? row)
+        => await new BeginRowTitleEditViewModel(new CommitRowTitleViewModel(_repository))
+            .ExecuteAsync(row, _tasks, LoadTasksAsync, this);
 
-    /// <summary>
-    /// 提交某行的编辑缓冲并收起面板。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>为什么没有「取消」</b>：本地 SQLite 写入是微秒级的，不存在需要用户等待的提交成本。
-    /// 引入显式保存按钮反而带来「未保存状态」这一额外状态机，
-    /// 以及「改了却忘记点保存」的数据丢失风险（design-domain-contract §5.3）。
-    /// 代价是误改无法一键还原 —— 撤销栈的成本远高于其在此场景的收益，已明确排除。
-    /// </para>
-    /// <para>
-    /// <b>非法标题的处理</b>：视为无效输入并丢弃该项修改（保留原标题），
-    /// 而非拒绝整次提交 —— 否则用户改对了的日期与标签也会一并丢失。
-    /// 校验规则与创建路径共用 <see cref="TaskTitle"/>，
-    /// 同一约束不得在两处呈现不同行为（Article 6）。
-    /// </para>
-    /// </remarks>
+    /// <summary>Esc：丢弃标题缓冲，保留原标题。</summary>
     [RelayCommand]
-    private async Task SaveEditAsync(TaskRowViewModel? row)
-        => await new SaveEditTaskViewModel(_repository)
-            .ExecuteAsync(row, LoadTasksAsync, this);
+    private void CancelTitleEdit(TaskRowViewModel? row) => row?.EndTitleEdit();
+
+    /// <summary>Enter / 点击外部 / 失焦：提交标题缓冲。非法标题保留原值。</summary>
+    [RelayCommand]
+    private async Task CommitTitleEditAsync(TaskRowViewModel? row)
+        => await new CommitRowTitleViewModel(_repository).ExecuteAsync(row, LoadTasksAsync, this);
+
+    /// <summary>行上优先级浮层点选即生效（spec-inline-task-edit）。</summary>
+    [RelayCommand]
+    private async Task CommitRowPriorityAsync(PriorityCommit? commit)
+        => await new CommitRowPriorityViewModel(_repository).ExecuteAsync(commit, LoadTasksAsync, this);
 
 
     /// <summary>
@@ -889,7 +851,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>待确认删除的项目；<c>null</c> 表示无待确认操作。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDeleteProjectPromptOpen))]
+    [NotifyPropertyChangedFor(nameof(IsBlockingOverlayOpen))]
     private ProjectItemViewModel? _projectPendingDeletion;
+
+    /// <summary>删除项目确认弹层是否可见。</summary>
+    public bool IsDeleteProjectPromptOpen => ProjectPendingDeletion is not null;
 
     /// <summary>待删除项目影响的任务条数，用于确认提示。</summary>
     [ObservableProperty]
@@ -1108,6 +1075,53 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private void SelectSettingsSection(SettingsSection section) => SelectedSettingsSection = section;
 
+    /// <summary>占用弹窗「去设置」：直接落在 通用 页的快捷键行所在分区。</summary>
+    private void OpenGeneralSettings()
+    {
+        IsSettingsOpen = true;
+        SelectedSettingsSection = SettingsSection.General;
+        EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+    }
+
+    /// <summary>离开设置页时放弃录制，否则回到任务页后按键仍被录制吞掉。</summary>
+    partial void OnIsSettingsOpenChanged(bool value)
+    {
+        if (!value)
+        {
+            Hotkey.CancelRecording();
+        }
+    }
+
+    /// <summary>切到其他设置项时放弃录制，理由同 <see cref="OnIsSettingsOpenChanged"/>。</summary>
+    partial void OnSelectedSettingsSectionChanged(SettingsSection value)
+    {
+        if (value != SettingsSection.General)
+        {
+            Hotkey.CancelRecording();
+        }
+    }
+
+    /// <summary>
+    /// 右上角「?」：直接进入设置 → 操作指南（spec-onboarding-guide）。
+    /// </summary>
+    [RelayCommand]
+    private void OpenGuide()
+    {
+        IsSettingsOpen = true;
+        SelectedSettingsSection = SettingsSection.Guide;
+        EditingDefaultDueOffsetDays = DefaultDueOffsetDays;
+    }
+
+    /// <summary>
+    /// 开始聚光灯引导。锚点都在任务页，须先退出设置，否则挖空对准的是隐藏控件。
+    /// </summary>
+    [RelayCommand]
+    private void StartOnboarding()
+    {
+        IsSettingsOpen = false;
+        Onboarding.Start();
+    }
+
     /// <summary>
     /// 材质预设选中变更时立即请求视图层应用，无需额外的确认命令。
     /// </summary>
@@ -1116,11 +1130,6 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         MaterialPresetChanged?.Invoke(value);
         QueueAppearancePersist();
     }
-
-    /// <summary>
-    /// 强调色预设选中变更时立即写入主题字典，实现即时生效。
-    /// </summary>
-    partial void OnSelectedAccentChanged(AppearanceOption value) => AppearanceCoordinator.ApplyAccent(value.Id);
 
     /// <summary>
     /// 命名主题预设选中后写入色板，并重建窗口底色。底色是代码里的笔刷实例，不跟主题字典自动刷新。

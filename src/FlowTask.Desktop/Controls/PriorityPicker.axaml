@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FlowTask.Desktop.Controls.PriorityPicker">
+
+    <!--
+      优先级选择器 (spec-inline-task-edit)：行上的 P 标签即触发入口 + 贴边浮层。
+      与 DueDatePicker 同一形态：浮层是 Popup，叠在内容之上、不推动列表；
+      点选某档即提交并关闭；Esc / 点击外部不改动关闭。
+    -->
+    <Panel>
+        <Button x:Name="Trigger"
+                Classes="PriorityTrigger"
+                VerticalAlignment="Center">
+            <Border x:Name="TriggerTag" Classes="PriorityTag">
+                <TextBlock x:Name="TriggerText" />
+            </Border>
+        </Button>
+
+        <Popup x:Name="PickerPopup"
+               Placement="BottomEdgeAlignedLeft"
+               VerticalOffset="6"
+               IsLightDismissEnabled="True">
+            <Border x:Name="Surface"
+                    Classes="DuePickerSurface PriorityPickerSurface"
+                    Opacity="0"
+                    RenderTransform="translateY(-6px)">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                    </Transitions>
+                </Border.Transitions>
+
+                <StackPanel x:Name="Options" Spacing="2" MinWidth="132">
+                    <Button x:Name="OptionHigh" Classes="PriorityOption" Tag="High">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Classes="PriorityTag P1"><TextBlock Text="P1" /></Border>
+                            <TextBlock Classes="PriorityOptionText" Text="高优先级" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="OptionMedium" Classes="PriorityOption" Tag="Medium">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Classes="PriorityTag P2"><TextBlock Text="P2" /></Border>
+                            <TextBlock Classes="PriorityOptionText" Text="中优先级" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="OptionLow" Classes="PriorityOption" Tag="Low">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Classes="PriorityTag P3"><TextBlock Text="P3" /></Border>
+                            <TextBlock Classes="PriorityOptionText" Text="低优先级" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Panel>
+</UserControl>

@@ -100,7 +100,7 @@ Attribution：`Design Incomplete` —— §8 曾推迟小窗；列表范围曾�
 
 - 全局热键、`@` 解析 → hotkey-capture
 - 任务删除 / 完成套件权威定义 → spec-project-managed-tasks
-- 多项目总览 / 今日聚焦切片 → 仍为演进（due-date SPEC 的 TODO(quick-capture-today)）
+- 多项目总览 / 今日聚焦切片 → 今日聚焦已于 2026-10-01 关闭为不做（due-date SPEC 的 TODO(quick-capture-today)）
 
 ---
 
@@ -159,7 +159,7 @@ dotnet test  FlowTask.sln --nologo -v q
 
 | 事项 | 期限 | 触发条件 |
 | :--- | :--- | :--- |
-| TODO(quick-capture-today) 各项目+今日 | 随产品排期 | 单项目列表稳定后 |
+| ~~TODO(quick-capture-today) 各项目+今日~~ | 已关闭（2026-10-01，不做） | 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md) |
 | 多项目切换总览 | 演进 | 用户再次要求 |
 | 列表内纯键盘操作（上下选中行 + Space 勾选，无需鼠标） | 2026-10-31 | 用户反馈鼠标依赖影响使用体验 |
 | 可见行数上限精确调参（当前用 MaxHeight 兜底） | 2026-10-15 | 人工验收后目测调整 |
@@ -212,7 +212,9 @@ dotnet test  FlowTask.sln --nologo -v q
 | D7 | 占位文字 | `Something to do...`（用户原话「不必过于直白」） |
 | D8 | 底部提示 | 增加 `Ctrl+Tab 切换项目`；**[推断]** 文案「切换项目」，依据：与现有「保存」「关闭」同为动词短语 |
 
-**[推断]** 保存后优先级复位为 P2：沿用现有 `ResetInput` 行为，未改动。
+~~**[推断]** 保存后优先级复位为 P2：沿用现有 `ResetInput` 行为，未改动。~~
+**已被用户推翻（2026-09-29）**：「enter 确认一个任务时优先级会重置到 p2，感觉保持不变比较好」。
+回车保存后优先级保持，Esc 关闭才回到 P2。见 [spec-due-date-picker](../task-domain/spec-due-date-picker[DONE].md)。
 
 ### 7.3 Non-goals
 

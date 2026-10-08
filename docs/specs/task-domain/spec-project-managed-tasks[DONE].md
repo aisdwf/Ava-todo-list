@@ -178,7 +178,7 @@ Attribution：`Design Wrong` —— 任务归档作为独立领域状态，在�
 - [x] `docs/design/design-interaction-principles.md` — §7.1 侧边栏不再含已归档；§7.3 改为完成套件（置底/划线/降权）+ `X` 删除
 - [x] `docs/specs/task-domain/spec-task-complete-before-archive[SUPERSEDED].md` — 重定向
 - [x] `docs/specs/quick-capture/spec-quick-window-single-project-list[DONE].md` — 去掉归档依赖；排序对齐 `TaskListOrder`
-- [x] `docs/specs/main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md` — 删除 `Completed` 视图分支
+- [x] `docs/specs/main-window/spec-create-task-inherits-selected-project[DONE].md` — 删除 `Completed` 视图分支
 - [x] `docs/specs/README.md` — 索引与接手入口
 - [x] `src/FlowTask.Core/Models/TaskItem.cs` — 字段注释改为停用
 - [x] `src/FlowTask.Core/Interfaces/ITaskRepository.cs` — 查询语义与删除归档 API
@@ -247,7 +247,7 @@ Q1–Q4 已于 2026-09-26 由所有者裁决，不再阻塞。未完成组保留
 - SPECs：
   - [`spec-task-complete-before-archive[SUPERSEDED]`](./spec-task-complete-before-archive[SUPERSEDED].md)（已被本 SPEC 取代）
   - [`spec-quick-window-single-project-list[DONE]`](../quick-capture/spec-quick-window-single-project-list[DONE].md)
-  - [`spec-create-task-inherits-selected-project[IN-PROGRESS]`](../main-window/spec-create-task-inherits-selected-project[IN-PROGRESS].md)
+  - [`spec-create-task-inherits-selected-project[DONE]`](../main-window/spec-create-task-inherits-selected-project[DONE].md)
   - [`spec-sidebar-selection-consolidation[DONE]`](../main-window/spec-sidebar-selection-consolidation[DONE].md)
 - ADRs：无新增
 - Rules：`rule-no-invented-user-behavior.md`；`rule-spec-review-gate.md`；`rule-doc-boundary.md`

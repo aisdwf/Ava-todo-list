@@ -3,206 +3,148 @@ using Xunit;
 
 namespace FlowTask.Tests;
 
-public class DueDateEditorViewModelTests : IDisposable
+/// <summary>
+/// 到期日选择器编辑器：预设 + 日历，预览 / 提交分离（spec-due-date-picker）。
+/// </summary>
+public class DueDateEditorViewModelTests
 {
     private readonly FakeClock _clock = new(
         new DateTime(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc),
         new DateTime(2026, 3, 10));
 
-    public void Dispose() { }
+    private DueDateEditorViewModel Create(int offset = 1, DateTime? initial = null)
+    {
+        var vm = new DueDateEditorViewModel(_clock, () => offset);
+        vm.Load(initial);
+        return vm;
+    }
 
     [Fact]
     public void Load_InitializesProperties()
     {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
         var testDate = new DateTime(2026, 3, 15);
-
-        vm.Load(testDate);
+        var vm = Create(initial: testDate);
 
         Assert.Equal(testDate, vm.SelectedDate);
         Assert.Equal(testDate, vm.CalendarDate);
-        Assert.Empty(vm.DigitText);
-        Assert.False(vm.HasParseError);
+        Assert.Equal(testDate, vm.CalendarDisplayDate);
     }
 
     [Fact]
-    public void Load_WithNull_InitializesToNull()
+    public void Load_WithNull_ShowsCurrentMonth()
     {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-
-        vm.Load(null);
+        var vm = Create();
 
         Assert.Null(vm.SelectedDate);
         Assert.Null(vm.CalendarDate);
+        Assert.Equal(_clock.Today, vm.CalendarDisplayDate);
     }
 
     [Fact]
-    public void EnableDefaultDueCommand_SetsDateToTodayPlusOffset()
+    public void ApplyDefaultDue_CommitsTodayPlusOffset()
     {
-        var vm = new DueDateEditorViewModel(_clock, () => 3);
-        vm.Load(null);
+        var vm = Create(offset: 3);
+        DateTime? committed = null;
+        var fired = false;
+        vm.Committed += d => { fired = true; committed = d; };
 
-        vm.EnableDefaultDueCommand.Execute(null);
+        vm.ApplyDefaultDueCommand.Execute(null);
 
         var expected = _clock.Today.AddDays(3);
+        Assert.True(fired);
+        Assert.Equal(expected, committed);
         Assert.Equal(expected, vm.SelectedDate);
-        Assert.Equal(expected, vm.CalendarDate);
+        Assert.Equal("默认 +3 天", vm.DefaultPresetLabel);
     }
 
     [Fact]
-    public void ClearDueCommand_SetsAllToNull()
+    public void ClearDue_CommitsNull()
     {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(new DateTime(2026, 3, 20));
+        var vm = Create(initial: new DateTime(2026, 3, 20));
+        var fired = false;
+        DateTime? committed = new DateTime(2000, 1, 1);
+        vm.Committed += d => { fired = true; committed = d; };
 
         vm.ClearDueCommand.Execute(null);
 
+        Assert.True(fired);
+        Assert.Null(committed);
         Assert.Null(vm.SelectedDate);
         Assert.Null(vm.CalendarDate);
-        Assert.Empty(vm.DigitText);
-        Assert.False(vm.HasParseError);
+    }
+
+    /// <summary>
+    /// 日历高亮被方向键移动：只改预览，不提交。
+    /// </summary>
+    [Fact]
+    public void CalendarMove_DoesNotCommit()
+    {
+        var original = new DateTime(2026, 3, 20);
+        var vm = Create(initial: original);
+        var fired = false;
+        vm.Committed += _ => fired = true;
+
+        vm.CalendarDate = new DateTime(2026, 4, 20);
+
+        Assert.Equal(original, vm.SelectedDate);
+        Assert.False(fired);
+    }
+
+    /// <summary>
+    /// 日历上按 Enter：提交当前高亮日。
+    /// </summary>
+    [Fact]
+    public void CommitPreview_CommitsHighlightedDay()
+    {
+        var vm = Create();
+        DateTime? committed = null;
+        vm.Committed += d => committed = d;
+
+        vm.CalendarDate = new DateTime(2026, 3, 18);
+        vm.CommitPreviewCommand.Execute(null);
+
+        Assert.Equal(new DateTime(2026, 3, 18), committed);
+        Assert.Equal(new DateTime(2026, 3, 18), vm.SelectedDate);
+    }
+
+    /// <summary>
+    /// 未高亮任何日期时按 Enter 不提交：否则会把「未设置」当成「清除」静默写回。
+    /// </summary>
+    [Fact]
+    public void CommitPreview_WithoutHighlight_DoesNothing()
+    {
+        var vm = Create();
+        var fired = false;
+        vm.Committed += _ => fired = true;
+
+        vm.CommitPreviewCommand.Execute(null);
+
+        Assert.False(fired);
     }
 
     [Fact]
-    public void OnDigitTextChanged_WithValidSingleDigit_UpdatesDate()
+    public void CommitDate_CommitsPickedDay()
     {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
+        var vm = Create();
+        DateTime? committed = null;
+        vm.Committed += d => committed = d;
+
+        vm.CommitDate(new DateTime(2026, 4, 20));
+
+        Assert.Equal(new DateTime(2026, 4, 20), committed);
+        Assert.Equal(new DateTime(2026, 4, 20), vm.TakeValue());
+        Assert.Equal(new DateTime(2026, 4, 20), vm.CalendarDisplayDate);
+    }
+
+    [Fact]
+    public void Load_ResetsPreviousSessionPreview()
+    {
+        var vm = Create(initial: new DateTime(2026, 3, 20));
+        vm.CalendarDate = new DateTime(2026, 5, 1);
+
         vm.Load(null);
 
-        vm.UpdateDigitInput("15");
-
-        Assert.NotNull(vm.SelectedDate);
-        Assert.Equal(2026, vm.SelectedDate.Value.Year);
-        Assert.Equal(3, vm.SelectedDate.Value.Month);
-        Assert.Equal(15, vm.SelectedDate.Value.Day);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithValidMonthDay_UpdatesDate()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(null);
-
-        vm.UpdateDigitInput("0510");
-
-        Assert.NotNull(vm.SelectedDate);
-        Assert.Equal(2026, vm.SelectedDate.Value.Year);
-        Assert.Equal(5, vm.SelectedDate.Value.Month);
-        Assert.Equal(10, vm.SelectedDate.Value.Day);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithValidFullYear_UpdatesDate()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(null);
-
-        vm.UpdateDigitInput("20250615");
-
-        Assert.NotNull(vm.SelectedDate);
-        Assert.Equal(2025, vm.SelectedDate.Value.Year);
-        Assert.Equal(6, vm.SelectedDate.Value.Month);
-        Assert.Equal(15, vm.SelectedDate.Value.Day);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithValidIsoString_UpdatesDate()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(null);
-
-        vm.UpdateDigitInput("2025-06-15");
-
-        Assert.NotNull(vm.SelectedDate);
-        Assert.Equal(2025, vm.SelectedDate.Value.Year);
-        Assert.Equal(6, vm.SelectedDate.Value.Month);
-        Assert.Equal(15, vm.SelectedDate.Value.Day);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithInvalid_PreservesDateAndSetsError()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        var originalDate = new DateTime(2026, 3, 15);
-        vm.Load(originalDate);
-
-        vm.UpdateDigitInput("abc");
-
-        // 原值保留
-        Assert.Equal(originalDate, vm.SelectedDate);
-        // 错误标志置位
-        Assert.True(vm.HasParseError);
-        Assert.NotEmpty(vm.ParseErrorMessage);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithInvalidDay_PreservesDateAndSetsError()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        var originalDate = new DateTime(2026, 3, 15);
-        vm.Load(originalDate);
-
-        vm.UpdateDigitInput("32");  // 3 月没有 32 号
-
-        Assert.Equal(originalDate, vm.SelectedDate);
-        Assert.True(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnDigitTextChanged_WithEmpty_DoesNotClearDate()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        var originalDate = new DateTime(2026, 3, 15);
-        vm.Load(originalDate);
-
-        vm.UpdateDigitInput("");
-
-        // 空输入不主动清除
-        Assert.Equal(originalDate, vm.SelectedDate);
-        Assert.Empty(vm.DigitText);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void OnCalendarDateChanged_UpdatesAllFields()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(null);
-        vm.UpdateDigitInput("15");  // 先设置数字输入
-
-        var newDate = new DateTime(2026, 4, 20);
-        vm.UpdateCalendarInput(newDate);
-
-        Assert.Equal(newDate, vm.SelectedDate);
-        Assert.Equal(newDate, vm.CalendarDate);
-        Assert.Empty(vm.DigitText);
-        Assert.False(vm.HasParseError);
-    }
-
-    [Fact]
-    public void TakeValue_ReturnsCurrentDate()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        var testDate = new DateTime(2026, 3, 20);
-        vm.Load(testDate);
-
-        var result = vm.TakeValue();
-
-        Assert.Equal(testDate, result);
-    }
-
-    [Fact]
-    public void TakeValue_WithNull_ReturnsNull()
-    {
-        var vm = new DueDateEditorViewModel(_clock, () => 1);
-        vm.Load(null);
-
-        var result = vm.TakeValue();
-
-        Assert.Null(result);
+        Assert.Null(vm.CalendarDate);
+        Assert.Equal(_clock.Today, vm.CalendarDisplayDate);
     }
 }

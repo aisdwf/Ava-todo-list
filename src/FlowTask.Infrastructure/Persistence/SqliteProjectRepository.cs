@@ -185,12 +185,11 @@ public class SqliteProjectRepository : IProjectRepository
         var seed = DefaultProject.CreateSeed(createdAtUtc);
         await _db.ExecuteAsync(
             """
-            INSERT OR IGNORE INTO Projects (Id, Name, ColorHex, SortOrder, IsArchived, CreatedAt)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO Projects (Id, Name, SortOrder, IsArchived, CreatedAt)
+            VALUES (?, ?, ?, ?, ?)
             """,
             seed.Id,
             seed.Name,
-            seed.ColorHex,
             seed.SortOrder,
             seed.IsArchived,
             seed.CreatedAt);

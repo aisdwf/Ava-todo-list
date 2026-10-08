@@ -100,6 +100,8 @@
 
 ### 2.3 数字快速输入（采纳 design §4.3 [推断]）
 
+> **已移除（2026-09-29）**：用户裁决删除直接输入日期的形式，`DueDateParser` 已删除。见 [spec-due-date-picker](./spec-due-date-picker[DONE].md)。本节保留为历史记录。
+
 | 输入 | 含义 |
 | :--- | :--- |
 | `10` | 本月 10 日 |
@@ -118,7 +120,7 @@
 | 展开编辑 | 移除 `yyyy-MM-dd` TextBox（避免双入口） |
 | 设置页 | 「默认到期偏移（天）」 |
 | 侧边栏 VIEWS | **删除「今日聚焦」**；保留「全部」「已完成」等其余入口 |
-| 小窗 | 本轮**不做**到期录入，也**不做**今日列表展示 |
+| 小窗 | 本轮**不做**到期录入，也**不做**今日列表展示（到期录入已由 [spec-due-date-picker](./spec-due-date-picker[DONE].md) 承接，2026-09-29） |
 
 ### 2.5 设置持久化（已确认：方案 A）
 
@@ -141,8 +143,8 @@ SQLite 新增 `AppSettings`（key/value），至少：
 - 行上「今天到期 / 逾期」展示样式（与视图入口无关）
 
 **登记推迟**（Article 4）：
-- **TODO(quick-capture-today): [待小窗 SPEC]** 小窗展示「各项目 + 今日聚焦」；
-  触发条件：主窗到期录入闭环且用户启动小窗迭代。
+- ~~TODO(quick-capture-today)~~：**已关闭（2026-10-01，不做）** —— 今日聚焦在主窗与小窗均不做，
+  见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
 
 ### 2.7 非目标
 
@@ -256,8 +258,8 @@ SQLite 新增 `AppSettings`（key/value），至少：
 
 ## 6. Deferred Items
 
-- **TODO(quick-capture-today): [待小窗 SPEC]** 小窗展示各项目与今日聚焦（用户原话）。
-- **TODO(settings-store-unification)**: 外观偏好持久化复用 `AppSettings`，避免双轨。
+- ~~TODO(quick-capture-today)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
+- ~~TODO(settings-store-unification)~~：**已核销（2026-09-26）** —— 外观偏好已写入既有 `AppSettings`，见 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md)。
 - ~~TODO(due-presets-extra)~~：**已关闭** —— 用户确认不要额外预设。
 
 ---
@@ -282,4 +284,4 @@ SQLite 新增 `AppSettings`（key/value），至少：
 | 基础初版范围 | 三来源录入、默认偏移设置、行上改期、主窗删今日聚焦、日历按需展开 |
 | SPEC / 索引 | `done`；文件名 `[DONE]`；`docs/specs/README.md` 已同步 |
 | git 提交 | **未执行**（等用户指示） |
-| 显式推迟 | `TODO(quick-capture-today)`、`TODO(settings-store-unification)` |
+| 显式推迟 | `TODO(quick-capture-today)`、`TODO(settings-store-unification)`（两项均已于 2026-10-01 前关闭，见 §6） |

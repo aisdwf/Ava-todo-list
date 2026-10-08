@@ -298,10 +298,10 @@ public readonly record struct ViewSelection
 承接自前序 SPEC，本段不处理：
 
 - **TODO(archive-ui): [2026-10-12]** 项目归档命令无 UI 入口 → 设置区（design-interaction-principles §7.1） 将移入设置区
-- **TODO(desc-field): [2026-10-05]** `Description` 死字段 → design-interaction-principles §4（严禁强制手动输入）.3.2 已决定废弃，待确认是否物理删列
-- **TODO(recycle-bin): [2026-10-05]** 软删除任务无恢复入口
-- **TODO(appearance-persist): [2026-09-28]** 外观偏好重启后回退默认
-- **TODO(cleanup): [2026-09-21]** `Class1.cs` 模板残留（Core / Infrastructure 各一）
+- ~~TODO(desc-field)~~：**已关闭（2026-10-01，不做）**；不物理删列（design-domain-contract §2.4）。见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)
+- ~~TODO(recycle-bin)~~：**已关闭（2026-10-01，不做）**。见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)
+- ~~TODO(appearance-persist)~~：**已核销（2026-09-26）**，见 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md)
+- ~~TODO(cleanup)~~：**已核销** —— 两处 `Class1.cs` 已不存在于 `src/`（2026-10-01 核实）
 
 ---
 

@@ -8,9 +8,14 @@ namespace FlowTask.Core.Models;
 /// <remarks>
 /// <para>
 /// <b>为什么项目是独立实体而标签不是</b>：项目需要重命名
-/// （改一次、全部关联任务同步生效）、需要颜色标识、需要排序与归档。
+/// （改一次、全部关联任务同步生效）、需要排序与归档。
 /// 这些都要求它拥有独立身份。若退化为字符串标记，
-/// 重命名将变成「批量查找替换」，且无从承载颜色与排序（design-domain-contract §2.2）。
+/// 重命名将变成「批量查找替换」，且无从承载排序（design-domain-contract §2.2）。
+/// </para>
+/// <para>
+/// <b>为什么没有项目色</b>：曾有 <c>ColorHex</c> 字段，建项目时把字面 hex 写进库，
+/// 主题系统无法介入，换主题后项目点仍是固定紫 / 绿。现在项目标识统一取主题强调色，
+/// 旧库遗留的 <c>ColorHex</c> 列不再读写（spec-theme-bound-decoration-colors）。
 /// </para>
 /// <para>
 /// 反之标签只需「附着」，不需治理能力，故以字符串存储即可。
@@ -24,11 +29,6 @@ public class Project
 
     [Indexed]
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 项目色（`#RRGGBB`），用于任务行色条与筛选标识。
-    /// </summary>
-    public string ColorHex { get; set; } = "#3B82F6";
 
     /// <summary>侧边栏中的排列顺序，升序。</summary>
     public int SortOrder { get; set; }

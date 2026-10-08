@@ -69,7 +69,10 @@ public partial class App : Application
             IProjectRepository projectRepository = new SqliteProjectRepository();
             IAppSettingsRepository settingsRepository = new SqliteAppSettingsRepository();
 
-            var mainVm = new MainViewModel(repository, projectRepository, clock, settingsRepository);
+            // 热键回调要切换的主窗此时还没构造：先交给 _mainWindow 字段，Show 之前就已赋值
+            _hotkeyService = new GlobalHotkeyService(() => _mainWindow?.ToggleQuickCaptureFromHotkey());
+
+            var mainVm = new MainViewModel(repository, projectRepository, clock, settingsRepository, _hotkeyService);
             var quickCaptureVm = new QuickCaptureViewModel(
                 repository, projectRepository, settingsRepository, clock);
 
@@ -121,13 +124,17 @@ public partial class App : Application
         AppearanceCoordinator.ApplyMaterial(mainWindow, mainVm.SelectedMaterial.Id);
         mainWindow.QuickCaptureVisibilityChanged += SyncTrayMiniMenuHeader;
 
-        // Windows：进程级热键（主窗非前台亦可）；失败则保留主窗内 KeyDown 回退
-        _hotkeyService = new GlobalHotkeyService(() =>
-            Dispatcher.UIThread.Post(mainWindow.ToggleQuickCaptureFromHotkey));
-
-        // 注册成功后必须关闭窗内 Alt+Space 监听，否则同一次按键会被系统级热键与窗内
-        // KeyDown 两条路径分别触发一次 Toggle（见 MainWindow._systemHotkeyActive 注释）
-        mainWindow.SetSystemHotkeyActive(_hotkeyService.TryStart());
+        // 注册已保存组合（主窗非前台亦可）。被占用时不回退到任何备选组合：
+        // 本次运行停用并弹窗一次（spec-quick-window-custom-hotkey W4）。
+        // 系统级生效时窗内监听自动关闭，避免同一次按键走两条路径（MainWindow.OnWindowKeyDown）。
+        try
+        {
+            await mainVm.Hotkey.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("QuickWindowHotkey.StartAsync", ex);
+        }
 
         InstallTrayIcon();
 
@@ -190,7 +197,7 @@ public partial class App : Application
     private void InstallTrayIcon()
     {
         _toggleMiniMenuItem = new NativeMenuItem("显示小窗");
-        _toggleMiniMenuItem.Click += (_, _) => _mainWindow?.ToggleQuickCaptureFromHotkey();
+        _toggleMiniMenuItem.Click += (_, _) => _mainWindow?.ToggleQuickCaptureFromTray();
 
         var exitItem = new NativeMenuItem("退出");
         exitItem.Click += (_, _) => RequestExit();
