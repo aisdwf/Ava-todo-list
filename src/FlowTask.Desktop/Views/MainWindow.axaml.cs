@@ -93,6 +93,7 @@ public partial class MainWindow : Window
         DataContext = vm;
         _quickCaptureVm = quickCaptureVm;
         _hotkey = vm.Hotkey;
+        vm.Export.SavePicker = new WindowExportSavePicker(this);
 
         vm.RequestOpenQuickCapture += ToggleQuickCaptureWindow;
         vm.MaterialPresetChanged += preset => AppearanceCoordinator.ApplyMaterial(this, preset.Id);

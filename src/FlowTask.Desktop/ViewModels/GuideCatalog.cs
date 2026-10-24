@@ -42,6 +42,9 @@ public enum GuideSceneKind
     /// <summary>命令行总开关、读写真权限，以及任务行上的 CLI 标记。</summary>
     CliAccess,
 
+    /// <summary>设置 → 数据：点「导出为 JSON」并保存。</summary>
+    ExportData,
+
     /// <summary>昼夜水波纹、齿轮与「?」入口。</summary>
     Theme
 }
@@ -222,6 +225,16 @@ public static class GuideCatalog
             {
                 "读取对应列出任务，写入对应加入和删除。两项默认都关。",
                 "命令行加入的任务可以在行上标出 CLI。关掉标记开关不会抹掉已经标过的任务。"
+            },
+            NoTarget),
+
+        new GuideTopic(string.Empty, GuideSceneKind.ExportData, "设置",
+            "导出数据",
+            "在设置 → 数据里点「导出为 JSON」，选择位置后保存全部项目和任务。",
+            new[]
+            {
+                "已归档的项目和它们的任务也会写进文件。",
+                "外观、关闭行为和命令行开关不会导出。"
             },
             NoTarget),
 

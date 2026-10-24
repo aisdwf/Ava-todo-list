@@ -257,6 +257,9 @@
                                    Text="总开关打开后，可以分别允许读取和写入。标记只影响之后的写入。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Cli}" />
                         <TextBlock Classes="CaptionText"
+                                   Text="把全部项目和任务存成一份 JSON 文件。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Data}" />
+                        <TextBlock Classes="CaptionText"
                                    Text="每个功能配一段动图演示；也可以重新播放新手引导。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />
                         <TextBlock Classes="CaptionText"
@@ -692,6 +695,24 @@
                                                    TextWrapping="Wrap"
                                                    Text="只影响之后的写入。任务行上会显示 CLI。关掉以后，已经标过的任务仍保留标记。" />
                                     </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Spacing="12"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Data}">
+                                    <TextBlock Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               Text="包含已归档的项目。不含外观、关闭行为和命令行开关。" />
+                                    <Button Content="导出为 JSON"
+                                            HorizontalAlignment="Left"
+                                            Classes="PrimaryAction"
+                                            Command="{Binding Export.ExportCommand}"
+                                            AutomationProperties.Name="导出为 JSON" />
+                                    <TextBlock Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding Export.HasResult}"
+                                               Text="{Binding Export.ResultText}" />
                                 </StackPanel>
 
                                 <guide:GuidePage IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />

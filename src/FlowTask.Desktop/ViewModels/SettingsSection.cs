@@ -19,6 +19,9 @@ public enum SettingsSection
     /// <summary>命令行：总开关，以及打开后可分别配置的读取与写入。</summary>
     Cli,
 
+    /// <summary>数据：把全部项目与任务导出为 JSON（spec-json-export）。</summary>
+    Data,
+
     /// <summary>操作指南：图文动效条目与重新播放引导（spec-onboarding-guide）。</summary>
     Guide,
 
