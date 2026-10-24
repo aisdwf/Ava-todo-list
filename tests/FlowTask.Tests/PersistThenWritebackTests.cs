@@ -63,6 +63,8 @@ public class PersistThenWritebackTests
     {
         var task = TaskItemFactory.Create(_clock, "勾选", projectId: DefaultProject.Id);
         task.IsCompleted = true;
+        task.IsPinned = true;
+        task.PinnedAt = _clock.UtcNow;
         var sut = new ToggleCompleteTaskViewModel(new ThrowingTaskRepository(), _clock);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -70,6 +72,8 @@ public class PersistThenWritebackTests
 
         Assert.False(task.IsCompleted);
         Assert.Null(task.CompletedAt);
+        Assert.True(task.IsPinned);
+        Assert.Equal(_clock.UtcNow, task.PinnedAt);
     }
 
     private sealed class ThrowingTaskRepository : ITaskRepository

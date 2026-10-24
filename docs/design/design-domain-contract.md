@@ -64,6 +64,8 @@ V2 读取行数 = 1
 | `IsArchived` / `ArchivedAt` | `bool` / `DateTime?` | **已停用**（2026-09-26）。列保留，查询不再过滤。见 spec-project-managed-tasks |
 | `Description` | `string?` | **已废弃**，见 §2.4 |
 | `IsCliWritten` | `bool` | 命令行在「标记 CLI 写入」打开时创建的任务为 true。界面创建保持 false。关掉该开关不清除已有标记（spec-cli-add-delete） |
+| `IsPinned` | `bool` | 是否置顶。只作用于未完成任务。勾选完成时与 `PinnedAt` 同一次写入清除；取消完成不恢复（spec-task-pin） |
+| `PinnedAt` | `DateTime?` | 最近一次置顶的时刻（**UTC**）。未置顶为 `null`。未完成组内置顶任务按此倒序，最后置顶的在最上面。经 `IClock.UtcNow` 赋值 |
 
 ### 2.2 不变量
 
@@ -105,7 +107,7 @@ UI **严禁**对其做视觉标记、警告或催促补全。
 
 | 类别 | 含义 | 字段 | 存储基准 |
 | :--- | :--- | :--- | :--- |
-| **时刻（instant）** | 事件在哪一瞬间发生 | `CreatedAt` `CompletedAt` | **UTC** |
+| **时刻（instant）** | 事件在哪一瞬间发生 | `CreatedAt` `CompletedAt` `PinnedAt` | **UTC** |
 | **日历日（calendar date）** | 用户日历上的哪一天 | `DueDate` | **本地日期**（当日零点，Kind `Unspecified`） |
 
 ### 3.2 为什么不统一为 UTC

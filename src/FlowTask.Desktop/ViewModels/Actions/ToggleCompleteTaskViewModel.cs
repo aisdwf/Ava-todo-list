@@ -27,7 +27,16 @@ public sealed class ToggleCompleteTaskViewModel
 
         var previousCompleted = !item.IsCompleted;
         var previousCompletedAt = item.CompletedAt;
+        var previousPinned = item.IsPinned;
+        var previousPinnedAt = item.PinnedAt;
         item.CompletedAt = item.IsCompleted ? _clock.UtcNow : null;
+        // 勾选完成时同一次写入清掉置顶。取消勾选不恢复：置顶是临时把事情顶上去，做完即失效。
+        if (item.IsCompleted)
+        {
+            item.IsPinned = false;
+            item.PinnedAt = null;
+        }
+
         try
         {
             await _taskRepository.SaveTaskAsync(item);
@@ -36,6 +45,8 @@ public sealed class ToggleCompleteTaskViewModel
         {
             item.IsCompleted = previousCompleted;
             item.CompletedAt = previousCompletedAt;
+            item.IsPinned = previousPinned;
+            item.PinnedAt = previousPinnedAt;
             throw;
         }
         // 单一数据源：完成态只在 SQLite。总线通知各窗口从仓储重载自己的派生列表，

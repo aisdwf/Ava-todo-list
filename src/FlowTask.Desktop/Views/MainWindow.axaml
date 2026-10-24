@@ -443,6 +443,23 @@
                                                                          CommitCommand="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRowPriorityCommand}"
                                                                          CommitTarget="{Binding}" />
 
+                                                <!-- 图钉占 P 标签正下方这一格。未置顶只改透明度，不把格子收起，
+                                                     避免悬停时元信息行跳动。已完成行不显示。 -->
+                                                <Button Grid.Column="2" Grid.Row="1"
+                                                        Classes="PinToggle"
+                                                        Classes.Pinned="{Binding IsPinned}"
+                                                        IsVisible="{Binding ShowPin}"
+                                                        Margin="6,4,16,0"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).TogglePinCommand}"
+                                                        CommandParameter="{Binding Task}"
+                                                        ToolTip.Tip="{Binding PinToolTip}">
+                                                    <Viewbox>
+                                                        <Path Classes="StrokeIcon" Data="{StaticResource IconPin}" />
+                                                    </Viewbox>
+                                                </Button>
+
                                                 <!-- 大字号标题：Editorial 气势的主要载体。双击就地改名 (spec-inline-task-edit)：
                                                      Enter / 点击外部保存，Esc 取消。Background 透明使整格可命中双击。 -->
                                                 <Panel Grid.Column="3" Grid.Row="0"

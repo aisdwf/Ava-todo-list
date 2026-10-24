@@ -408,6 +408,45 @@
         <Setter Property="Opacity" Value="1" />
     </Style>
 
+    <!-- 置顶钮固定 14px。未置顶只改透明度：若用 IsVisible，悬停时行高和右侧日期会跳。
+         已置顶加上 Pinned，常驻并改强调色。主窗与小窗共用。 -->
+    <Style Selector="Button.PinToggle">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="MinWidth" Value="14" />
+        <Setter Property="MinHeight" Value="14" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.PinToggle Viewbox">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="Button.PinToggle Path.StrokeIcon">
+        <Setter Property="Stroke" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="Border.TaskRow:pointerover Button.PinToggle,
+                     Border.QuickTaskRow:pointerover Button.PinToggle">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.PinToggle.Pinned">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.PinToggle.Pinned Path.StrokeIcon">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
     <!-- 任务标题：大字号是"大开大合"的主要载体 -->
     <Style Selector="TextBlock.TaskTitle">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeTaskTitle}" />

@@ -249,6 +249,12 @@ public partial class QuickCaptureViewModel : ViewModelBase,
         => await new ToggleCompleteTaskViewModel(_taskRepository, _clock)
             .ExecuteAsync(item, LoadTasksForSelectedProjectAsync, this);
 
+    /// <summary>切换置顶。与主窗共用同一动作，排序仍只在 <c>TaskListOrder</c>。</summary>
+    [RelayCommand]
+    private async Task TogglePinAsync(TaskItem? item)
+        => await new TogglePinTaskViewModel(_taskRepository, _clock)
+            .ExecuteAsync(item, LoadTasksForSelectedProjectAsync, this);
+
     /// <summary>
     /// 持久化小窗任务行到期日选择器的一次提交，与主窗共用同一动作（R-1.10）。
     /// </summary>

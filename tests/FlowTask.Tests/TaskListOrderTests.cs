@@ -104,4 +104,50 @@ public class TaskListOrderTests
 
         Assert.Equal(new[] { "newer", "older" }, ordered.Select(t => t.Title).ToArray());
     }
+
+    [Fact]
+    public void Incomplete_PinnedRisesAboveHigherPriority()
+    {
+        var lowPinned = Item("low-pinned", TaskPriority.Low);
+        lowPinned.IsPinned = true;
+        lowPinned.PinnedAt = _clock.UtcNow;
+        var high = Item("high", TaskPriority.High);
+
+        var ordered = TaskListOrder.Sort([high, lowPinned]);
+
+        Assert.Equal(new[] { "low-pinned", "high" }, ordered.Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void Incomplete_LastPinnedIsFirst()
+    {
+        var earlier = _clock.UtcNow;
+        var later = earlier.AddMinutes(5);
+        var first = Item("first");
+        first.IsPinned = true;
+        first.PinnedAt = earlier;
+        var second = Item("second");
+        second.IsPinned = true;
+        second.PinnedAt = later;
+        var plain = Item("plain", TaskPriority.High);
+
+        var ordered = TaskListOrder.Sort([plain, first, second]);
+
+        Assert.Equal(new[] { "second", "first", "plain" }, ordered.Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void Completed_IgnoresPin()
+    {
+        var t0 = _clock.UtcNow;
+        var doneEarlier = Item("done-earlier", completed: true, completedAt: t0);
+        doneEarlier.IsPinned = true;
+        doneEarlier.PinnedAt = t0.AddHours(1);
+        var doneLater = Item("done-later", TaskPriority.Low, completed: true, completedAt: t0.AddMinutes(5));
+        var open = Item("open", TaskPriority.Low);
+
+        var ordered = TaskListOrder.Sort([doneEarlier, doneLater, open]);
+
+        Assert.Equal(new[] { "open", "done-later", "done-earlier" }, ordered.Select(t => t.Title).ToArray());
+    }
 }

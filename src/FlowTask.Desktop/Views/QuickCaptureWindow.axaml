@@ -92,7 +92,7 @@
                                         BorderBrush="{DynamicResource HairlineBrush}"
                                         BorderThickness="0,0,0,1"
                                         Padding="0,8">
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                         <CheckBox Grid.Column="0"
                                                   Classes="RingCheck"
                                                   IsChecked="{Binding IsCompleted, Mode=TwoWay}"
@@ -122,17 +122,32 @@
                                             </Border>
                                         </Grid>
 
+                                        <!-- 图钉紧贴日期左侧。未置顶只改透明度，日期列不因悬停横移。已完成不显示。 -->
+                                        <Button Grid.Column="2"
+                                                Classes="PinToggle"
+                                                Classes.Pinned="{Binding IsPinned}"
+                                                IsVisible="{Binding ShowPin}"
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).TogglePinCommand}"
+                                                CommandParameter="{Binding Task}"
+                                                ToolTip.Tip="{Binding PinToolTip}">
+                                            <Viewbox>
+                                                <Path Classes="StrokeIcon" Data="{StaticResource IconPin}" />
+                                            </Viewbox>
+                                        </Button>
+
                                         <!-- 到期日 (R-1.10)：有值常驻显示、点击修改；无值时悬停整行浮现「到期」入口。
                                              首版形态，待 owner 预览裁决（spec-due-date-picker Q2）。 -->
-                                        <controls:DueDatePicker Grid.Column="2"
+                                        <controls:DueDatePicker Grid.Column="3"
                                                                 Classes="HoverOnly"
-                                                                Margin="8,0,0,0"
+                                                                Margin="4,0,0,0"
                                                                 IsVisible="{Binding !IsCompleted}"
                                                                 Date="{Binding DueDate}"
                                                                 Editor="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).RowDueDateEditor}"
                                                                 CommitCommand="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).CommitRowDueDateCommand}"
                                                                 CommitTarget="{Binding}" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Classes="MetaText Done"
                                                    Margin="8,0,0,0"
                                                    IsVisible="{Binding IsCompleted}"
