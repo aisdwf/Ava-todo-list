@@ -475,8 +475,9 @@
                                                         <TextBlock Classes="MetaSeparator" Text="·" />
                                                     </StackPanel>
 
-                                                    <!-- 未完成：到期选择器；已完成：完成日（用户原话「显示为 xx/xx已完成」）。
-                                                         完成后改期无意义，取消勾选即恢复选择器与原到期日。 -->
+                                                    <!-- 未完成：到期选择器 · 创建日。
+                                                         已完成：创建日~完成日 已完成（用户原话 2026-10-24），不再另附创建日。
+                                                         完成后不提供改期入口；到期日仍在库中，取消勾选即恢复选择器。 -->
                                                     <controls:DueDatePicker Date="{Binding DueDate}"
                                                                             IsVisible="{Binding !IsCompleted}"
                                                                             Editor="{Binding $parent[Window].((vm:MainViewModel)DataContext).RowDueDateEditor}"
@@ -487,8 +488,10 @@
                                                                IsVisible="{Binding IsCompleted}"
                                                                Text="{Binding CompletedLocalText}" />
 
-                                                    <TextBlock Classes="MetaSeparator" Text="·" />
+                                                    <TextBlock Classes="MetaSeparator" Text="·"
+                                                               IsVisible="{Binding !IsCompleted}" />
                                                     <TextBlock Classes="MetaText"
+                                                               IsVisible="{Binding !IsCompleted}"
                                                                Text="{Binding CreatedLocalText}"
                                                                ToolTip.Tip="创建日期" />
                                                 </StackPanel>

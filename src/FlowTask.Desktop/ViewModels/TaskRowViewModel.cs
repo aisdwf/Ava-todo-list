@@ -77,15 +77,18 @@ public partial class TaskRowViewModel : ViewModelBase
     public string CreatedLocalText => FormatLocalDay(Task.CreatedAt);
 
     /// <summary>
-    /// 已完成任务的完成日文案，如「09/29 已完成」。
+    /// 已完成任务的日期文案，如「10/24~10/27 已完成」。
     /// </summary>
     /// <remarks>
-    /// 用户原话（2026-09-29）：「已完成的显示为 xx/xx已完成类似的形式感觉更合理，已经完成的任务显示逾期表现很怪」。
-    /// 完成后到期日已失去行动意义，改为展示完成日；到期日本身仍保留在库中，取消勾选即恢复原展示。
-    /// 历史数据可能缺 <c>CompletedAt</c>，此时只显示「已完成」。
+    /// 用户原话（2026-09-29）：已完成任务显示逾期很怪，故完成后不再展示到期选择器。
+    /// 用户原话（2026-10-24）：完成态改为「创建日~完成日 已完成」，不再把创建日另附在末尾。
+    /// 到期日仍留在库中，取消勾选即恢复选择器与原到期日。
+    /// 同一本地日仍写全区间。历史数据缺 <c>CompletedAt</c> 时只显示「创建日 已完成」，不编造完成日。
     /// </remarks>
     public string CompletedLocalText =>
-        Task.CompletedAt is { } at ? $"{FormatLocalDay(at)} 已完成" : "已完成";
+        Task.CompletedAt is { } at
+            ? $"{FormatLocalDay(Task.CreatedAt)}~{FormatLocalDay(at)} 已完成"
+            : $"{FormatLocalDay(Task.CreatedAt)} 已完成";
 
     /// <summary>UTC 时刻按本地时区格式化为 MM/dd。sqlite-net 读回的 Kind 可能为 Unspecified，显式按 UTC 解释。</summary>
     private static string FormatLocalDay(DateTime utc) =>

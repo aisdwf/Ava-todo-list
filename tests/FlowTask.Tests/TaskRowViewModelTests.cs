@@ -24,27 +24,32 @@ public class TaskRowViewModelTests
     }
 
     /// <summary>
-    /// 已完成任务展示「MM/dd 已完成」（本地时区），不再显示逾期；缺完成时刻的历史数据只显示「已完成」。
+    /// 已完成任务展示「创建日~完成日 已完成」（本地时区）。同一天仍写全区间；缺完成时刻时只显示创建日。
     /// </summary>
     [Fact]
-    public void CompletedLocalText_ShowsLocalCompletionDay()
+    public void CompletedLocalText_ShowsCreatedToCompletedSpan()
     {
+        var createdUtc = new DateTime(2026, 3, 1, 4, 0, 0, DateTimeKind.Utc);
         var completedUtc = new DateTime(2026, 3, 9, 20, 30, 0, DateTimeKind.Utc);
         var task = new TaskItem
         {
             Title = "t",
-            CreatedAt = new DateTime(2026, 3, 1),
+            CreatedAt = DateTime.SpecifyKind(createdUtc, DateTimeKind.Unspecified),
             DueDate = new DateTime(2026, 3, 1),
             IsCompleted = true,
             CompletedAt = DateTime.SpecifyKind(completedUtc, DateTimeKind.Unspecified)
         };
         var row = new TaskRowViewModel(task, null);
 
-        var day = completedUtc.ToLocalTime().ToString("MM/dd", System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Equal($"{day} 已完成", row.CompletedLocalText);
+        var created = createdUtc.ToLocalTime().ToString("MM/dd", System.Globalization.CultureInfo.InvariantCulture);
+        var completed = completedUtc.ToLocalTime().ToString("MM/dd", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal($"{created}~{completed} 已完成", row.CompletedLocalText);
+
+        task.CompletedAt = createdUtc;
+        Assert.Equal($"{created}~{created} 已完成", row.CompletedLocalText);
 
         task.CompletedAt = null;
-        Assert.Equal("已完成", row.CompletedLocalText);
+        Assert.Equal($"{created} 已完成", row.CompletedLocalText);
     }
 
     /// <summary>
