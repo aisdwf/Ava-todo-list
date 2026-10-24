@@ -33,6 +33,7 @@ internal static class GuideScenes
         GuideSceneKind.DefaultDue => DefaultDue(layer),
         GuideSceneKind.CloseToTray => CloseToTray(layer),
         GuideSceneKind.CliAccess => CliAccess(layer),
+        GuideSceneKind.ExportData => ExportData(layer),
         GuideSceneKind.Theme => Theme(layer),
         _ => new SceneScript()
     };
@@ -899,6 +900,30 @@ internal static class GuideScenes
                 Motion.Show(masterOn);
             })
             .Then(480, () => Motion.Show(badge));
+    }
+
+    private static SceneScript ExportData(SceneLayer layer)
+    {
+        layer.Text(16, 14, "数据", 16, "TextPrimaryBrush", FontWeight.Bold);
+        layer.Text(16, 46, "包含已归档的项目。", 11, "TextSecondaryBrush");
+        layer.Box(16, 78, 118, 28, "AccentBrush", 8);
+        layer.Text(28, 84, "导出为 JSON", 11, "CardSurfaceBrush", FontWeight.SemiBold);
+        var saved = layer.Text(16, 122, "flowtask-export.json", 11, "AccentBrush");
+        var cursor = layer.Cursor();
+
+        var script = new SceneScript
+        {
+            Reset = () =>
+            {
+                Motion.Hide(saved);
+                cursor.Park();
+            }
+        };
+
+        return script
+            .MoveTo(cursor, 74, 92)
+            .Click(cursor, 74, 92)
+            .Then(900, () => Motion.Show(saved));
     }
 
     private static SceneScript Theme(SceneLayer layer)

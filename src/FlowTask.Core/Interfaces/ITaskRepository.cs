@@ -22,7 +22,7 @@ public interface ITaskRepository
     /// 载入全部未删除任务，包含已归档项目下的任务。
     /// </summary>
     /// <remarks>
-    /// 供一次显式的数据读取（命令行 <c>list</c>）。
+    /// 供一次显式的数据读取（命令行 <c>list</c>、设置里的 JSON 导出）。
     /// 归档只隐藏侧边栏、「全部任务」和计数、小窗项目下拉，不隐藏这次读取。
     /// </remarks>
     Task<List<TaskItem>> GetAllNonDeletedTasksAsync();

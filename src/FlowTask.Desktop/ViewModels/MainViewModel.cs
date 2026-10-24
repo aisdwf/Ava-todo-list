@@ -9,6 +9,7 @@ using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
+using FlowTask.Infrastructure.Export;
 
 namespace FlowTask.Desktop.ViewModels;
 
@@ -296,8 +297,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观 → 通用 → 命令行 → 已归档的项目 → 操作指南 → 关于。
-    /// 「数据」属于另一份草稿，这里不插入。
+    /// 外观 → 通用 → 命令行 → 数据 → 已归档的项目 → 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
@@ -305,6 +305,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
         new SettingsNavItem(SettingsSection.Cli, "命令行", "读取、写入和 CLI 标记。"),
+        new SettingsNavItem(SettingsSection.Data, "数据", "导出项目与任务。"),
         new SettingsNavItem(SettingsSection.Archived, "已归档的项目", "恢复，或连同任务一起删除。"),
         new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
@@ -312,6 +313,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
     /// <summary>设置 → 命令行的四项开关（spec-cli-add-delete）。</summary>
     public CliAccessSettingsViewModel Cli { get; }
+
+    /// <summary>设置 → 数据：导出全部项目与任务（spec-json-export）。</summary>
+    public ExportDataViewModel Export { get; }
 
     /// <summary>请求唤起快捷小窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
@@ -375,6 +379,9 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         Hotkey.RequestOpenGeneralSettings += OpenGeneralSettings;
 
         Cli = new CliAccessSettingsViewModel(settingsRepository);
+        Export = new ExportDataViewModel(
+            new JsonDataExporter(projectRepository, repository, clock),
+            clock);
 
         // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
