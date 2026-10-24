@@ -9,7 +9,9 @@ namespace FlowTask.Core.Ordering;
 /// <remarks>
 /// 必须在内存中排序：规则含「未完成/已完成分组后走不同的后续关键字」，
 /// 无法可靠地翻译成 sqlite-net 的 SQL <c>ORDER BY</c>。
-/// 已完成组不再套用优先级：先勾的必须在最底部，优先级只作用于未完成组。
+/// 未完成组先看置顶：置顶者按 <see cref="TaskItem.PinnedAt"/> 倒序，
+/// 未置顶者才走优先级、到期日、创建时间倒序。
+/// 已完成组不看置顶，也不再套用优先级：先勾的必须在最底部。
 /// </remarks>
 public static class TaskListOrder
 {
@@ -49,6 +51,24 @@ public static class TaskListOrder
                 if (byStamp != 0)
                 {
                     return byStamp;
+                }
+
+                return string.CompareOrdinal(x.Id, y.Id);
+            }
+
+            // true > false，反过来比才能让置顶者排在未置顶者前面，且不受优先级影响。
+            var pinned = y.IsPinned.CompareTo(x.IsPinned);
+            if (pinned != 0)
+            {
+                return pinned;
+            }
+
+            if (x.IsPinned)
+            {
+                var byPinnedAt = CompareDescending(y.PinnedAt ?? DateTime.MinValue, x.PinnedAt ?? DateTime.MinValue);
+                if (byPinnedAt != 0)
+                {
+                    return byPinnedAt;
                 }
 
                 return string.CompareOrdinal(x.Id, y.Id);

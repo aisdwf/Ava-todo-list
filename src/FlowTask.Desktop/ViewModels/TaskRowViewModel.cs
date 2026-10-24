@@ -61,6 +61,17 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <summary>命令行标记。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。</summary>
     public bool ShowCliMark => Task.IsCliWritten;
 
+    /// <summary>是否置顶。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。</summary>
+    public bool IsPinned => Task.IsPinned;
+
+    /// <summary>
+    /// 未完成行才放图钉。已完成行改显示完成文案，不再留一个可点的置顶入口。
+    /// </summary>
+    public bool ShowPin => !IsCompleted;
+
+    /// <summary>图钉按钮提示。已置顶时说明再点一次会取消。</summary>
+    public string PinToolTip => Task.IsPinned ? "取消置顶" : "置顶";
+
     /// <summary>是否设有到期日，驱动到期徽标显隐。</summary>
     public bool HasDueDate => Task.DueDate is not null;
 
@@ -118,6 +129,7 @@ public partial class TaskRowViewModel : ViewModelBase
     {
         Task.IsCompleted = value;
         OnPropertyChanged(nameof(CompletedLocalText));
+        OnPropertyChanged(nameof(ShowPin));
     }
 
     /// <summary>
@@ -130,6 +142,8 @@ public partial class TaskRowViewModel : ViewModelBase
         Task.DueDate = persisted.DueDate;
         Task.CompletedAt = persisted.CompletedAt;
         Task.IsCliWritten = persisted.IsCliWritten;
+        Task.IsPinned = persisted.IsPinned;
+        Task.PinnedAt = persisted.PinnedAt;
         IsCompleted = persisted.IsCompleted;
         RefreshDerivedFlags();
     }
@@ -185,6 +199,9 @@ public partial class TaskRowViewModel : ViewModelBase
         OnPropertyChanged(nameof(Priority));
         OnPropertyChanged(nameof(HasProject));
         OnPropertyChanged(nameof(ShowCliMark));
+        OnPropertyChanged(nameof(IsPinned));
+        OnPropertyChanged(nameof(ShowPin));
+        OnPropertyChanged(nameof(PinToolTip));
         OnPropertyChanged(nameof(HasDueDate));
         OnPropertyChanged(nameof(DueDate));
         OnPropertyChanged(nameof(CompletedLocalText));

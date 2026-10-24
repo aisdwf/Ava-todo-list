@@ -87,4 +87,39 @@ public class TaskRowViewModelTests
         Assert.Contains(nameof(TaskRowViewModel.DueDate), notified);
         Assert.Contains(nameof(TaskRowViewModel.HasDueDate), notified);
     }
+
+    [Fact]
+    public void ApplyPersisted_CopiesPinAndHidesButtonWhenCompleted()
+    {
+        var created = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc);
+        var task = new TaskItem { Title = "t", CreatedAt = created };
+        var row = new TaskRowViewModel(task, null);
+        var pinnedAt = new DateTime(2026, 3, 11, 1, 0, 0, DateTimeKind.Utc);
+
+        row.ApplyPersisted(new TaskItem
+        {
+            Title = "t",
+            CreatedAt = created,
+            IsPinned = true,
+            PinnedAt = pinnedAt
+        });
+
+        Assert.True(row.IsPinned);
+        Assert.True(row.ShowPin);
+        Assert.Equal(pinnedAt, row.Task.PinnedAt);
+        Assert.Equal("取消置顶", row.PinToolTip);
+
+        row.ApplyPersisted(new TaskItem
+        {
+            Title = "t",
+            CreatedAt = created,
+            IsCompleted = true,
+            CompletedAt = pinnedAt,
+            IsPinned = false,
+            PinnedAt = null
+        });
+
+        Assert.False(row.IsPinned);
+        Assert.False(row.ShowPin);
+    }
 }

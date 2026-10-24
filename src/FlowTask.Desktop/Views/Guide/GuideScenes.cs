@@ -246,6 +246,7 @@ internal static class GuideScenes
     /// <remarks>
     /// 与真实任务行一致（spec-inline-task-edit）：勾选完成后沉底；双击标题原地变输入框，
     /// 打字后回车保存；点 P 标签在其下方弹出三档小框，点一档即生效。不再有底部编辑面板。
+    /// 置顶只给一帧：行交换后，P 标签下方短暂出现强调色图钉（spec-task-pin）。
     /// </remarks>
     private static SceneScript EditAndComplete(SceneLayer layer)
     {
@@ -264,6 +265,8 @@ internal static class GuideScenes
         var optionHigh = pop.Pill(6, 6, 48, "P1", "PriorityHighSurfaceBrush", "PriorityHighBrush");
         pop.Pill(6, 24, 48, "P2", "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
         pop.Pill(6, 42, 48, "P3", "PriorityLowSurfaceBrush", "PriorityLowBrush");
+        var pin = layer.Icon(tagX + 7, tagY + 18, 12, "IconPin", "TextTertiaryBrush");
+        Motion.Hide(pin);
         var cursor = layer.Cursor();
 
         void ShowInput(bool on)
@@ -289,6 +292,9 @@ internal static class GuideScenes
                 ShowInput(false);
                 ShowPopover(false);
                 Motion.Place(tag, 0, 0);
+                Motion.Hide(pin);
+                Motion.Place(pin, 0, 0);
+                layer.Brushes.Set(pin, Avalonia.Controls.Shapes.Shape.StrokeProperty, "TextTertiaryBrush");
                 SceneLayer.Relabel(tag, "P2");
                 layer.Tint(tag, "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
                 layer.Tint(optionHigh, "PriorityHighSurfaceBrush", "PriorityHighBrush");
@@ -306,12 +312,22 @@ internal static class GuideScenes
                 Motion.Place(first.Frame, 0, 30);
                 Motion.Place(second.Frame, 0, -30);
                 Motion.Place(tag, 0, -30);
+                Motion.Place(pin, 0, -30);
                 Motion.Place(input, 0, -30);
                 Motion.Place(popover, 0, -36);
             })
+            .Then(800, () =>
+            {
+                Motion.Show(pin);
+                layer.Brushes.Set(pin, Avalonia.Controls.Shapes.Shape.StrokeProperty, "AccentBrush");
+            })
             // 双击标题：两次点击环
             .MoveTo(cursor, 90, 26)
-            .Then(200, () => Motion.Show(second.Hover))
+            .Then(200, () =>
+            {
+                Motion.Hide(pin);
+                Motion.Show(second.Hover);
+            })
             .Click(cursor, 90, 26)
             .Click(cursor, 90, 26)
             .Then(400, () => ShowInput(true))

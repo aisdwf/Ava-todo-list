@@ -756,6 +756,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         => await new ToggleCompleteTaskViewModel(_repository, _clock)
             .ExecuteAsync(item, LoadTasksAsync, this);
 
+    /// <summary>切换置顶。已完成任务的图钉不显示，这里再拒一次。</summary>
+    [RelayCommand]
+    private async Task TogglePinAsync(TaskItem? item)
+        => await new TogglePinTaskViewModel(_repository, _clock)
+            .ExecuteAsync(item, LoadTasksAsync, this);
+
     /// <summary>
     /// 物理删除任务。
     /// </summary>
