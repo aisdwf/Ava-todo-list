@@ -8,13 +8,24 @@ namespace FlowTask.Core.Interfaces;
 public interface ITaskRepository
 {
     /// <summary>
-    /// 载入全部未删除任务（含已完成；spec-project-managed-tasks）。
+    /// 载入「全部任务」看板：未删除、且不属于已归档项目的任务（含已完成）。
     /// </summary>
     /// <remarks>
-    /// 任务归档已废除：结果不再按 <c>IsArchived</c> 过滤。
+    /// 任务级归档已废除，不再按 <c>TaskItem.IsArchived</c> 过滤。
+    /// 项目归档则把该项目下的任务移出看板与计数（spec-project-archive）。
     /// 排序见 <c>TaskListOrder</c>。
+    /// 命令行 <c>list</c> 不走本方法，见 <see cref="GetAllNonDeletedTasksAsync"/>。
     /// </remarks>
     Task<List<TaskItem>> GetAllActiveTasksAsync();
+
+    /// <summary>
+    /// 载入全部未删除任务，包含已归档项目下的任务。
+    /// </summary>
+    /// <remarks>
+    /// 供一次显式的数据读取（命令行 <c>list</c>）。
+    /// 归档只隐藏侧边栏、「全部任务」和计数、小窗项目下拉，不隐藏这次读取。
+    /// </remarks>
+    Task<List<TaskItem>> GetAllNonDeletedTasksAsync();
 
     /// <summary>
     /// 载入「今日聚焦」：到期日为今天**或已逾期**的未完成任务。
@@ -36,7 +47,9 @@ public interface ITaskRepository
 
     Task<TaskItem?> GetByIdAsync(string id);
 
-    /// <summary>未删除任务总数，供侧边栏「全部」计数，避免为 Count 拉整表。</summary>
+    /// <summary>
+    /// 「全部任务」计数：未删除、且不属于已归档项目。与 <see cref="GetAllActiveTasksAsync"/> 同一范围。
+    /// </summary>
     Task<int> CountActiveTasksAsync();
 
     /// <summary>按 <see cref="TaskItem.ProjectId"/> 分组的未删除任务数。</summary>

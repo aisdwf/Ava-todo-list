@@ -297,7 +297,7 @@ public readonly record struct ViewSelection
 
 承接自前序 SPEC，本段不处理：
 
-- **TODO(archive-ui): [2026-10-12]** 项目归档命令无 UI 入口 → 设置区（design-interaction-principles §7.1） 将移入设置区
+- ~~TODO(archive-ui)~~：**已核销（2026-10-24）** —— 侧栏悬停圆点归档；设置 → 已归档的项目里恢复或删除。见 [spec-project-archive](spec-project-archive[DONE].md)。
 - ~~TODO(desc-field)~~：**已关闭（2026-10-01，不做）**；不物理删列（design-domain-contract §2.4）。见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)
 - ~~TODO(recycle-bin)~~：**已关闭（2026-10-01，不做）**。见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)
 - ~~TODO(appearance-persist)~~：**已核销（2026-09-26）**，见 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md)

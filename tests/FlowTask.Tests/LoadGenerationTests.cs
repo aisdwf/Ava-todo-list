@@ -117,6 +117,8 @@ public class LoadGenerationTests : IDisposable
         public async Task<List<TaskItem>> GetAllActiveTasksAsync()
             => _armed ? await NextQueryAsync() : [];
 
+        public Task<List<TaskItem>> GetAllNonDeletedTasksAsync() => Task.FromResult(new List<TaskItem>());
+
         public Task<List<TaskItem>> GetTodayTasksAsync() => Task.FromResult(new List<TaskItem>());
 
         public async Task<List<TaskItem>> GetTasksByProjectAsync(string? projectId)

@@ -83,7 +83,8 @@ public sealed class CliApp
             return await DenyAsync(stderr, "命令行没有读取权限。");
         }
 
-        var tasks = await _tasks.GetAllActiveTasksAsync();
+        // list 是显式读取：已归档项目下的任务仍返回。看板过滤在 GetAllActiveTasksAsync。
+        var tasks = await _tasks.GetAllNonDeletedTasksAsync();
         var names = await ProjectNamesAsync();
         var rows = tasks.Select(task => ToRow(task, names)).ToList();
         await stdout.WriteLineAsync(JsonSerializer.Serialize(rows, JsonOptions));

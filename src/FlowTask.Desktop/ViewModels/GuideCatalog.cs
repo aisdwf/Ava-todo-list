@@ -21,7 +21,7 @@ public enum GuideSceneKind
     /// <summary>悬停出现删除按钮并删除任务。</summary>
     DeleteTask,
 
-    /// <summary>新建、选中、双击重命名项目。</summary>
+    /// <summary>新建、选中、悬停圆点归档、双击重命名项目。</summary>
     Projects,
 
     /// <summary>删除项目与级联确认条。</summary>
@@ -159,7 +159,8 @@ public static class GuideCatalog
             new[]
             {
                 "不想分类时，任务会落入 Default 项目。",
-                "在某个项目里新建的任务，自动归入这个项目。"
+                "在某个项目里新建的任务，自动归入这个项目。",
+                "悬停项目行时，左侧圆点变成归档图标，点一下即归档。Default 不能归档。"
             },
             new[] { OnboardingTargets.SidebarProjects }),
 
@@ -169,7 +170,8 @@ public static class GuideCatalog
             new[]
             {
                 "Default 项目不能删除。",
-                "点「确认删除」之前都可以取消：点「取消」、点框外或按 Esc。"
+                "点「确认删除」之前都可以取消：点「取消」、点框外或按 Esc。",
+                "已归档项目在设置 → 已归档的项目里恢复或删除。"
             },
             NoTarget),
 

@@ -41,7 +41,7 @@ public class Project
     /// <list type="bullet">
     ///   <item><description>
     ///   <b>归档</b>：项目已完成、不再活跃，但历史归属有保留价值。
-    ///   其下任务的 <c>ProjectId</c> 保持不变，仍可显示归属。
+    ///   其下任务的 <c>ProjectId</c> 保持不变；侧边栏、「全部任务」与小窗下拉不再列出该项目。
     ///   </description></item>
     ///   <item><description>
     ///   <b>删除</b>：项目建错或不再需要。其下任务一并物理删除（R-2.7）。

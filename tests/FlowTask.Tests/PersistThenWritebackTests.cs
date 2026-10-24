@@ -75,6 +75,7 @@ public class PersistThenWritebackTests
     private sealed class ThrowingTaskRepository : ITaskRepository
     {
         public Task<List<TaskItem>> GetAllActiveTasksAsync() => Task.FromResult(new List<TaskItem>());
+        public Task<List<TaskItem>> GetAllNonDeletedTasksAsync() => Task.FromResult(new List<TaskItem>());
         public Task<List<TaskItem>> GetTodayTasksAsync() => Task.FromResult(new List<TaskItem>());
         public Task<List<TaskItem>> GetTasksByProjectAsync(string? projectId) => Task.FromResult(new List<TaskItem>());
         public Task<TaskItem?> GetByIdAsync(string id) => Task.FromResult<TaskItem?>(null);
