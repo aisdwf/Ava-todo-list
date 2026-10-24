@@ -79,4 +79,10 @@ public class TaskItem
     /// 遗留软删列。写入路径只做物理删除，不再置 true；查询仍排除 <c>IsDeleted = 1</c> 的历史行。
     /// </summary>
     public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// 命令行在「标记 CLI 写入」打开时创建的任务。界面创建保持 false。
+    /// 关掉标记开关不清除已有行（spec-cli-add-delete）。
+    /// </summary>
+    public bool IsCliWritten { get; set; }
 }

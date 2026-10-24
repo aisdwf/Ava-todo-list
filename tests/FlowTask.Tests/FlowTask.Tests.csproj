@@ -34,6 +34,7 @@
       导致 UI 层的绑定类型错配、命令签名不匹配等缺陷只能靠人工启动才暴露。
     -->
     <ProjectReference Include="..\..\src\FlowTask.Desktop\FlowTask.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\FlowTask.Cli\FlowTask.Cli.csproj" />
   </ItemGroup>
 
 </Project>

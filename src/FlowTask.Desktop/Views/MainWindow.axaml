@@ -254,6 +254,9 @@
                                    Text="与功能相关的设置。目前可改「启用默认到期」的天数。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}" />
                         <TextBlock Classes="CaptionText"
+                                   Text="总开关打开后，可以分别允许读取和写入。标记只影响之后的写入。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Cli}" />
+                        <TextBlock Classes="CaptionText"
                                    Text="每个功能配一段动图演示；也可以重新播放新手引导。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />
                         <TextBlock Classes="CaptionText"
@@ -466,6 +469,19 @@
                                                             Orientation="Horizontal"
                                                             Spacing="4"
                                                             Margin="-6,4,0,0">
+                                                    <Border IsVisible="{Binding ShowCliMark}"
+                                                            CornerRadius="4"
+                                                            Padding="6,1"
+                                                            Margin="6,0,2,0"
+                                                            Background="{DynamicResource AccentSubtleBrush}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="CLI"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource AccentBrush}" />
+                                                    </Border>
+                                                    <TextBlock Classes="MetaSeparator"
+                                                               Text="·"
+                                                               IsVisible="{Binding ShowCliMark}" />
                                                     <StackPanel Orientation="Horizontal"
                                                                 Spacing="4"
                                                                 IsVisible="{Binding HasProject}">
@@ -647,6 +663,32 @@
                                             HorizontalAlignment="Left"
                                             Margin="0,12,0,0"
                                             Command="{Binding ExitApplicationCommand}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="22"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Cli}">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox Content="接受命令行交互"
+                                                  IsChecked="{Binding Cli.Enabled, Mode=TwoWay}" />
+                                        <TextBlock Classes="CaptionText"
+                                                   TextWrapping="Wrap"
+                                                   Text="关闭时，读取和写入都不会执行。打开后才能分别配置下面两项。" />
+                                    </StackPanel>
+                                    <CheckBox Content="允许读取"
+                                              IsEnabled="{Binding Cli.CanConfigurePermissions}"
+                                              IsChecked="{Binding Cli.AllowRead, Mode=TwoWay}" />
+                                    <CheckBox Content="允许写入"
+                                              IsEnabled="{Binding Cli.CanConfigurePermissions}"
+                                              IsChecked="{Binding Cli.AllowWrite, Mode=TwoWay}" />
+                                    <StackPanel Spacing="8">
+                                        <CheckBox Content="给命令行写入的任务加上 CLI 标记"
+                                                  IsChecked="{Binding Cli.MarkWrites, Mode=TwoWay}" />
+                                        <TextBlock Classes="CaptionText"
+                                                   TextWrapping="Wrap"
+                                                   Text="只影响之后的写入。任务行上会显示 CLI。关掉以后，已经标过的任务仍保留标记。" />
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <guide:GuidePage IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />

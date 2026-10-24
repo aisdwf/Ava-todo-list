@@ -17,7 +17,8 @@ namespace FlowTask.Desktop.ViewModels;
 /// 列表展示与新建归属都跟随它（spec-quick-window-single-project-list §7，R-1.9）。
 /// </summary>
 public partial class QuickCaptureViewModel : ViewModelBase,
-    IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>, IRecipient<ProjectsChangedMessage>
+    IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>, IRecipient<ProjectsChangedMessage>,
+    IRecipient<CliStoreChangedMessage>
 {
     /// <summary>记忆上次在小窗选择项目的设置键（spec-quick-window-single-project-list §2.4）。</summary>
     private const string LastProjectSettingsKey = "QuickWindow.LastProjectId";
@@ -105,6 +106,7 @@ public partial class QuickCaptureViewModel : ViewModelBase,
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
         WeakReferenceMessenger.Default.Register<ProjectsChangedMessage>(this);
+        WeakReferenceMessenger.Default.Register<CliStoreChangedMessage>(this);
     }
 
     /// <summary>
@@ -274,6 +276,12 @@ public partial class QuickCaptureViewModel : ViewModelBase,
             return;
         }
 
+        TaskListRefreshTask = UiThread.RunAsync(LoadTasksForSelectedProjectAsync);
+    }
+
+    /// <inheritdoc />
+    public void Receive(CliStoreChangedMessage message)
+    {
         TaskListRefreshTask = UiThread.RunAsync(LoadTasksForSelectedProjectAsync);
     }
 

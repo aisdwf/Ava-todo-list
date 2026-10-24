@@ -54,6 +54,7 @@ docs/specs/main-window/       # main window layout and sidebar/selection
 docs/specs/quick-capture/      # quick-capture window and hotkey capture
 docs/specs/docs-system/       # documentation system restructuring itself
 docs/specs/packaging/         # release artifacts, CI build and distribution
+docs/specs/cli/               # external add/delete entry, its permission switches, and live refresh after those writes
 ```
 
 Invalid area examples:
