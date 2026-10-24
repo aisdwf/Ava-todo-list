@@ -82,6 +82,8 @@ public sealed class JsonDataExporter
         IsCompleted = task.IsCompleted,
         CompletedAt = task.CompletedAt is null ? null : FormatInstant(task.CompletedAt.Value),
         IsCliWritten = task.IsCliWritten,
+        IsPinned = task.IsPinned,
+        PinnedAt = task.PinnedAt is null ? null : FormatInstant(task.PinnedAt.Value),
         CreatedAt = FormatInstant(task.CreatedAt)
     };
 

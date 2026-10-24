@@ -109,6 +109,11 @@
 - Completed: 所有者预览通过（「没问题，推到dev」）。验收项勾选，SPEC 改为 `[DONE]`。
 - Current resume point: 已关闭。合入本地 `dev`，不推送远程。
 
+### 2026-10-24 合入
+
+- Decisions: JSON 导出已先在 `dev`。按确认过的衔接，后合入者补上备份字段 `isPinned` / `pinnedAt`。未改 spec-json-export 与 spec-project-archive。CLI `list` 仍不含这两字段。
+- Current resume point: 已关闭。
+
 ## Verification
 
 - Automated: build 0 警告 / 0 错误。`dotnet test` 414 通过，含 `TaskListOrder`（置顶排在更高优先级之前、最后置顶在最上、已完成组忽略置顶）、`TaskPinTests`（打戳、再点清除、已完成忽略、完成清除且取消完成不恢复、保存失败回滚）、老库无置顶列补列。

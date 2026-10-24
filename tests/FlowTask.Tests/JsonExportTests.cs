@@ -54,6 +54,8 @@ public class JsonDataExporterTests : IDisposable
             IsCompleted = true,
             CompletedAt = new DateTime(2026, 10, 3, 4, 5, 6, DateTimeKind.Utc),
             IsCliWritten = true,
+            IsPinned = true,
+            PinnedAt = new DateTime(2026, 10, 4, 5, 6, 7, DateTimeKind.Utc),
             CreatedAt = new DateTime(2026, 10, 1, 1, 2, 3, DateTimeKind.Utc),
             Description = "不要出现在文件里",
             IsArchived = true,
@@ -121,7 +123,7 @@ public class JsonDataExporterTests : IDisposable
             new[]
             {
                 "id", "projectId", "title", "priority", "dueDate", "isCompleted",
-                "completedAt", "isCliWritten", "createdAt"
+                "completedAt", "isCliWritten", "isPinned", "pinnedAt", "createdAt"
             },
             Names(keptRow));
         Assert.Equal("High", keptRow.GetProperty("priority").GetString());
@@ -129,6 +131,8 @@ public class JsonDataExporterTests : IDisposable
         Assert.True(keptRow.GetProperty("isCompleted").GetBoolean());
         Assert.Equal("2026-10-03T04:05:06Z", keptRow.GetProperty("completedAt").GetString());
         Assert.True(keptRow.GetProperty("isCliWritten").GetBoolean());
+        Assert.True(keptRow.GetProperty("isPinned").GetBoolean());
+        Assert.Equal("2026-10-04T05:06:07Z", keptRow.GetProperty("pinnedAt").GetString());
         Assert.Equal("2026-10-01T01:02:03Z", keptRow.GetProperty("createdAt").GetString());
         Assert.Contains(taskRows, row => row.GetProperty("id").GetString() == inArchive.Id);
 
@@ -136,8 +140,6 @@ public class JsonDataExporterTests : IDisposable
         Assert.DoesNotContain("软删说明也不该出现", json, StringComparison.Ordinal);
         Assert.DoesNotContain("已完成", json, StringComparison.Ordinal);
         Assert.DoesNotContain("colorHex", json, StringComparison.Ordinal);
-        Assert.DoesNotContain("isPinned", json, StringComparison.Ordinal);
-        Assert.DoesNotContain("pinnedAt", json, StringComparison.Ordinal);
         Assert.DoesNotContain(CliAccessPolicy.EnabledKey, json, StringComparison.Ordinal);
         Assert.DoesNotContain(CliAccessPolicy.AllowReadKey, json, StringComparison.Ordinal);
         Assert.DoesNotContain(CliAccessPolicy.AllowWriteKey, json, StringComparison.Ordinal);

@@ -6,7 +6,7 @@ namespace FlowTask.Infrastructure.Export;
 /// <remarks>
 /// 时刻写成 UTC 文本、到期日写成日历日文本，避免序列化器再做一次时区换算。
 /// 不含设置、遗留列、软删行，也不含任务行上的展示文案。
-/// <c>isPinned</c> / <c>pinnedAt</c> 不在此列：置顶尚未进入当前 dev。
+/// <c>isPinned</c> / <c>pinnedAt</c> 在置顶合入后补上：导出先落地时这两列还不在 dev。
 /// </remarks>
 public sealed class DataExportDocument
 {
@@ -64,6 +64,11 @@ public sealed class TaskExportRecord
     public string? CompletedAt { get; init; }
 
     public required bool IsCliWritten { get; init; }
+
+    public required bool IsPinned { get; init; }
+
+    /// <summary>最近一次置顶的时刻，UTC；未置顶时为 <c>null</c>。</summary>
+    public string? PinnedAt { get; init; }
 
     /// <summary>创建时刻，UTC，秒精度，<c>Z</c> 结尾。</summary>
     public required string CreatedAt { get; init; }
