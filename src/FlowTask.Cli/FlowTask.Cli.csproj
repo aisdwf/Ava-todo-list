@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>FlowTask.Cli</RootNamespace>
+    <AssemblyName>FlowTask.Cli</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlowTask.Core\FlowTask.Core.csproj" />
+    <ProjectReference Include="..\FlowTask.Infrastructure\FlowTask.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

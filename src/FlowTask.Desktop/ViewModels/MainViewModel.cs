@@ -27,7 +27,7 @@ public enum TaskFilter
 /// <summary>
 /// 主工作台视图模型：承载 Editorial 任务流、视图筛选与外观个性化状态。
 /// </summary>
-public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>
+public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>, IRecipient<CliStoreChangedMessage>
 {
     private readonly ITaskRepository _repository;
     private readonly IProjectRepository _projectRepository;
@@ -288,16 +288,20 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观（主题 + 材质）→ 通用（功能项）→ 操作指南 → 关于。
+    /// 外观（主题 + 材质）→ 通用（功能项）→ 命令行 → 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
+        new SettingsNavItem(SettingsSection.Cli, "命令行", "读取、写入和 CLI 标记。"),
         new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
+
+    /// <summary>设置 → 命令行的四项开关（spec-cli-add-delete）。</summary>
+    public CliAccessSettingsViewModel Cli { get; }
 
     /// <summary>请求唤起快捷小窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
@@ -360,6 +364,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         };
         Hotkey.RequestOpenGeneralSettings += OpenGeneralSettings;
 
+        Cli = new CliAccessSettingsViewModel(settingsRepository);
+
         // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
         NewDueDateEditor.Committed += date => NewTaskDueDate = date;
@@ -373,6 +379,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         // 弱引用消息总线：任一窗口写入后通知对端从 SQLite 重载，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
+        WeakReferenceMessenger.Default.Register<CliStoreChangedMessage>(this);
 
         _tasks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsTaskStreamEmpty));
     }
@@ -393,6 +400,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 await LoadAppearanceAsync();
             }
             await LoadCloseActionAsync();
+            await Cli.LoadAsync();
             await Onboarding.LoadAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
@@ -1252,6 +1260,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         TaskListRefreshTask = LoggedTasks.Observe(
             UiThread.RunAsync(() => LoadTasksAsync()),
             "TaskDeletedMessage");
+    }
+
+    /// <inheritdoc />
+    public void Receive(CliStoreChangedMessage message)
+    {
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(RefreshAfterCaptureAsync),
+            "CliStoreChangedMessage");
     }
 
     /// <summary>

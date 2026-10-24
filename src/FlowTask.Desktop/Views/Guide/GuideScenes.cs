@@ -5,7 +5,7 @@ using FlowTask.Desktop.ViewModels;
 namespace FlowTask.Desktop.Views.Guide;
 
 /// <summary>
-/// 操作指南与引导气泡中的 11 个矢量演示场景（spec-onboarding-guide，R-6.2）。
+/// 操作指南与引导气泡中的矢量演示场景（spec-onboarding-guide，R-6.2）。
 /// </summary>
 /// <remarks>
 /// 每个场景是 FlowTask 界面的简化线框：同一套令牌、同一描边图标，
@@ -32,6 +32,7 @@ internal static class GuideScenes
         GuideSceneKind.QuickWindowKeys => QuickWindowKeys(layer),
         GuideSceneKind.DefaultDue => DefaultDue(layer),
         GuideSceneKind.CloseToTray => CloseToTray(layer),
+        GuideSceneKind.CliAccess => CliAccess(layer),
         GuideSceneKind.Theme => Theme(layer),
         _ => new SceneScript()
     };
@@ -849,6 +850,37 @@ internal static class GuideScenes
                 Motion.Place(window, 0, 0);
                 cursor.Park();
             });
+    }
+
+    private static SceneScript CliAccess(SceneLayer layer)
+    {
+        layer.Text(16, 14, "命令行", 16, "TextPrimaryBrush", FontWeight.Bold);
+        layer.Text(16, 46, "接受命令行", 11, "TextPrimaryBrush");
+        var masterOff = layer.Box(200, 46, 36, 16, "HairlineStrongBrush", 8);
+        var masterOn = layer.Box(200, 46, 36, 16, "AccentBrush", 8);
+        layer.Text(16, 74, "允许读取", 11, "TextSecondaryBrush");
+        layer.Text(16, 96, "允许写入", 11, "TextSecondaryBrush");
+        var row = layer.TaskRow(124, "从命令行记下的事");
+        var badge = layer.Text(188, 132, "CLI", 10, "AccentBrush", FontWeight.SemiBold);
+
+        var script = new SceneScript
+        {
+            Reset = () =>
+            {
+                Motion.Show(masterOff);
+                Motion.Hide(masterOn);
+                Motion.Hide(badge);
+                row.Reset();
+            }
+        };
+
+        return script
+            .Then(480, () =>
+            {
+                Motion.Hide(masterOff);
+                Motion.Show(masterOn);
+            })
+            .Then(480, () => Motion.Show(badge));
     }
 
     private static SceneScript Theme(SceneLayer layer)

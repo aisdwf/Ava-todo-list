@@ -16,6 +16,9 @@ public enum SettingsSection
     /// <summary>通用：功能相关设置，含到期偏移、关闭窗口策略与彻底退出。</summary>
     General,
 
+    /// <summary>命令行：总开关，以及打开后可分别配置的读取与写入。</summary>
+    Cli,
+
     /// <summary>操作指南：图文动效条目与重新播放引导（spec-onboarding-guide）。</summary>
     Guide,
 

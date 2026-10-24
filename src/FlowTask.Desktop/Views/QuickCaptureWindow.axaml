@@ -101,13 +101,26 @@
                                                   Command="{Binding $parent[Window].((vm:QuickCaptureViewModel)DataContext).ToggleTaskCompleteCommand}"
                                                   CommandParameter="{Binding Task}" />
 
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding Task.Title}"
-                                                   FontSize="14"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Classes.QuickCaptureCompleted="{Binding IsCompleted}"
-                                                   TextWrapping="Wrap"
-                                                   VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Task.Title}"
+                                                       FontSize="14"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Classes.QuickCaptureCompleted="{Binding IsCompleted}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center" />
+                                            <Border Grid.Column="1"
+                                                    IsVisible="{Binding ShowCliMark}"
+                                                    CornerRadius="4"
+                                                    Padding="6,1"
+                                                    Margin="8,0,0,0"
+                                                    Background="{DynamicResource AccentSubtleBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="CLI"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AccentBrush}" />
+                                            </Border>
+                                        </Grid>
 
                                         <!-- 到期日 (R-1.10)：有值常驻显示、点击修改；无值时悬停整行浮现「到期」入口。
                                              首版形态，待 owner 预览裁决（spec-due-date-picker Q2）。 -->

@@ -63,6 +63,7 @@ V2 读取行数 = 1
 | `IsDeleted` | `bool` | 历史软删除标记。查询仍排除此类行；**新的删除路径改为物理删除**（R-4.4） |
 | `IsArchived` / `ArchivedAt` | `bool` / `DateTime?` | **已停用**（2026-09-26）。列保留，查询不再过滤。见 spec-project-managed-tasks |
 | `Description` | `string?` | **已废弃**，见 §2.4 |
+| `IsCliWritten` | `bool` | 命令行在「标记 CLI 写入」打开时创建的任务为 true。界面创建保持 false。关掉该开关不清除已有标记（spec-cli-add-delete） |
 
 ### 2.2 不变量
 

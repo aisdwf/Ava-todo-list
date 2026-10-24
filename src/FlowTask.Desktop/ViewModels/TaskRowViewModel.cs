@@ -58,6 +58,9 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <summary>是否归属某个项目，驱动元信息行项目名的显隐。</summary>
     public bool HasProject => !string.IsNullOrEmpty(Task.ProjectId);
 
+    /// <summary>命令行标记。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。</summary>
+    public bool ShowCliMark => Task.IsCliWritten;
+
     /// <summary>是否设有到期日，驱动到期徽标显隐。</summary>
     public bool HasDueDate => Task.DueDate is not null;
 
@@ -123,6 +126,7 @@ public partial class TaskRowViewModel : ViewModelBase
         Task.Priority = persisted.Priority;
         Task.DueDate = persisted.DueDate;
         Task.CompletedAt = persisted.CompletedAt;
+        Task.IsCliWritten = persisted.IsCliWritten;
         IsCompleted = persisted.IsCompleted;
         RefreshDerivedFlags();
     }
@@ -177,6 +181,7 @@ public partial class TaskRowViewModel : ViewModelBase
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(Priority));
         OnPropertyChanged(nameof(HasProject));
+        OnPropertyChanged(nameof(ShowCliMark));
         OnPropertyChanged(nameof(HasDueDate));
         OnPropertyChanged(nameof(DueDate));
         OnPropertyChanged(nameof(CompletedLocalText));

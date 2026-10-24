@@ -39,6 +39,9 @@ public enum GuideSceneKind
     /// <summary>关窗进托盘与托盘菜单。</summary>
     CloseToTray,
 
+    /// <summary>命令行总开关、读写真权限，以及任务行上的 CLI 标记。</summary>
+    CliAccess,
+
     /// <summary>昼夜水波纹、齿轮与「?」入口。</summary>
     Theme
 }
@@ -209,6 +212,16 @@ public static class GuideCatalog
             {
                 "托盘左键打开主窗，右键可以显隐小窗或彻底退出。",
                 "设置 → 通用可以随时改成「彻底退出」。"
+            },
+            NoTarget),
+
+        new GuideTopic(string.Empty, GuideSceneKind.CliAccess, "设置",
+            "命令行写入",
+            "设置 → 命令行里打开总开关后，才能分别允许读取和写入。",
+            new[]
+            {
+                "读取对应列出任务，写入对应加入和删除。两项默认都关。",
+                "命令行加入的任务可以在行上标出 CLI。关掉标记开关不会抹掉已经标过的任务。"
             },
             NoTarget),
 

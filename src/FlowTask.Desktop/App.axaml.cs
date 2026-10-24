@@ -20,6 +20,7 @@ namespace FlowTask.Desktop;
 public partial class App : Application
 {
     private GlobalHotkeyService? _hotkeyService;
+    private CliChangeListener? _cliChanges;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _toggleMiniMenuItem;
     private MainWindow? _mainWindow;
@@ -81,8 +82,13 @@ public partial class App : Application
             SingleInstanceGuard.Current?.ListenForReplacement(
                 () => Dispatcher.UIThread.Post(RequestExit));
 
+            _cliChanges = new CliChangeListener();
+            _cliChanges.Start();
+
             desktop.Exit += (_, _) =>
             {
+                _cliChanges?.Dispose();
+                _cliChanges = null;
                 _hotkeyService?.Dispose();
                 _hotkeyService = null;
                 if (_trayIcon is not null)
