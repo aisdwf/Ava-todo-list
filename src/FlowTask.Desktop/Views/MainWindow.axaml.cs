@@ -497,7 +497,7 @@ public partial class MainWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 以事件处理而非 <c>Button</c> 承载：项目行内已含改色与删除两个按钮，
+    /// 以事件处理而非 <c>Button</c> 承载：项目行内已含归档与删除按钮，
     /// 嵌套按钮会产生点击热区竞争 —— 点删除会同时触发选中。
     /// </para>
     /// <para>

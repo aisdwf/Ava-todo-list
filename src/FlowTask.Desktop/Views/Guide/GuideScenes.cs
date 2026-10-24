@@ -391,7 +391,8 @@ internal static class GuideScenes
         side.Cell(8, 22, 116, 20, "全部任务", null, "TextSecondaryBrush");
         side.Micro(12, 52, "PROJECTS");
         var work = side.Box(8, 64, 116, 20, null, 10);
-        side.Dot(16, 71, 6, "AccentBrush");
+        var workDot = side.Dot(16, 71, 6, "AccentBrush");
+        var archiveIcon = side.Icon(14, 69, 10, "IconArchive", "TextTertiaryBrush");
         side.Text(28, 68, "工作", 9.5, "TextSecondaryBrush", FontWeight.Medium);
 
         var newRow = side.Box(8, 88, 116, 20, null, 10);
@@ -426,6 +427,8 @@ internal static class GuideScenes
                 inputText.Text = string.Empty;
                 layer.Brushes.Set(newRow, Border.BackgroundProperty, null);
                 layer.Brushes.Set(work, Border.BackgroundProperty, null);
+                Motion.Show(workDot);
+                Motion.Hide(archiveIcon);
                 title.Text = "全部任务";
                 hint.Text = "所有任务的综合看板";
                 Motion.Show(rowA.Frame);
@@ -457,6 +460,21 @@ internal static class GuideScenes
                 Motion.Show(newName);
                 Motion.Show(add);
                 Motion.Show(addLabel);
+            })
+            // 悬停「工作」行：色点换成归档图标
+            .MoveTo(cursor, 40, 74)
+            .Then(700, () =>
+            {
+                layer.Brushes.Set(work, Border.BackgroundProperty, "HairlineStrongBrush");
+                Motion.Hide(workDot);
+                Motion.Show(archiveIcon);
+            })
+            .Wait(900)
+            .Then(280, () =>
+            {
+                layer.Brushes.Set(work, Border.BackgroundProperty, null);
+                Motion.Show(workDot);
+                Motion.Hide(archiveIcon);
             })
             // 单击：进入该项目，只看它的任务
             .MoveTo(cursor, 60, 108)

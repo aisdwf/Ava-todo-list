@@ -155,6 +155,28 @@ public class CliAppTests : IDisposable
     }
 
     [Fact]
+    public async Task List_IncludesTasksUnderArchivedProjects()
+    {
+        await OpenAsync(read: true, write: false);
+        var project = new Project
+        {
+            Name = "旧项目",
+            SortOrder = 1,
+            CreatedAt = _clock.UtcNow
+        };
+        await _projects.SaveProjectAsync(project);
+        var item = TaskItemFactory.Create(_clock, "归档里的任务", projectId: project.Id);
+        await _tasks.SaveTaskAsync(item);
+        await _projects.SetArchivedAsync(project.Id, true);
+
+        var list = await RunAsync("list");
+
+        Assert.Equal(CliApp.Ok, list.Code);
+        Assert.Contains(item.Id, list.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(await _tasks.GetAllActiveTasksAsync(), t => t.Id == item.Id);
+    }
+
+    [Fact]
     public async Task WriteWithoutRead_AddsMarkedTaskAndRefusesList()
     {
         await OpenAsync(read: false, write: true, mark: true);

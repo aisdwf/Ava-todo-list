@@ -1,5 +1,4 @@
 using Avalonia.Headless.XUnit;
-using FlowTask.Core.Enums;
 using FlowTask.Core.Models;
 using FlowTask.Desktop.ViewModels;
 using FlowTask.Infrastructure.Persistence;
@@ -613,15 +612,10 @@ public class ProjectInteractionTests : IDisposable
     }
 
     /// <summary>
-    /// 归档项目下的任务仍出现在全部任务看板；就地改标题、改优先级都不得动归属。
+    /// 归档后任务离开「全部任务」，但归属仍写在原项目上。
     /// </summary>
-    /// <remarks>
-    /// 原编辑面板曾因候选只含活跃项目而把归档归属静默写成「未归属」。
-    /// 面板与项目编辑已移除（R-2.4 裁决：创建后不可改项目），本测试守住
-    /// 「行上编辑动作只写各自字段、从不写 ProjectId」这一约束。
-    /// </remarks>
     [AvaloniaFact]
-    public async Task InlineEdit_OnArchivedProjectTask_KeepsAssignment()
+    public async Task ArchiveProject_RemovesTasksFromAllTasksBoard_KeepsAssignment()
     {
         var vm = await CreateInitializedAsync();
         vm.NewProjectName = "待归档";
@@ -636,21 +630,84 @@ public class ProjectInteractionTests : IDisposable
 
         await vm.ArchiveProjectCommand.ExecuteAsync(project);
 
-        var row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
-        Assert.Equal(projectId, row.Task.ProjectId);
-        Assert.Equal("待归档", row.ProjectName);
+        Assert.DoesNotContain(vm.Tasks, t => t.Task.Id == taskId);
+        Assert.Equal(0, vm.ActiveCount);
+        Assert.Equal(projectId, (await _repo.GetByIdAsync(taskId))!.ProjectId);
+        Assert.False(vm.Projects.Single(p => p.IsDefault).ShowArchiveAction);
+    }
 
-        await vm.BeginTitleEditCommand.ExecuteAsync(row);
-        row.TitleBuffer = "只改标题";
-        await vm.CommitTitleEditCommand.ExecuteAsync(row);
+    /// <summary>Default 没有归档入口，命令直接调用也不许把系统项目藏起来。</summary>
+    [AvaloniaFact]
+    public async Task ArchiveDefaultProject_DoesNothing()
+    {
+        var vm = await CreateInitializedAsync();
+        var defaultProject = Assert.Single(vm.Projects);
 
-        row = Assert.Single(vm.Tasks, t => t.Task.Id == taskId);
-        await vm.CommitRowPriorityCommand.ExecuteAsync(new PriorityCommit(row, TaskPriority.High));
+        await vm.ArchiveProjectCommand.ExecuteAsync(defaultProject);
 
-        var stored = await _repo.GetByIdAsync(taskId);
-        Assert.Equal(projectId, stored!.ProjectId);
-        Assert.Equal("只改标题", stored.Title);
-        Assert.Equal(TaskPriority.High, stored.Priority);
+        Assert.Contains(vm.Projects, p => p.Id == DefaultProject.Id);
+        Assert.False((await _projectRepo.GetByIdAsync(DefaultProject.Id))!.IsArchived);
+        Assert.Empty(vm.ArchivedProjects);
+    }
+
+    /// <summary>恢复后按原 SortOrder 回到侧边栏，任务重新出现在全部任务。</summary>
+    [AvaloniaFact]
+    public async Task RestoreArchivedProject_ReturnsToOriginalSidebarSlotAndBoard()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "甲";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        vm.NewProjectName = "乙";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var first = vm.Projects.Single(p => p.Name == "甲");
+        var firstId = first.Id;
+
+        vm.NewTaskTitle = "甲的任务";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        var taskId = vm.Tasks.Single(t => t.Task.Title == "甲的任务").Task.Id;
+        await vm.AssignProjectAsync(vm.Tasks.Single(t => t.Task.Id == taskId).Task, firstId);
+
+        await vm.ArchiveProjectCommand.ExecuteAsync(first);
+        Assert.Equal(new[] { "Default", "乙" }, vm.Projects.Select(p => p.Name).ToArray());
+        Assert.Equal("甲", Assert.Single(vm.ArchivedProjects).Name);
+        Assert.Equal(1, vm.ArchivedProjects[0].TaskCount);
+
+        await vm.RestoreProjectCommand.ExecuteAsync(vm.ArchivedProjects[0]);
+
+        Assert.Equal(new[] { "Default", "甲", "乙" }, vm.Projects.Select(p => p.Name).ToArray());
+        Assert.Empty(vm.ArchivedProjects);
+        Assert.Contains(vm.Tasks, t => t.Task.Id == taskId);
+        Assert.Equal(1, vm.ActiveCount);
+    }
+
+    /// <summary>设置页删除走同一确认：取消不删，确认后任务物理消失。</summary>
+    [AvaloniaFact]
+    public async Task DeleteArchivedProject_UsesCascadeConfirm()
+    {
+        var vm = await CreateInitializedAsync();
+        vm.NewProjectName = "待删归档";
+        await vm.CreateProjectCommand.ExecuteAsync(null);
+        var project = SoleUserProject(vm);
+
+        vm.NewTaskTitle = "会一起删";
+        await vm.AddTaskCommand.ExecuteAsync(null);
+        var taskId = vm.Tasks[0].Task.Id;
+        await vm.AssignProjectAsync(vm.Tasks[0].Task, project.Id);
+        await vm.ArchiveProjectCommand.ExecuteAsync(project);
+
+        var archived = Assert.Single(vm.ArchivedProjects);
+        await vm.RequestDeleteProjectCommand.ExecuteAsync(archived);
+        Assert.Equal(1, vm.ProjectPendingDeletionTaskCount);
+        vm.CancelDeleteProjectCommand.Execute(null);
+        Assert.Null(vm.ProjectPendingDeletion);
+        Assert.NotNull(await _repo.GetByIdAsync(taskId));
+
+        await vm.RequestDeleteProjectCommand.ExecuteAsync(vm.ArchivedProjects[0]);
+        await vm.ConfirmDeleteProjectCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.ArchivedProjects);
+        Assert.Null(await _repo.GetByIdAsync(taskId));
+        Assert.Null(await _projectRepo.GetByIdAsync(project.Id));
     }
 
     // ==================== 删除 ====================

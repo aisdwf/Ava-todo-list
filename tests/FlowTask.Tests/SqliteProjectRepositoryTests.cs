@@ -151,6 +151,23 @@ public class SqliteProjectRepositoryTests : IDisposable
 
         await _projects.SetArchivedAsync(project.Id, false);
         Assert.Single(await _projects.GetActiveProjectsAsync());
+        Assert.Empty(await _projects.GetArchivedProjectsAsync());
+    }
+
+    [Fact]
+    public async Task GetArchivedProjects_ReturnsOnlyArchivedInSortOrder()
+    {
+        var later = NewProject("后归档", 2);
+        var earlier = NewProject("先归档", 1);
+        await _projects.SaveProjectAsync(NewProject("活跃", 0));
+        await _projects.SaveProjectAsync(later);
+        await _projects.SaveProjectAsync(earlier);
+        await _projects.SetArchivedAsync(later.Id, true);
+        await _projects.SetArchivedAsync(earlier.Id, true);
+
+        var archived = await _projects.GetArchivedProjectsAsync();
+
+        Assert.Equal(new[] { "先归档", "后归档" }, archived.Select(p => p.Name).ToArray());
     }
 
     /// <summary>

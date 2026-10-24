@@ -39,6 +39,11 @@ public partial class ProjectItemViewModel : ViewModelBase
     /// </summary>
     public bool ShowDeleteAction => !IsDefault && !IsRenaming;
 
+    /// <summary>
+    /// 归档按钮是否可见。Default 不可归档；重命名时让位，避免按钮盖住输入框。
+    /// </summary>
+    public bool ShowArchiveAction => !IsDefault && !IsRenaming;
+
     /// <summary>项目名。</summary>
     /// <remarks>
     /// 经本属性而非直接读 <c>Project.Name</c>：重命名后需通知界面刷新，
@@ -116,5 +121,8 @@ public partial class ProjectItemViewModel : ViewModelBase
     }
 
     partial void OnIsRenamingChanged(bool value)
-        => OnPropertyChanged(nameof(ShowDeleteAction));
+    {
+        OnPropertyChanged(nameof(ShowDeleteAction));
+        OnPropertyChanged(nameof(ShowArchiveAction));
+    }
 }

@@ -10,6 +10,12 @@ public interface IProjectRepository
     /// <summary>载入全部未归档项目，按 <see cref="Project.SortOrder"/> 升序。</summary>
     Task<List<Project>> GetActiveProjectsAsync();
 
+    /// <summary>
+    /// 载入已归档项目，按 <see cref="Project.SortOrder"/> 升序。
+    /// 设置页「已归档的项目」的单一来源，不在视图里再滤一遍 <see cref="GetAllProjectsAsync"/>。
+    /// </summary>
+    Task<List<Project>> GetArchivedProjectsAsync();
+
     /// <summary>载入全部项目，含已归档。</summary>
     Task<List<Project>> GetAllProjectsAsync();
 
