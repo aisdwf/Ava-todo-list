@@ -57,6 +57,15 @@ public class SqliteTaskRepository : ITaskRepository
     public async Task<List<TaskItem>> GetAllActiveTasksAsync()
     {
         await InitializeAsync();
+        var where = await BoardTaskFilterSqlAsync();
+        var items = await _db.QueryAsync<TaskItem>($"SELECT * FROM Tasks WHERE {where}");
+        return TaskListOrder.Sort(items);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<TaskItem>> GetAllNonDeletedTasksAsync()
+    {
+        await InitializeAsync();
         var items = await _db.Table<TaskItem>()
                   .Where(t => !t.IsDeleted)
                   .ToListAsync();
@@ -138,7 +147,33 @@ public class SqliteTaskRepository : ITaskRepository
     public async Task<int> CountActiveTasksAsync()
     {
         await InitializeAsync();
-        return await _db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Tasks WHERE IsDeleted = 0");
+        var where = await BoardTaskFilterSqlAsync();
+        return await _db.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Tasks WHERE {where}");
+    }
+
+    /// <summary>
+    /// 「全部任务」的过滤条件。与计数共用这一段，避免两处各写一遍归档排除。
+    /// </summary>
+    /// <remarks>
+    /// 只建过任务表的测试库没有 Projects。此时没有已归档项目，退回「未删除」即可，
+    /// 否则子查询会因缺表失败。
+    /// </remarks>
+    private async Task<string> BoardTaskFilterSqlAsync()
+    {
+        var projectsTable = await _db.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'Projects'");
+        if (projectsTable == 0)
+        {
+            return "IsDeleted = 0";
+        }
+
+        return """
+            IsDeleted = 0
+            AND (
+                ProjectId IS NULL
+                OR ProjectId NOT IN (SELECT Id FROM Projects WHERE IsArchived = 1)
+            )
+            """;
     }
 
     /// <inheritdoc />

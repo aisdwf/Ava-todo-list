@@ -79,4 +79,27 @@ public class TaskItem
     /// 遗留软删列。写入路径只做物理删除，不再置 true；查询仍排除 <c>IsDeleted = 1</c> 的历史行。
     /// </summary>
     public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// 命令行在「标记 CLI 写入」打开时创建的任务。界面创建保持 false。
+    /// 关掉标记开关不清除已有行（spec-cli-add-delete）。
+    /// </summary>
+    public bool IsCliWritten { get; set; }
+
+    /// <summary>
+    /// 是否置顶。只对未完成任务有意义；勾选完成时与 <see cref="PinnedAt"/> 同一次写入清除。
+    /// </summary>
+    /// <remarks>
+    /// 老库由 sqlite-net <c>CreateTableAsync</c> 补列，缺省 false，不另写迁移脚本。
+    /// </remarks>
+    public bool IsPinned { get; set; }
+
+    /// <summary>
+    /// 最近一次置顶的时刻（UTC）。未置顶时为 <c>null</c>。
+    /// </summary>
+    /// <remarks>
+    /// 未完成组里多个置顶任务按此倒序，最后置顶的在最上面。
+    /// 必须经 <c>IClock.UtcNow</c> 赋值（Article 9），取消置顶或勾选完成时清空，取消完成不恢复。
+    /// </remarks>
+    public DateTime? PinnedAt { get; set; }
 }

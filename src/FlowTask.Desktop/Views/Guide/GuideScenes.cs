@@ -5,7 +5,7 @@ using FlowTask.Desktop.ViewModels;
 namespace FlowTask.Desktop.Views.Guide;
 
 /// <summary>
-/// 操作指南与引导气泡中的 11 个矢量演示场景（spec-onboarding-guide，R-6.2）。
+/// 操作指南与引导气泡中的矢量演示场景（spec-onboarding-guide，R-6.2）。
 /// </summary>
 /// <remarks>
 /// 每个场景是 FlowTask 界面的简化线框：同一套令牌、同一描边图标，
@@ -32,6 +32,8 @@ internal static class GuideScenes
         GuideSceneKind.QuickWindowKeys => QuickWindowKeys(layer),
         GuideSceneKind.DefaultDue => DefaultDue(layer),
         GuideSceneKind.CloseToTray => CloseToTray(layer),
+        GuideSceneKind.CliAccess => CliAccess(layer),
+        GuideSceneKind.ExportData => ExportData(layer),
         GuideSceneKind.Theme => Theme(layer),
         _ => new SceneScript()
     };
@@ -245,6 +247,7 @@ internal static class GuideScenes
     /// <remarks>
     /// 与真实任务行一致（spec-inline-task-edit）：勾选完成后沉底；双击标题原地变输入框，
     /// 打字后回车保存；点 P 标签在其下方弹出三档小框，点一档即生效。不再有底部编辑面板。
+    /// 置顶只给一帧：行交换后，P 标签下方短暂出现强调色图钉（spec-task-pin）。
     /// </remarks>
     private static SceneScript EditAndComplete(SceneLayer layer)
     {
@@ -263,6 +266,8 @@ internal static class GuideScenes
         var optionHigh = pop.Pill(6, 6, 48, "P1", "PriorityHighSurfaceBrush", "PriorityHighBrush");
         pop.Pill(6, 24, 48, "P2", "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
         pop.Pill(6, 42, 48, "P3", "PriorityLowSurfaceBrush", "PriorityLowBrush");
+        var pin = layer.Icon(tagX + 7, tagY + 18, 12, "IconPin", "TextTertiaryBrush");
+        Motion.Hide(pin);
         var cursor = layer.Cursor();
 
         void ShowInput(bool on)
@@ -288,6 +293,9 @@ internal static class GuideScenes
                 ShowInput(false);
                 ShowPopover(false);
                 Motion.Place(tag, 0, 0);
+                Motion.Hide(pin);
+                Motion.Place(pin, 0, 0);
+                layer.Brushes.Set(pin, Avalonia.Controls.Shapes.Shape.StrokeProperty, "TextTertiaryBrush");
                 SceneLayer.Relabel(tag, "P2");
                 layer.Tint(tag, "PriorityMediumSurfaceBrush", "PriorityMediumBrush");
                 layer.Tint(optionHigh, "PriorityHighSurfaceBrush", "PriorityHighBrush");
@@ -305,12 +313,22 @@ internal static class GuideScenes
                 Motion.Place(first.Frame, 0, 30);
                 Motion.Place(second.Frame, 0, -30);
                 Motion.Place(tag, 0, -30);
+                Motion.Place(pin, 0, -30);
                 Motion.Place(input, 0, -30);
                 Motion.Place(popover, 0, -36);
             })
+            .Then(800, () =>
+            {
+                Motion.Show(pin);
+                layer.Brushes.Set(pin, Avalonia.Controls.Shapes.Shape.StrokeProperty, "AccentBrush");
+            })
             // 双击标题：两次点击环
             .MoveTo(cursor, 90, 26)
-            .Then(200, () => Motion.Show(second.Hover))
+            .Then(200, () =>
+            {
+                Motion.Hide(pin);
+                Motion.Show(second.Hover);
+            })
             .Click(cursor, 90, 26)
             .Click(cursor, 90, 26)
             .Then(400, () => ShowInput(true))
@@ -390,7 +408,8 @@ internal static class GuideScenes
         side.Cell(8, 22, 116, 20, "全部任务", null, "TextSecondaryBrush");
         side.Micro(12, 52, "PROJECTS");
         var work = side.Box(8, 64, 116, 20, null, 10);
-        side.Dot(16, 71, 6, "AccentBrush");
+        var workDot = side.Dot(16, 71, 6, "AccentBrush");
+        var archiveIcon = side.Icon(14, 69, 10, "IconArchive", "TextTertiaryBrush");
         side.Text(28, 68, "工作", 9.5, "TextSecondaryBrush", FontWeight.Medium);
 
         var newRow = side.Box(8, 88, 116, 20, null, 10);
@@ -425,6 +444,8 @@ internal static class GuideScenes
                 inputText.Text = string.Empty;
                 layer.Brushes.Set(newRow, Border.BackgroundProperty, null);
                 layer.Brushes.Set(work, Border.BackgroundProperty, null);
+                Motion.Show(workDot);
+                Motion.Hide(archiveIcon);
                 title.Text = "全部任务";
                 hint.Text = "所有任务的综合看板";
                 Motion.Show(rowA.Frame);
@@ -456,6 +477,21 @@ internal static class GuideScenes
                 Motion.Show(newName);
                 Motion.Show(add);
                 Motion.Show(addLabel);
+            })
+            // 悬停「工作」行：色点换成归档图标
+            .MoveTo(cursor, 40, 74)
+            .Then(700, () =>
+            {
+                layer.Brushes.Set(work, Border.BackgroundProperty, "HairlineStrongBrush");
+                Motion.Hide(workDot);
+                Motion.Show(archiveIcon);
+            })
+            .Wait(900)
+            .Then(280, () =>
+            {
+                layer.Brushes.Set(work, Border.BackgroundProperty, null);
+                Motion.Show(workDot);
+                Motion.Hide(archiveIcon);
             })
             // 单击：进入该项目，只看它的任务
             .MoveTo(cursor, 60, 108)
@@ -849,6 +885,61 @@ internal static class GuideScenes
                 Motion.Place(window, 0, 0);
                 cursor.Park();
             });
+    }
+
+    private static SceneScript CliAccess(SceneLayer layer)
+    {
+        layer.Text(16, 14, "命令行", 16, "TextPrimaryBrush", FontWeight.Bold);
+        layer.Text(16, 46, "接受命令行", 11, "TextPrimaryBrush");
+        var masterOff = layer.Box(200, 46, 36, 16, "HairlineStrongBrush", 8);
+        var masterOn = layer.Box(200, 46, 36, 16, "AccentBrush", 8);
+        layer.Text(16, 74, "允许读取", 11, "TextSecondaryBrush");
+        layer.Text(16, 96, "允许写入", 11, "TextSecondaryBrush");
+        var row = layer.TaskRow(124, "从命令行记下的事");
+        var badge = layer.Text(188, 132, "CLI", 10, "AccentBrush", FontWeight.SemiBold);
+
+        var script = new SceneScript
+        {
+            Reset = () =>
+            {
+                Motion.Show(masterOff);
+                Motion.Hide(masterOn);
+                Motion.Hide(badge);
+                row.Reset();
+            }
+        };
+
+        return script
+            .Then(480, () =>
+            {
+                Motion.Hide(masterOff);
+                Motion.Show(masterOn);
+            })
+            .Then(480, () => Motion.Show(badge));
+    }
+
+    private static SceneScript ExportData(SceneLayer layer)
+    {
+        layer.Text(16, 14, "数据", 16, "TextPrimaryBrush", FontWeight.Bold);
+        layer.Text(16, 46, "包含已归档的项目。", 11, "TextSecondaryBrush");
+        layer.Box(16, 78, 118, 28, "AccentBrush", 8);
+        layer.Text(28, 84, "导出为 JSON", 11, "CardSurfaceBrush", FontWeight.SemiBold);
+        var saved = layer.Text(16, 122, "flowtask-export.json", 11, "AccentBrush");
+        var cursor = layer.Cursor();
+
+        var script = new SceneScript
+        {
+            Reset = () =>
+            {
+                Motion.Hide(saved);
+                cursor.Park();
+            }
+        };
+
+        return script
+            .MoveTo(cursor, 74, 92)
+            .Click(cursor, 74, 92)
+            .Then(900, () => Motion.Show(saved));
     }
 
     private static SceneScript Theme(SceneLayer layer)

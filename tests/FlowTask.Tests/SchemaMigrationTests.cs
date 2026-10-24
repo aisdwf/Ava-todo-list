@@ -84,6 +84,51 @@ public class SchemaMigrationTests : IDisposable
         Assert.Contains(all, p => p.Name == "新项目");
     }
 
+    /// <summary>
+    /// 置顶两列是后加的。旧库没有这两列时，启动补列且既有任务保持未置顶（spec-task-pin）。
+    /// </summary>
+    [Fact]
+    public async Task LegacyTasksTableWithoutPinColumns_ReadsAsUnpinned()
+    {
+        var created = _clock.UtcNow;
+        var legacy = new SQLiteAsyncConnection(_dbPath);
+        await legacy.ExecuteAsync(
+            """
+            CREATE TABLE Tasks (
+                Id varchar PRIMARY KEY NOT NULL,
+                Title varchar,
+                Description varchar,
+                IsCompleted integer NOT NULL,
+                Priority integer NOT NULL,
+                ProjectId varchar,
+                DueDate bigint,
+                CreatedAt bigint NOT NULL,
+                CompletedAt bigint,
+                IsArchived integer NOT NULL,
+                ArchivedAt bigint,
+                IsDeleted integer NOT NULL,
+                IsCliWritten integer NOT NULL)
+            """);
+        await legacy.ExecuteAsync(
+            """
+            INSERT INTO Tasks (
+                Id, Title, Description, IsCompleted, Priority, ProjectId, DueDate,
+                CreatedAt, CompletedAt, IsArchived, ArchivedAt, IsDeleted, IsCliWritten)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            "legacy-task", "旧任务", null, false, 1, DefaultProject.Id, null,
+            created.Ticks, null, false, null, false, false);
+        await legacy.CloseAsync();
+
+        var tasks = new SqliteTaskRepository(_clock, _dbPath);
+        var stored = await tasks.GetByIdAsync("legacy-task");
+
+        Assert.NotNull(stored);
+        Assert.Equal("旧任务", stored.Title);
+        Assert.False(stored.IsPinned);
+        Assert.Null(stored.PinnedAt);
+    }
+
     private sealed class TableInfo
     {
         public string Name { get; set; } = string.Empty;

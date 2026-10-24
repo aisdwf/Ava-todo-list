@@ -16,6 +16,15 @@ public enum SettingsSection
     /// <summary>通用：功能相关设置，含到期偏移、关闭窗口策略与彻底退出。</summary>
     General,
 
+    /// <summary>命令行：总开关，以及打开后可分别配置的读取与写入。</summary>
+    Cli,
+
+    /// <summary>数据：把全部项目与任务导出为 JSON（spec-json-export）。</summary>
+    Data,
+
+    /// <summary>已归档的项目：恢复，或连同任务一起删除（spec-project-archive）。</summary>
+    Archived,
+
     /// <summary>操作指南：图文动效条目与重新播放引导（spec-onboarding-guide）。</summary>
     Guide,
 

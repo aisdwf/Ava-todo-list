@@ -9,6 +9,7 @@ using FlowTask.Core.Models;
 using FlowTask.Desktop.Appearance;
 using FlowTask.Desktop.Services;
 using FlowTask.Desktop.ViewModels.Actions;
+using FlowTask.Infrastructure.Export;
 
 namespace FlowTask.Desktop.ViewModels;
 
@@ -27,7 +28,7 @@ public enum TaskFilter
 /// <summary>
 /// 主工作台视图模型：承载 Editorial 任务流、视图筛选与外观个性化状态。
 /// </summary>
-public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>
+public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>, IRecipient<TaskDeletedMessage>, IRecipient<CliStoreChangedMessage>
 {
     private readonly ITaskRepository _repository;
     private readonly IProjectRepository _projectRepository;
@@ -268,6 +269,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// <summary>可变的内部项目集合，仅本类可写。</summary>
     private readonly ObservableCollection<ProjectItemViewModel> _projects = new();
 
+    /// <summary>设置页「已归档的项目」。与侧边栏集合分开，避免把已归档行混进导航。</summary>
+    public ReadOnlyObservableCollection<ProjectItemViewModel> ArchivedProjects { get; }
+
+    private readonly ObservableCollection<ProjectItemViewModel> _archivedProjects = new();
+
+    /// <summary>已归档列表是否非空，用于空状态说明的显隐。</summary>
+    public bool HasArchivedProjects => _archivedProjects.Count > 0;
+
     /// <summary>
     /// 是否存在任何项目。
     /// </summary>
@@ -288,16 +297,25 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     /// 设置页左侧导航条目，供 <see cref="SettingsSection"/> 驱动的主从式设置页渲染。
     /// </summary>
     /// <remarks>
-    /// 外观（主题 + 材质）→ 通用（功能项）→ 操作指南 → 关于。
+    /// 外观 → 通用 → 命令行 → 数据 → 已归档的项目 → 操作指南 → 关于。
     /// 强调色选择已从设置页撤下，改由主题预设一并决定。
     /// </remarks>
     public IReadOnlyList<SettingsNavItem> SettingsNavItems { get; } = new[]
     {
         new SettingsNavItem(SettingsSection.Appearance, "外观", "主题与窗口材质。"),
         new SettingsNavItem(SettingsSection.General, "通用", "与功能相关的设置。"),
+        new SettingsNavItem(SettingsSection.Cli, "命令行", "读取、写入和 CLI 标记。"),
+        new SettingsNavItem(SettingsSection.Data, "数据", "导出项目与任务。"),
+        new SettingsNavItem(SettingsSection.Archived, "已归档的项目", "恢复，或连同任务一起删除。"),
         new SettingsNavItem(SettingsSection.Guide, "操作指南", "动图演示每个功能怎么用。"),
         new SettingsNavItem(SettingsSection.About, "关于", "版本与技术信息。")
     };
+
+    /// <summary>设置 → 命令行的四项开关（spec-cli-add-delete）。</summary>
+    public CliAccessSettingsViewModel Cli { get; }
+
+    /// <summary>设置 → 数据：导出全部项目与任务（spec-json-export）。</summary>
+    public ExportDataViewModel Export { get; }
 
     /// <summary>请求唤起快捷小窗。由视图层订阅，ViewModel 不持有窗口引用。</summary>
     public event Action? RequestOpenQuickCapture;
@@ -360,6 +378,11 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         };
         Hotkey.RequestOpenGeneralSettings += OpenGeneralSettings;
 
+        Cli = new CliAccessSettingsViewModel(settingsRepository);
+        Export = new ExportDataViewModel(
+            new JsonDataExporter(projectRepository, repository, clock),
+            clock);
+
         // 偏移天数以委托读取，设置页保存后下次打开浮层即生效
         NewDueDateEditor = new DueDateEditorViewModel(clock, () => DefaultDueOffsetDays);
         NewDueDateEditor.Committed += date => NewTaskDueDate = date;
@@ -367,12 +390,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
 
         Tasks = new ReadOnlyObservableCollection<TaskRowViewModel>(_tasks);
         Projects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_projects);
+        ArchivedProjects = new ReadOnlyObservableCollection<ProjectItemViewModel>(_archivedProjects);
 
         _projects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProjects));
+        _archivedProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasArchivedProjects));
 
         // 弱引用消息总线：任一窗口写入后通知对端从 SQLite 重载，双方互不持有强引用 (rule-code-standards §2.1)
         WeakReferenceMessenger.Default.Register<TaskSavedMessage>(this);
         WeakReferenceMessenger.Default.Register<TaskDeletedMessage>(this);
+        WeakReferenceMessenger.Default.Register<CliStoreChangedMessage>(this);
 
         _tasks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsTaskStreamEmpty));
     }
@@ -393,6 +419,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
                 await LoadAppearanceAsync();
             }
             await LoadCloseActionAsync();
+            await Cli.LoadAsync();
             await Onboarding.LoadAsync();
 
             // R-2.6：启动时确保 Default 存在，并把历史 ProjectId=null 迁过去。
@@ -473,6 +500,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     private async Task LoadProjectsAsync()
     {
         var projects = await _projectRepository.GetActiveProjectsAsync();
+        var archived = await _projectRepository.GetArchivedProjectsAsync();
 
         // 在重建 _projects 之前先记录选中项目 Id：CurrentSelection.ProjectId 独立于
         // _projects 集合存在，但 SelectedProject 派生属性依赖 _projects 查找，
@@ -487,6 +515,13 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         {
             counts.TryGetValue(project.Id, out var count);
             _projects.Add(new ProjectItemViewModel(project, count));
+        }
+
+        _archivedProjects.Clear();
+        foreach (var project in archived)
+        {
+            counts.TryGetValue(project.Id, out var count);
+            _archivedProjects.Add(new ProjectItemViewModel(project, count));
         }
 
         // 选中的项目可能已被删除或归档，此时须解除选中避免筛选到不存在的项目。
@@ -596,8 +631,8 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             return;
         }
 
-        // 侧边栏 _projects 只有未归档项；全部任务看板含归档项目下的任务，
-        // 查找表必须含归档项目，否则全部任务看板里归档项目下任务的项目名为空。
+        // 看板查询已排除已归档项目下的任务。名称查找仍取全部项目，
+        // 避免视图再写一遍「哪些任务该出现」的过滤。
         var allProjects = await _projectRepository.GetAllProjectsAsync();
         if (generation != Volatile.Read(ref _tasksLoadGeneration))
         {
@@ -746,6 +781,12 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
     [RelayCommand]
     private async Task ToggleCompleteAsync(TaskItem? item)
         => await new ToggleCompleteTaskViewModel(_repository, _clock)
+            .ExecuteAsync(item, LoadTasksAsync, this);
+
+    /// <summary>切换置顶。已完成任务的图钉不显示，这里再拒一次。</summary>
+    [RelayCommand]
+    private async Task TogglePinAsync(TaskItem? item)
+        => await new TogglePinTaskViewModel(_repository, _clock)
             .ExecuteAsync(item, LoadTasksAsync, this);
 
     /// <summary>
@@ -960,7 +1001,7 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             title => CurrentCategoryTitle = title,
             this);
 
-    /// <summary>归档项目。其下任务保留归属，仅从侧边栏隐去。</summary>
+    /// <summary>归档项目。其下任务保留归属，并从侧边栏与「全部任务」隐去。</summary>
     /// <remarks>
     /// <b>为什么无需显式的 <c>wasSelected</c> 分支</b>：<see cref="LoadProjectsAsync"/>
     /// 已经统一处理「选中项目在重载后已不存在」的情形（发现该 Id 不在新集合中即
@@ -975,6 +1016,15 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
             project,
             CurrentSelection.Kind == ViewSelectionKind.Project
                 && CurrentSelection.ProjectId == project?.Id,
+            LoadProjectsAsync,
+            LoadTasksAsync,
+            this);
+
+    /// <summary>恢复已归档项目，使其回到侧边栏原排序位置，任务重新进入「全部任务」。</summary>
+    [RelayCommand]
+    private async Task RestoreProjectAsync(ProjectItemViewModel? project)
+        => await new RestoreProjectViewModel(_projectRepository).ExecuteAsync(
+            project,
             LoadProjectsAsync,
             LoadTasksAsync,
             this);
@@ -1252,6 +1302,14 @@ public partial class MainViewModel : ViewModelBase, IRecipient<TaskSavedMessage>
         TaskListRefreshTask = LoggedTasks.Observe(
             UiThread.RunAsync(() => LoadTasksAsync()),
             "TaskDeletedMessage");
+    }
+
+    /// <inheritdoc />
+    public void Receive(CliStoreChangedMessage message)
+    {
+        TaskListRefreshTask = LoggedTasks.Observe(
+            UiThread.RunAsync(RefreshAfterCaptureAsync),
+            "CliStoreChangedMessage");
     }
 
     /// <summary>

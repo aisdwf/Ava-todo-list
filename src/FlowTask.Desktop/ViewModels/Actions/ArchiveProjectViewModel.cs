@@ -1,4 +1,5 @@
 using FlowTask.Core.Interfaces;
+using FlowTask.Core.Models;
 using FlowTask.Desktop.Services;
 
 namespace FlowTask.Desktop.ViewModels.Actions;
@@ -22,7 +23,7 @@ public sealed class ArchiveProjectViewModel
         Func<Task> reloadTasks,
         object origin)
     {
-        if (project is null)
+        if (project is null || project.Id == DefaultProject.Id)
         {
             return;
         }

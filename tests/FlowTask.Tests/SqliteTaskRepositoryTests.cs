@@ -144,4 +144,44 @@ public class SqliteTaskRepositoryTests : IDisposable
         Assert.Equal(1, grouped["p2"]);
         Assert.Equal(3, await _repo.CountActiveTasksAsync());
     }
+
+    [Fact]
+    public async Task GetAllActiveTasksAsync_ExcludesTasksUnderArchivedProjects_ListQueryDoesNot()
+    {
+        var projects = new SqliteProjectRepository(_dbPath);
+        var live = new Project
+        {
+            Name = "进行中",
+            SortOrder = 1,
+            CreatedAt = _clock.UtcNow
+        };
+        var archived = new Project
+        {
+            Name = "已归档",
+            SortOrder = 2,
+            CreatedAt = _clock.UtcNow
+        };
+        await projects.SaveProjectAsync(live);
+        await projects.SaveProjectAsync(archived);
+
+        var kept = NewTask("留下");
+        kept.ProjectId = live.Id;
+        var hidden = NewTask("藏起");
+        hidden.ProjectId = archived.Id;
+        var loose = NewTask("无项目");
+        await _repo.SaveTaskAsync(kept);
+        await _repo.SaveTaskAsync(hidden);
+        await _repo.SaveTaskAsync(loose);
+        await projects.SetArchivedAsync(archived.Id, true);
+
+        var board = await _repo.GetAllActiveTasksAsync();
+        Assert.Equal(2, board.Count);
+        Assert.Contains(board, t => t.Title == "留下");
+        Assert.Contains(board, t => t.Title == "无项目");
+        Assert.DoesNotContain(board, t => t.Title == "藏起");
+        Assert.Equal(2, await _repo.CountActiveTasksAsync());
+
+        var listed = await _repo.GetAllNonDeletedTasksAsync();
+        Assert.Contains(listed, t => t.Title == "藏起");
+    }
 }

@@ -250,14 +250,7 @@ spec-task-contract-and-clock 产出了 `Project` 实体、`ProjectId` / `Tags` �
 
 ## 6. Deferred Items（显式追踪）
 
-- **TODO(archive-ui): [2026-10-12] 项目归档命令已实现且测试覆盖，但无 UI 入口。**
-  - `ArchiveProjectCommand` 可用，侧边栏仅暴露了改色与删除两个按钮。
-  - **为什么推迟**：项目行已有 3 个悬停浮现的操作（改色/删除）加计数徽标，
-    再塞一个会让 272px 宽的侧边栏拥挤到失去可用性。
-    合理的承载方式是右键菜单或项目详情弹层，属独立的交互设计决策。
-  - **当前后果**：用户只能删除项目，无法归档。二者语义不同
-    （归档保留任务归属，删除置空），因此这是一项真实的能力缺失。
-  - Owner: aisdwf
+- ~~TODO(archive-ui)~~：**已核销（2026-10-24）** —— 侧栏悬停圆点归档；设置 → 已归档的项目里恢复或删除。见 [spec-project-archive](spec-project-archive[DONE].md)。
 - ~~TODO(desc-field)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
 - ~~TODO(recycle-bin)~~：**已关闭（2026-10-01，不做）** —— 见 [spec-close-deferred-todos](../docs-system/spec-close-deferred-todos[DONE].md)。
 - ~~TODO(appearance-persist)~~：**已核销（2026-09-26）** —— 由 [spec-appearance-persist](../visual-theme/spec-appearance-persist[DONE].md) 落地。

@@ -21,7 +21,7 @@ public enum GuideSceneKind
     /// <summary>悬停出现删除按钮并删除任务。</summary>
     DeleteTask,
 
-    /// <summary>新建、选中、双击重命名项目。</summary>
+    /// <summary>新建、选中、悬停圆点归档、双击重命名项目。</summary>
     Projects,
 
     /// <summary>删除项目与级联确认条。</summary>
@@ -38,6 +38,12 @@ public enum GuideSceneKind
 
     /// <summary>关窗进托盘与托盘菜单。</summary>
     CloseToTray,
+
+    /// <summary>命令行总开关、读写真权限，以及任务行上的 CLI 标记。</summary>
+    CliAccess,
+
+    /// <summary>设置 → 数据：点「导出为 JSON」并保存。</summary>
+    ExportData,
 
     /// <summary>昼夜水波纹、齿轮与「?」入口。</summary>
     Theme
@@ -135,6 +141,7 @@ public static class GuideCatalog
             new[]
             {
                 "再点一次圆环即可撤销完成。",
+                "悬停任务，点 P 标签下方的图钉置顶；完成后自动取消。",
                 "改名时按 Esc 放弃修改；清空标题保存会保留原标题。",
                 "点标题左侧的 P1–P3 标签弹出小框，点一档即生效。",
                 "任务的所属项目在创建时决定，之后不能更改。"
@@ -156,7 +163,8 @@ public static class GuideCatalog
             new[]
             {
                 "不想分类时，任务会落入 Default 项目。",
-                "在某个项目里新建的任务，自动归入这个项目。"
+                "在某个项目里新建的任务，自动归入这个项目。",
+                "悬停项目行时，左侧圆点变成归档图标，点一下即归档。Default 不能归档。"
             },
             new[] { OnboardingTargets.SidebarProjects }),
 
@@ -166,7 +174,8 @@ public static class GuideCatalog
             new[]
             {
                 "Default 项目不能删除。",
-                "点「确认删除」之前都可以取消：点「取消」、点框外或按 Esc。"
+                "点「确认删除」之前都可以取消：点「取消」、点框外或按 Esc。",
+                "已归档项目在设置 → 已归档的项目里恢复或删除。"
             },
             NoTarget),
 
@@ -189,7 +198,8 @@ public static class GuideCatalog
             {
                 "Ctrl+Shift+Tab 反向切换项目。",
                 "新任务归入小窗当前选中的项目；保存后优先级保持不变，方便连续记同档任务。",
-                "底栏的日期按钮和任务右侧的日期也可以直接点击设置。"
+                "底栏的日期按钮和任务右侧的日期也可以直接点击设置。",
+                "悬停任务时，日期左侧出现图钉；已置顶后常驻，勾选完成后消失。"
             },
             NoTarget),
 
@@ -209,6 +219,26 @@ public static class GuideCatalog
             {
                 "托盘左键打开主窗，右键可以显隐小窗或彻底退出。",
                 "设置 → 通用可以随时改成「彻底退出」。"
+            },
+            NoTarget),
+
+        new GuideTopic(string.Empty, GuideSceneKind.CliAccess, "设置",
+            "命令行写入",
+            "设置 → 命令行里打开总开关后，才能分别允许读取和写入。",
+            new[]
+            {
+                "读取对应列出任务，写入对应加入和删除。两项默认都关。",
+                "命令行加入的任务可以在行上标出 CLI。关掉标记开关不会抹掉已经标过的任务。"
+            },
+            NoTarget),
+
+        new GuideTopic(string.Empty, GuideSceneKind.ExportData, "设置",
+            "导出数据",
+            "在设置 → 数据里点「导出为 JSON」，选择位置后保存全部项目和任务。",
+            new[]
+            {
+                "已归档的项目和它们的任务也会写进文件。",
+                "外观、关闭行为和命令行开关不会导出。"
             },
             NoTarget),
 

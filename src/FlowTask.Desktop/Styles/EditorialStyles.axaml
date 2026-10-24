@@ -408,6 +408,45 @@
         <Setter Property="Opacity" Value="1" />
     </Style>
 
+    <!-- 置顶钮固定 14px。未置顶只改透明度：若用 IsVisible，悬停时行高和右侧日期会跳。
+         已置顶加上 Pinned，常驻并改强调色。主窗与小窗共用。 -->
+    <Style Selector="Button.PinToggle">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="MinWidth" Value="14" />
+        <Setter Property="MinHeight" Value="14" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.PinToggle Viewbox">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="Button.PinToggle Path.StrokeIcon">
+        <Setter Property="Stroke" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="Border.TaskRow:pointerover Button.PinToggle,
+                     Border.QuickTaskRow:pointerover Button.PinToggle">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.PinToggle.Pinned">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.PinToggle.Pinned Path.StrokeIcon">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
     <!-- 任务标题：大字号是"大开大合"的主要载体 -->
     <Style Selector="TextBlock.TaskTitle">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeTaskTitle}" />
@@ -891,6 +930,40 @@
         <Setter Property="Background" Value="{DynamicResource CardSurfaceHoverBrush}" />
     </Style>
 
+    <!-- 归档槽：默认不接收点击，否则透明按钮会挡住项目行的选中。悬停整行才淡入并可点。 -->
+    <Style Selector="Border.ProjectRow Button.ProjectArchive">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.ProjectRow.CanArchive:pointerover Button.ProjectArchive">
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="IsHitTestVisible" Value="True" />
+    </Style>
+    <Style Selector="Border.ProjectRow.CanArchive:pointerover Ellipse.ProjectDot">
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.ProjectRow Ellipse.ProjectDot">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+
     <!-- 项目色点：统一取主题强调色（spec-theme-bound-decoration-colors）。
          曾按 Project.ColorHex 着色，字面 hex 存在库里，主题够不到，表现为固定紫 / 绿。 -->
     <Style Selector="Ellipse.ProjectDot">
@@ -1080,6 +1153,24 @@
     <Style Selector="Button.DangerAction:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource PriorityHighBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+    </Style>
+
+    <!-- 设置页已归档行的删除：描边而不是实心，和左侧「恢复」拉开距离，仍复用高优先级色。 -->
+    <Style Selector="Button.DangerOutline">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.DangerOutline /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PriorityHighBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        <Setter Property="TextBlock.Foreground" Value="{DynamicResource PriorityHighBrush}" />
     </Style>
 
 </Styles>

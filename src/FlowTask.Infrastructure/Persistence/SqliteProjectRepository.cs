@@ -65,6 +65,16 @@ public class SqliteProjectRepository : IProjectRepository
     }
 
     /// <inheritdoc />
+    public async Task<List<Project>> GetArchivedProjectsAsync()
+    {
+        await InitializeAsync();
+        return await _db.Table<Project>()
+                        .Where(p => p.IsArchived)
+                        .OrderBy(p => p.SortOrder)
+                        .ToListAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<List<Project>> GetAllProjectsAsync()
     {
         await InitializeAsync();

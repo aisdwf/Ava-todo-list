@@ -77,13 +77,27 @@
                                     <DataTemplate DataType="vm:ProjectItemViewModel">
                                         <Border Classes="ProjectRow"
                                                 Classes.Selected="{Binding IsSelected}"
+                                                Classes.CanArchive="{Binding ShowArchiveAction}"
                                                 DoubleTapped="OnProjectRowDoubleTapped"
                                                 Tapped="OnProjectRowTapped">
                                             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
 
-                                                <Ellipse Grid.Column="0"
-                                                         Classes="ProjectDot"
-                                                         Margin="0,0,10,0" />
+                                                <!-- 色点与归档按钮共用 22px 槽位：切换只改透明度，名称不横跳。
+                                                     按钮是 Button，点击时 Tapped 已标记 Handled，不会顺带选中整行。 -->
+                                                <Grid Grid.Column="0" Width="22" Height="22" VerticalAlignment="Center">
+                                                    <Ellipse Classes="ProjectDot"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center" />
+                                                    <Button Classes="ProjectArchive"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ArchiveProjectCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding ShowArchiveAction}"
+                                                            ToolTip.Tip="归档项目">
+                                                        <Viewbox Width="14" Height="14">
+                                                            <Path Classes="StrokeIcon Muted" Data="{StaticResource IconArchive}" />
+                                                        </Viewbox>
+                                                    </Button>
+                                                </Grid>
 
                                                 <!-- 常态：项目名，双击进入重命名 -->
                                                 <TextBlock Grid.Column="1"
@@ -254,6 +268,15 @@
                                    Text="与功能相关的设置。目前可改「启用默认到期」的天数。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=General}" />
                         <TextBlock Classes="CaptionText"
+                                   Text="总开关打开后，可以分别允许读取和写入。标记只影响之后的写入。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Cli}" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="把全部项目和任务存成一份 JSON 文件。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Data}" />
+                        <TextBlock Classes="CaptionText"
+                                   Text="可以恢复到侧栏，或连同任务一起删除。"
+                                   IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Archived}" />
+                        <TextBlock Classes="CaptionText"
                                    Text="每个功能配一段动图演示；也可以重新播放新手引导。"
                                    IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />
                         <TextBlock Classes="CaptionText"
@@ -420,6 +443,23 @@
                                                                          CommitCommand="{Binding $parent[Window].((vm:MainViewModel)DataContext).CommitRowPriorityCommand}"
                                                                          CommitTarget="{Binding}" />
 
+                                                <!-- 图钉占 P 标签正下方这一格。未置顶只改透明度，不把格子收起，
+                                                     避免悬停时元信息行跳动。已完成行不显示。 -->
+                                                <Button Grid.Column="2" Grid.Row="1"
+                                                        Classes="PinToggle"
+                                                        Classes.Pinned="{Binding IsPinned}"
+                                                        IsVisible="{Binding ShowPin}"
+                                                        Margin="6,4,16,0"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).TogglePinCommand}"
+                                                        CommandParameter="{Binding Task}"
+                                                        ToolTip.Tip="{Binding PinToolTip}">
+                                                    <Viewbox>
+                                                        <Path Classes="StrokeIcon" Data="{StaticResource IconPin}" />
+                                                    </Viewbox>
+                                                </Button>
+
                                                 <!-- 大字号标题：Editorial 气势的主要载体。双击就地改名 (spec-inline-task-edit)：
                                                      Enter / 点击外部保存，Esc 取消。Background 透明使整格可命中双击。 -->
                                                 <Panel Grid.Column="3" Grid.Row="0"
@@ -466,6 +506,19 @@
                                                             Orientation="Horizontal"
                                                             Spacing="4"
                                                             Margin="-6,4,0,0">
+                                                    <Border IsVisible="{Binding ShowCliMark}"
+                                                            CornerRadius="4"
+                                                            Padding="6,1"
+                                                            Margin="6,0,2,0"
+                                                            Background="{DynamicResource AccentSubtleBrush}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="CLI"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource AccentBrush}" />
+                                                    </Border>
+                                                    <TextBlock Classes="MetaSeparator"
+                                                               Text="·"
+                                                               IsVisible="{Binding ShowCliMark}" />
                                                     <StackPanel Orientation="Horizontal"
                                                                 Spacing="4"
                                                                 IsVisible="{Binding HasProject}">
@@ -475,8 +528,9 @@
                                                         <TextBlock Classes="MetaSeparator" Text="·" />
                                                     </StackPanel>
 
-                                                    <!-- 未完成：到期选择器；已完成：完成日（用户原话「显示为 xx/xx已完成」）。
-                                                         完成后改期无意义，取消勾选即恢复选择器与原到期日。 -->
+                                                    <!-- 未完成：到期选择器 · 创建日。
+                                                         已完成：创建日~完成日 已完成（用户原话 2026-10-24），不再另附创建日。
+                                                         完成后不提供改期入口；到期日仍在库中，取消勾选即恢复选择器。 -->
                                                     <controls:DueDatePicker Date="{Binding DueDate}"
                                                                             IsVisible="{Binding !IsCompleted}"
                                                                             Editor="{Binding $parent[Window].((vm:MainViewModel)DataContext).RowDueDateEditor}"
@@ -487,8 +541,10 @@
                                                                IsVisible="{Binding IsCompleted}"
                                                                Text="{Binding CompletedLocalText}" />
 
-                                                    <TextBlock Classes="MetaSeparator" Text="·" />
+                                                    <TextBlock Classes="MetaSeparator" Text="·"
+                                                               IsVisible="{Binding !IsCompleted}" />
                                                     <TextBlock Classes="MetaText"
+                                                               IsVisible="{Binding !IsCompleted}"
                                                                Text="{Binding CreatedLocalText}"
                                                                ToolTip.Tip="创建日期" />
                                                 </StackPanel>
@@ -647,6 +703,90 @@
                                             HorizontalAlignment="Left"
                                             Margin="0,12,0,0"
                                             Command="{Binding ExitApplicationCommand}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="22"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Cli}">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox Content="接受命令行交互"
+                                                  IsChecked="{Binding Cli.Enabled, Mode=TwoWay}" />
+                                        <TextBlock Classes="CaptionText"
+                                                   TextWrapping="Wrap"
+                                                   Text="关闭时，读取和写入都不会执行。打开后才能分别配置下面两项。" />
+                                    </StackPanel>
+                                    <CheckBox Content="允许读取"
+                                              IsEnabled="{Binding Cli.CanConfigurePermissions}"
+                                              IsChecked="{Binding Cli.AllowRead, Mode=TwoWay}" />
+                                    <CheckBox Content="允许写入"
+                                              IsEnabled="{Binding Cli.CanConfigurePermissions}"
+                                              IsChecked="{Binding Cli.AllowWrite, Mode=TwoWay}" />
+                                    <StackPanel Spacing="8">
+                                        <CheckBox Content="给命令行写入的任务加上 CLI 标记"
+                                                  IsChecked="{Binding Cli.MarkWrites, Mode=TwoWay}" />
+                                        <TextBlock Classes="CaptionText"
+                                                   TextWrapping="Wrap"
+                                                   Text="只影响之后的写入。任务行上会显示 CLI。关掉以后，已经标过的任务仍保留标记。" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Spacing="12"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Data}">
+                                    <TextBlock Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               Text="包含已归档的项目。不含外观、关闭行为和命令行开关。" />
+                                    <Button Content="导出为 JSON"
+                                            HorizontalAlignment="Left"
+                                            Classes="PrimaryAction"
+                                            Command="{Binding Export.ExportCommand}"
+                                            AutomationProperties.Name="导出为 JSON" />
+                                    <TextBlock Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding Export.HasResult}"
+                                               Text="{Binding Export.ResultText}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="12"
+                                            MaxWidth="640"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Archived}">
+                                    <TextBlock Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding !HasArchivedProjects}"
+                                               Text="还没有已归档的项目。在侧栏悬停项目行，点左侧出现的归档图标即可归档。" />
+                                    <ItemsControl ItemsSource="{Binding ArchivedProjects}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:ProjectItemViewModel">
+                                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding Name}"
+                                                               FontSize="14"
+                                                               FontWeight="Medium"
+                                                               VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Content="恢复"
+                                                            Margin="12,0,0,0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RestoreProjectCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                    <TextBlock Grid.Column="2"
+                                                               Classes="CaptionText"
+                                                               Margin="12,0,16,0"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding TaskCount, StringFormat='{}{0} 个任务'}" />
+                                                    <Button Grid.Column="3"
+                                                            Classes="DangerOutline"
+                                                            Content="删除"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RequestDeleteProjectCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
 
                                 <guide:GuidePage IsVisible="{Binding SelectedSettingsSection, Converter={x:Static conv:EnumChoiceConverter.Instance}, ConverterParameter=Guide}" />

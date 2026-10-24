@@ -58,6 +58,20 @@ public partial class TaskRowViewModel : ViewModelBase
     /// <summary>是否归属某个项目，驱动元信息行项目名的显隐。</summary>
     public bool HasProject => !string.IsNullOrEmpty(Task.ProjectId);
 
+    /// <summary>命令行标记。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。</summary>
+    public bool ShowCliMark => Task.IsCliWritten;
+
+    /// <summary>是否置顶。实体不发通知，经 <see cref="RefreshDerivedFlags"/> 刷新。</summary>
+    public bool IsPinned => Task.IsPinned;
+
+    /// <summary>
+    /// 未完成行才放图钉。已完成行改显示完成文案，不再留一个可点的置顶入口。
+    /// </summary>
+    public bool ShowPin => !IsCompleted;
+
+    /// <summary>图钉按钮提示。已置顶时说明再点一次会取消。</summary>
+    public string PinToolTip => Task.IsPinned ? "取消置顶" : "置顶";
+
     /// <summary>是否设有到期日，驱动到期徽标显隐。</summary>
     public bool HasDueDate => Task.DueDate is not null;
 
@@ -77,15 +91,18 @@ public partial class TaskRowViewModel : ViewModelBase
     public string CreatedLocalText => FormatLocalDay(Task.CreatedAt);
 
     /// <summary>
-    /// 已完成任务的完成日文案，如「09/29 已完成」。
+    /// 已完成任务的日期文案，如「10/24~10/27 已完成」。
     /// </summary>
     /// <remarks>
-    /// 用户原话（2026-09-29）：「已完成的显示为 xx/xx已完成类似的形式感觉更合理，已经完成的任务显示逾期表现很怪」。
-    /// 完成后到期日已失去行动意义，改为展示完成日；到期日本身仍保留在库中，取消勾选即恢复原展示。
-    /// 历史数据可能缺 <c>CompletedAt</c>，此时只显示「已完成」。
+    /// 用户原话（2026-09-29）：已完成任务显示逾期很怪，故完成后不再展示到期选择器。
+    /// 用户原话（2026-10-24）：完成态改为「创建日~完成日 已完成」，不再把创建日另附在末尾。
+    /// 到期日仍留在库中，取消勾选即恢复选择器与原到期日。
+    /// 同一本地日仍写全区间。历史数据缺 <c>CompletedAt</c> 时只显示「创建日 已完成」，不编造完成日。
     /// </remarks>
     public string CompletedLocalText =>
-        Task.CompletedAt is { } at ? $"{FormatLocalDay(at)} 已完成" : "已完成";
+        Task.CompletedAt is { } at
+            ? $"{FormatLocalDay(Task.CreatedAt)}~{FormatLocalDay(at)} 已完成"
+            : $"{FormatLocalDay(Task.CreatedAt)} 已完成";
 
     /// <summary>UTC 时刻按本地时区格式化为 MM/dd。sqlite-net 读回的 Kind 可能为 Unspecified，显式按 UTC 解释。</summary>
     private static string FormatLocalDay(DateTime utc) =>
@@ -112,6 +129,7 @@ public partial class TaskRowViewModel : ViewModelBase
     {
         Task.IsCompleted = value;
         OnPropertyChanged(nameof(CompletedLocalText));
+        OnPropertyChanged(nameof(ShowPin));
     }
 
     /// <summary>
@@ -123,6 +141,9 @@ public partial class TaskRowViewModel : ViewModelBase
         Task.Priority = persisted.Priority;
         Task.DueDate = persisted.DueDate;
         Task.CompletedAt = persisted.CompletedAt;
+        Task.IsCliWritten = persisted.IsCliWritten;
+        Task.IsPinned = persisted.IsPinned;
+        Task.PinnedAt = persisted.PinnedAt;
         IsCompleted = persisted.IsCompleted;
         RefreshDerivedFlags();
     }
@@ -177,6 +198,10 @@ public partial class TaskRowViewModel : ViewModelBase
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(Priority));
         OnPropertyChanged(nameof(HasProject));
+        OnPropertyChanged(nameof(ShowCliMark));
+        OnPropertyChanged(nameof(IsPinned));
+        OnPropertyChanged(nameof(ShowPin));
+        OnPropertyChanged(nameof(PinToolTip));
         OnPropertyChanged(nameof(HasDueDate));
         OnPropertyChanged(nameof(DueDate));
         OnPropertyChanged(nameof(CompletedLocalText));
